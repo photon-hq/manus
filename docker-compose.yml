@@ -1,0 +1,182 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: manus-postgres
+    environment:
+      POSTGRES_DB: manus_imessage
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - manus-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: manus-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - manus-network
+
+  # SigNoz services for observability
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.7-alpine
+    container_name: manus-clickhouse
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: signoz
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+    networks:
+      - manus-network
+
+  signoz-otel-collector:
+    image: signoz/signoz-otel-collector:0.88.11
+    container_name: manus-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+    depends_on:
+      - clickhouse
+    networks:
+      - manus-network
+
+  signoz-query-service:
+    image: signoz/query-service:0.38.1
+    container_name: manus-query-service
+    environment:
+      STORAGE: clickhouse
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 9000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - clickhouse
+    networks:
+      - manus-network
+
+  signoz-frontend:
+    image: signoz/frontend:0.38.1
+    container_name: manus-signoz-frontend
+    environment:
+      FRONTEND_API_ENDPOINT: http://signoz-query-service:8080
+    ports:
+      - "3301:3301"
+    depends_on:
+      - signoz-query-service
+    networks:
+      - manus-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: services/backend/Dockerfile
+    container_name: manus-backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
+      REDIS_URL: redis://redis:6379
+      IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
+      IMESSAGE_ENDPOINT: ${IMESSAGE_ENDPOINT}
+      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      signoz-otel-collector:
+        condition: service_started
+    networks:
+      - manus-network
+    restart: unless-stopped
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: services/mcp-server/Dockerfile
+    container_name: manus-mcp-server
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
+      BACKEND_URL: http://backend:3000
+      NODE_ENV: ${NODE_ENV:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - manus-network
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    container_name: manus-worker
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
+      REDIS_URL: redis://redis:6379
+      SLM_SERVICE_URL: http://slm-classifier:3001
+      NODE_ENV: ${NODE_ENV:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      slm-classifier:
+        condition: service_started
+    networks:
+      - manus-network
+    restart: unless-stopped
+
+  slm-classifier:
+    build:
+      context: .
+      dockerfile: services/slm-classifier/Dockerfile
+    container_name: manus-slm-classifier
+    ports:
+      - "3001:3001"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
+    networks:
+      - manus-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  clickhouse_data:
+
+networks:
+  manus-network:
+    driver: bridge

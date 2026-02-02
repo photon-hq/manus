@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Connection {
+  id            String    @id @default(uuid())
+  connectionId  String    @unique
+  phoneNumber   String
+  manusApiKey   String?
+  photonApiKey  String?   @unique
+  webhookId     String?
+  status        Status    @default(PENDING)
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime?
+  activatedAt   DateTime?
+  revokedAt     DateTime?
+
+  manusMessages ManusMessage[]
+  messageQueue  MessageQueue[]
+
+  @@index([phoneNumber])
+  @@index([photonApiKey])
+  @@index([status])
+  @@map("connections")
+}
+
+enum Status {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+model ManusMessage {
+  messageGuid String      @id
+  phoneNumber String
+  messageType MessageType
+  sentAt      DateTime    @default(now())
+
+  connection Connection @relation(fields: [phoneNumber], references: [phoneNumber])
+
+  @@index([phoneNumber, sentAt])
+  @@map("manus_messages")
+}
+
+enum MessageType {
+  SCHEDULED
+  WEBHOOK
+  MANUAL
+}
+
+model MessageQueue {
+  id          Int         @id @default(autoincrement())
+  phoneNumber String
+  messageGuid String
+  messageText String      @db.Text
+  status      QueueStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  processedAt DateTime?
+
+  connection Connection @relation(fields: [phoneNumber], references: [phoneNumber])
+
+  @@index([phoneNumber, status, createdAt])
+  @@map("message_queue")
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}

@@ -1,0 +1,21 @@
+{
+  "name": "imessage-mcp-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "iMessage MCP Integration System for Manus AI",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./services/*\" dev",
+    "build": "pnpm --recursive --filter \"./services/*\" build",
+    "db:migrate": "pnpm --filter database migrate:dev",
+    "db:generate": "pnpm --filter database generate",
+    "db:studio": "pnpm --filter database studio",
+    "lint": "pnpm --recursive lint",
+    "type-check": "pnpm --recursive type-check",
+    "clean": "pnpm --recursive clean"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
