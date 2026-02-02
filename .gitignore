@@ -37,7 +37,7 @@ Thumbs.db
 .docker/
 
 # Prisma
-manus-connector/packages/database/prisma/migrations/
+prisma/migrations/
 
 # Testing
 coverage/
@@ -46,6 +46,3 @@ coverage/
 # Temporary files
 tmp/
 temp/
-
-# Design docs (keep in repo)
-!imessage_mcp_design.md
