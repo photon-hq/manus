@@ -114,13 +114,36 @@ curl http://localhost:3000/health
 curl http://localhost:3001/health
 ```
 
-## 📚 Documentation
+## 🏗️ Architecture
 
-- **[SETUP.md](SETUP.md)** - Detailed setup instructions
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
-- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Complete feature list
-- **[CHECKLIST.md](CHECKLIST.md)** - Implementation checklist
+### System Overview
+
+```
+User (iMessage)
+      ↓
+iMessage Infrastructure (advanced-imessage-kit)
+      ↓
+Backend Service (Fastify) - Connection flow, webhooks, MCP endpoints
+      ↓
+   ┌──┴──┐
+   ↓     ↓
+MCP    Worker → SLM Classifier (Gemini Flash)
+Server         (BullMQ Queue)
+   ↓
+Manus AI
+```
+
+### Data Flow
+
+1. **Connection Setup**: User sends iMessage → Backend creates connection → User submits Manus token → System activates
+2. **Message Processing**: User message → Queue → Debounce → Classify (NEW_TASK/FOLLOW_UP) → Route to Manus
+3. **Webhook Handling**: Manus event → Backend receives → Throttle/filter → Send iMessage to user
+
+### Database Schema
+
+- **connections** - Store connection state (phone, API keys, status)
+- **manus_messages** - Track Manus-sent messages (for filtering)
+- **message_queue** - Queue incoming messages (debouncing, processing)
 
 ## 🛠️ Development
 
@@ -254,8 +277,19 @@ Files to update:
 - `services/backend/src/routes/webhooks.ts` - Send webhook notifications
 
 Functions to implement:
-- `fetchIMessages(phoneNumber: string): Promise<Message[]>`
-- `sendIMessage(phoneNumber: string, message: string): Promise<string>`
+```typescript
+// Fetch messages from your iMessage infrastructure
+async function fetchIMessages(phoneNumber: string): Promise<Message[]> {
+  // TODO: Integrate with your advanced-imessage-kit
+  // Return array of messages with: from, to, text, timestamp, guid
+}
+
+// Send message via your iMessage infrastructure
+async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
+  // TODO: Integrate with your advanced-imessage-kit
+  // Return message GUID
+}
+```
 
 ### 2. Manus API Integration
 
@@ -263,10 +297,18 @@ Files to update:
 - `services/worker/src/index.ts` - Task creation/updates
 
 Functions to implement:
-- `createManusTask(phoneNumber: string, message: string): Promise<void>`
-- `appendToTask(phoneNumber: string, message: string): Promise<void>`
+```typescript
+// Create new Manus task
+async function createManusTask(phoneNumber: string, message: string): Promise<void> {
+  // TODO: Call Manus API to create task
+  // Use connection.manusApiKey from database
+}
 
-See [CHECKLIST.md](CHECKLIST.md) for detailed integration steps.
+// Append to existing Manus task
+async function appendToTask(phoneNumber: string, message: string): Promise<void> {
+  // TODO: Call Manus API to add context to running task
+}
+```
 
 ## 🚀 Deployment
 
@@ -275,17 +317,54 @@ See [CHECKLIST.md](CHECKLIST.md) for detailed integration steps.
 pnpm dev
 ```
 
-### Production
+### Production with Docker
+
+1. **Set up environment**:
 ```bash
-docker-compose up -d
+cp .env.example .env.production
+# Edit with production values
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for:
-- SSL/TLS setup
-- Nginx configuration
-- Monitoring & alerts
-- Database backups
-- Scaling strategies
+2. **Build and start**:
+```bash
+docker-compose -f docker-compose.yml --env-file .env.production up -d
+```
+
+3. **Run migrations**:
+```bash
+docker-compose exec backend pnpm db:migrate
+```
+
+### Production with Nginx (Recommended)
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name manus.photon.codes;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location /api/ {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /manus/ {
+        proxy_pass http://localhost:3000;
+    }
+}
+```
+
+### Scaling
+
+- **Backend**: Stateless, scale horizontally with load balancer
+- **Worker**: Run multiple instances, Redis handles distribution
+- **Database**: Use connection pooling, consider read replicas
+- **Redis**: Increase memory, enable persistence
 
 ## 📊 Monitoring
 

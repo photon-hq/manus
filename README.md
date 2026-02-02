@@ -41,13 +41,14 @@ This will:
 
 ## 📚 Documentation
 
-Comprehensive documentation is available in the `manus-connector/` directory:
+All documentation is in the main README:
 
-- **[SETUP.md](manus-connector/SETUP.md)** - Detailed setup instructions
-- **[ARCHITECTURE.md](manus-connector/ARCHITECTURE.md)** - System architecture and design
-- **[DEPLOYMENT.md](manus-connector/DEPLOYMENT.md)** - Production deployment guide
-- **[PROJECT_SUMMARY.md](manus-connector/PROJECT_SUMMARY.md)** - Complete feature list
-- **[CHECKLIST.md](manus-connector/CHECKLIST.md)** - Implementation checklist
+- **[manus-connector/README.md](manus-connector/README.md)** - Complete documentation including:
+  - Setup instructions
+  - Architecture overview
+  - Integration guides
+  - Deployment instructions
+  - Troubleshooting
 
 ## 🔧 Prerequisites
 
@@ -116,17 +117,17 @@ cd manus-connector
 - **SLM Classifier:** http://localhost:3001  
 - **SigNoz Dashboard:** http://localhost:3301
 
-## 📈 What's Implemented
+## ✨ Features
 
-✅ Complete monorepo with 4 microservices  
-✅ MCP protocol server (fetch/send tools)  
-✅ Message queue with debouncing (2-second window)  
-✅ AI-powered task classification  
-✅ Webhook handling with throttling  
-✅ Full observability (traces, metrics, logs)  
-✅ Docker infrastructure  
-✅ Database schema with Prisma  
-✅ Comprehensive documentation  
+✅ **Complete Monorepo** - 4 microservices + 2 shared packages  
+✅ **MCP Protocol** - Standard fetch/send tools for Manus AI  
+✅ **Smart Queue** - Message debouncing (2s window), sequential per-user  
+✅ **AI Classification** - NEW_TASK vs FOLLOW_UP detection (Gemini Flash)  
+✅ **Webhook Handling** - Intelligent throttling for task updates  
+✅ **Full Observability** - SigNoz with traces, metrics, logs  
+✅ **Docker Ready** - Complete infrastructure with one command  
+✅ **Type Safe** - TypeScript throughout with Prisma ORM  
+✅ **Production Ready** - Health checks, graceful shutdown, error handling  
 
 ## 🔐 Security
 
@@ -155,28 +156,33 @@ manus-connector/
 
 ## 🚀 Deployment
 
-For production deployment:
+**Development:**
+```bash
+cd manus-connector
+./scripts/quick-start.sh
+```
 
+**Production:**
 ```bash
 cd manus-connector
 docker-compose up -d
 ```
 
-See [DEPLOYMENT.md](manus-connector/DEPLOYMENT.md) for detailed production setup including:
-- SSL/TLS configuration
-- Nginx reverse proxy
-- Monitoring & alerts
-- Database backups
-- Scaling strategies
+For production setup (SSL, Nginx, monitoring), see [manus-connector/README.md](manus-connector/README.md)
 
-## 🤝 Integration Points
+## 🔧 Integration Required
 
-The system has placeholder implementations for:
+The system has placeholder implementations (marked with TODO) for:
 
 1. **iMessage Integration** - Connect your advanced-imessage-kit
-2. **Manus API** - Task creation and updates
+   - `fetchIMessages()` - Get messages from your infrastructure
+   - `sendIMessage()` - Send messages via your infrastructure
 
-See [CHECKLIST.md](manus-connector/CHECKLIST.md) for detailed integration steps.
+2. **Manus API** - Task creation and updates
+   - `createManusTask()` - Create new task in Manus
+   - `appendToTask()` - Add context to existing task
+
+See [manus-connector/README.md](manus-connector/README.md) for detailed integration guides.
 
 ## 📞 Support
 
@@ -190,12 +196,13 @@ MIT
 
 ## 🎯 Next Steps
 
-1. Review [SETUP.md](manus-connector/SETUP.md) for detailed setup
-2. Add your credentials to `.env`
-3. Run `./scripts/quick-start.sh`
-4. Test with `./scripts/test-connection-flow.sh`
-5. Integrate your iMessage infrastructure
-6. Deploy to production
+1. **Setup**: `cd manus-connector && ./scripts/quick-start.sh`
+2. **Configure**: Add credentials to `.env`
+3. **Test**: `./scripts/test-connection-flow.sh`
+4. **Integrate**: Connect your iMessage infrastructure
+5. **Deploy**: `docker-compose up -d`
+
+For detailed instructions, see [manus-connector/README.md](manus-connector/README.md)
 
 ---
 
