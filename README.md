@@ -43,12 +43,28 @@ A production-ready TypeScript monorepo with 4 microservices that bridge iMessage
 
 ### Prerequisites
 
+- **Mac with iMessage** (for iMessage integration)
 - Node.js >= 20.0.0
 - pnpm >= 8.0.0
 - Docker & Docker Compose
+- BlueBubbles Server running on port 1234
 
-### One-Command Setup
+### Setup Steps
 
+1. **Start iMessage Server** (on Mac)
+```bash
+# Start BlueBubbles Server
+# Or run advanced-imessage-kit server
+# Default: http://localhost:1234
+```
+
+2. **Configure Environment**
+```bash
+cp .env.example .env
+# Edit .env with your credentials
+```
+
+3. **One-Command Setup**
 ```bash
 ./scripts/quick-start.sh
 ```
@@ -74,12 +90,19 @@ pnpm dev
 
 ### 1. Set up iMessage Server
 
-This project uses [advanced-imessage-kit](https://github.com/photon-hq/advanced-imessage-kit) for iMessage integration. You need to run the iMessage server on a Mac:
+This project uses [advanced-imessage-kit](https://github.com/photon-hq/advanced-imessage-kit) for iMessage integration.
 
-```bash
-# Install BlueBubbles Server or use advanced-imessage-kit server
-# Default runs on http://localhost:1234
-```
+**Requirements:**
+- Mac with iMessage configured
+- BlueBubbles Server running on port 1234
+
+**Setup BlueBubbles Server:**
+1. Download from https://bluebubbles.app
+2. Install and configure with your iMessage account
+3. Start server (default: `http://localhost:1234`)
+4. Note your API key if authentication is enabled
+
+**Alternative:** Use the advanced-imessage-kit server directly
 
 ### 2. Configure Environment
 
