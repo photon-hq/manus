@@ -60,6 +60,7 @@ export async function disconnectIMessage() {
 
 /**
  * Send an iMessage to a phone number
+ * Automatically enables rich link previews for messages containing URLs
  */
 export async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
   const client = await getIMessageSDK();
@@ -67,9 +68,13 @@ export async function sendIMessage(phoneNumber: string, message: string): Promis
   // Build chatGuid - use 'any' to auto-detect service type
   const chatGuid = `any;-;${phoneNumber}`;
   
+  // Check if message contains a URL (http:// or https://)
+  const containsUrl = /https?:\/\/[^\s]+/.test(message);
+  
   const result = await client.messages.sendMessage({
     chatGuid,
     message,
+    richLink: containsUrl, // Enable rich link preview if URL is present
   });
 
   return result.guid;
