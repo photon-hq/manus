@@ -1,4 +1,4 @@
-# Manus Connector - iMessage MCP Integration System
+# Manus Backend - iMessage MCP Integration System
 
 A complete backend system that integrates iMessage with Manus AI, enabling bidirectional communication and intelligent task management through iMessage.
 
@@ -194,7 +194,7 @@ docker-compose down
 ## 🏗️ Project Structure
 
 ```
-manus-connector/
+manus-backend/
 ├── packages/
 │   ├── shared/              # Shared types & utilities
 │   │   ├── src/

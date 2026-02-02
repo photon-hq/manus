@@ -4,11 +4,11 @@ Complete backend system for integrating iMessage with Manus AI, enabling bidirec
 
 ## 🎯 Overview
 
-This repository contains the **Manus Connector** - a production-ready system that bridges iMessage with Manus AI, allowing users to interact with their AI assistant directly through iMessage.
+This repository contains the **Manus Backend** - a production-ready system that bridges iMessage with Manus AI, allowing users to interact with their AI assistant directly through iMessage.
 
 ## 📦 What's Inside
 
-### `manus-connector/`
+### `manus-backend/`
 
 A complete TypeScript monorepo with 4 microservices:
 
@@ -29,7 +29,7 @@ A complete TypeScript monorepo with 4 microservices:
 ## 🚀 Quick Start
 
 ```bash
-cd manus-connector
+cd manus-backend
 ./scripts/quick-start.sh
 ```
 
@@ -43,7 +43,7 @@ This will:
 
 All documentation is in the main README:
 
-- **[manus-connector/README.md](manus-connector/README.md)** - Complete documentation including:
+- **[manus-backend/README.md](manus-backend/README.md)** - Complete documentation including:
   - Setup instructions
   - Architecture overview
   - Integration guides
@@ -88,7 +88,7 @@ Manus AI
 
 1. Copy environment template:
 ```bash
-cd manus-connector
+cd manus-backend
 cp .env.example .env
 ```
 
@@ -107,7 +107,7 @@ OPENROUTER_API_KEY=your_openrouter_key
 ## 🧪 Testing
 
 ```bash
-cd manus-connector
+cd manus-backend
 ./scripts/test-connection-flow.sh
 ```
 
@@ -140,7 +140,7 @@ cd manus-connector
 ## 📦 Project Structure
 
 ```
-manus-connector/
+manus-backend/
 ├── packages/
 │   ├── shared/           # Shared types & utilities
 │   └── database/         # Prisma schema & client
@@ -158,17 +158,17 @@ manus-connector/
 
 **Development:**
 ```bash
-cd manus-connector
+cd manus-backend
 ./scripts/quick-start.sh
 ```
 
 **Production:**
 ```bash
-cd manus-connector
+cd manus-backend
 docker-compose up -d
 ```
 
-For production setup (SSL, Nginx, monitoring), see [manus-connector/README.md](manus-connector/README.md)
+For production setup (SSL, Nginx, monitoring), see [manus-backend/README.md](manus-backend/README.md)
 
 ## 🔧 Integration Required
 
@@ -182,7 +182,7 @@ The system has placeholder implementations (marked with TODO) for:
    - `createManusTask()` - Create new task in Manus
    - `appendToTask()` - Add context to existing task
 
-See [manus-connector/README.md](manus-connector/README.md) for detailed integration guides.
+See [manus-backend/README.md](manus-backend/README.md) for detailed integration guides.
 
 ## 📞 Support
 
@@ -196,13 +196,13 @@ MIT
 
 ## 🎯 Next Steps
 
-1. **Setup**: `cd manus-connector && ./scripts/quick-start.sh`
+1. **Setup**: `cd manus-backend && ./scripts/quick-start.sh`
 2. **Configure**: Add credentials to `.env`
 3. **Test**: `./scripts/test-connection-flow.sh`
 4. **Integrate**: Connect your iMessage infrastructure
 5. **Deploy**: `docker-compose up -d`
 
-For detailed instructions, see [manus-connector/README.md](manus-connector/README.md)
+For detailed instructions, see [manus-backend/README.md](manus-backend/README.md)
 
 ---
 
