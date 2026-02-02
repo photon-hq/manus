@@ -13,7 +13,7 @@ datasource db {
 model Connection {
   id            String    @id @default(uuid())
   connectionId  String    @unique
-  phoneNumber   String    @unique
+  phoneNumber   String    @unique  // Can be phone (+1234567890) or iCloud email (user@icloud.com)
   manusApiKey   String?
   photonApiKey  String?   @unique
   webhookId     String?

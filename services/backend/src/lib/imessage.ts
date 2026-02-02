@@ -111,8 +111,8 @@ export async function fetchIMessages(
 
     // Transform to our format
     return messages.map((msg) => ({
-      from: msg.isFromMe ? process.env.PHOTON_NUMBER || 'me' : phoneNumber,
-      to: msg.isFromMe ? phoneNumber : process.env.PHOTON_NUMBER || 'me',
+      from: msg.isFromMe ? 'me' : phoneNumber,
+      to: msg.isFromMe ? phoneNumber : 'me',
       text: msg.text || '',
       timestamp: new Date(msg.dateCreated).toISOString(),
       guid: msg.guid,
@@ -172,6 +172,23 @@ export async function downloadIMessageAttachment(attachmentGuid: string): Promis
  */
 export function getChatGuid(phoneNumber: string): string {
   return `any;-;${phoneNumber}`;
+}
+
+/**
+ * Send typing indicator and wait
+ */
+export async function sendTypingIndicator(phoneNumber: string, durationMs: number): Promise<void> {
+  const client = await getIMessageSDK();
+  const chatGuid = `any;-;${phoneNumber}`;
+  
+  try {
+    await client.chats.startTyping(chatGuid);
+    await new Promise(resolve => setTimeout(resolve, durationMs));
+    await client.chats.stopTyping(chatGuid);
+  } catch (error) {
+    console.error('Failed to send typing indicator:', error);
+    // Continue anyway - not critical
+  }
 }
 
 /**
