@@ -43,28 +43,20 @@ A production-ready TypeScript monorepo with 4 microservices that bridge iMessage
 
 ### Prerequisites
 
-- **Mac with iMessage** (for iMessage integration)
 - Node.js >= 20.0.0
 - pnpm >= 8.0.0
 - Docker & Docker Compose
-- BlueBubbles Server running on port 1234
+- Access to Photon iMessage server (endpoint + API key)
 
 ### Setup Steps
 
-1. **Start iMessage Server** (on Mac)
-```bash
-# Start BlueBubbles Server
-# Or run advanced-imessage-kit server
-# Default: http://localhost:1234
-```
-
-2. **Configure Environment**
+1. **Configure Environment**
 ```bash
 cp .env.example .env
-# Edit .env with your credentials
+# Edit .env with your Photon iMessage credentials
 ```
 
-3. **One-Command Setup**
+2. **One-Command Setup**
 ```bash
 ./scripts/quick-start.sh
 ```
@@ -88,21 +80,15 @@ pnpm dev
 
 ## 🔧 Configuration
 
-### 1. Set up iMessage Server
+### 1. iMessage Integration
 
-This project uses [advanced-imessage-kit](https://github.com/photon-hq/advanced-imessage-kit) for iMessage integration.
+This project uses [advanced-imessage-kit](https://github.com/photon-hq/advanced-imessage-kit) SDK to connect to your existing iMessage infrastructure.
 
 **Requirements:**
-- Mac with iMessage configured
-- BlueBubbles Server running on port 1234
+- Access to Photon's iMessage server endpoint
+- API key for authentication
 
-**Setup BlueBubbles Server:**
-1. Download from https://bluebubbles.app
-2. Install and configure with your iMessage account
-3. Start server (default: `http://localhost:1234`)
-4. Note your API key if authentication is enabled
-
-**Alternative:** Use the advanced-imessage-kit server directly
+**No setup needed** - the SDK connects to your existing iMessage infrastructure via API
 
 ### 2. Configure Environment
 
@@ -114,8 +100,8 @@ cp .env.example .env
 Add your credentials:
 ```env
 # iMessage Integration (advanced-imessage-kit)
-IMESSAGE_SERVER_URL=http://localhost:1234
-IMESSAGE_API_KEY=your_api_key_if_server_requires_auth
+IMESSAGE_SERVER_URL=https://your-imessage-server.photon.codes
+IMESSAGE_API_KEY=your_photon_imessage_api_key
 
 # Your iMessage phone number
 PHOTON_NUMBER=+1234567890
@@ -324,8 +310,8 @@ manus/
 - ✅ Graceful shutdown
 
 **Requirements:**
-- Mac with iMessage configured
-- BlueBubbles Server or advanced-imessage-kit server running on `localhost:1234`
+- Access to Photon iMessage server endpoint
+- Valid API key for authentication
 - Phone number configured in `PHOTON_NUMBER` env var
 
 ### 2. Manus API Integration

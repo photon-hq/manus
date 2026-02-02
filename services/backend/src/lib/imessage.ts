@@ -1,28 +1,37 @@
 import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const IMESSAGE_SERVER_URL = process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234';
+const IMESSAGE_SERVER_URL = process.env.IMESSAGE_SERVER_URL;
 const IMESSAGE_API_KEY = process.env.IMESSAGE_API_KEY;
+
+if (!IMESSAGE_SERVER_URL) {
+  throw new Error('IMESSAGE_SERVER_URL environment variable is required');
+}
+
+if (!IMESSAGE_API_KEY) {
+  throw new Error('IMESSAGE_API_KEY environment variable is required');
+}
 
 let sdk: ReturnType<typeof SDK> | null = null;
 let isConnected = false;
 
 /**
  * Get or create the iMessage SDK instance
+ * Connects to Photon's existing iMessage infrastructure via advanced-imessage-kit
  */
 export async function getIMessageSDK() {
   if (!sdk) {
     sdk = SDK({
-      serverUrl: IMESSAGE_SERVER_URL,
-      apiKey: IMESSAGE_API_KEY,
+      serverUrl: IMESSAGE_SERVER_URL!,
+      apiKey: IMESSAGE_API_KEY!,
       logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'info',
     });
 
     try {
       await sdk.connect();
       isConnected = true;
-      console.log('✅ Connected to iMessage server');
+      console.log('✅ Connected to Photon iMessage server');
     } catch (error) {
-      console.error('❌ Failed to connect to iMessage server:', error);
+      console.error('❌ Failed to connect to Photon iMessage server:', error);
       throw error;
     }
   }
@@ -38,14 +47,14 @@ export function isIMessageConnected(): boolean {
 }
 
 /**
- * Disconnect from iMessage server
+ * Disconnect from Photon iMessage server
  */
 export async function disconnectIMessage() {
   if (sdk) {
     await sdk.close();
     sdk = null;
     isConnected = false;
-    console.log('Disconnected from iMessage server');
+    console.log('Disconnected from Photon iMessage server');
   }
 }
 

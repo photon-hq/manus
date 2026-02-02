@@ -67,10 +67,11 @@ const start = async () => {
     try {
       const { getIMessageSDK } = await import('./lib/imessage.js');
       await getIMessageSDK();
-      fastify.log.info('✅ iMessage SDK initialized');
+      fastify.log.info('✅ Connected to Photon iMessage infrastructure');
     } catch (error) {
-      fastify.log.warn('⚠️  iMessage SDK not available - messages will fail');
-      fastify.log.warn('Make sure advanced-imessage-kit server is running on IMESSAGE_SERVER_URL');
+      fastify.log.error('❌ Failed to connect to Photon iMessage infrastructure');
+      fastify.log.error('Check IMESSAGE_SERVER_URL and IMESSAGE_API_KEY in .env');
+      throw error; // Fail fast if iMessage is not available
     }
 
     await fastify.listen({ port: PORT, host: HOST });
