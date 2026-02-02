@@ -30,27 +30,27 @@ else
 fi
 echo ""
 
-# Test 2: Initiate Connection
-echo "2️⃣  Initiating connection..."
-INITIATE_RESPONSE=$(curl -s -X POST "$BASE_URL/api/connect/initiate" \
+# Test 2: Start Connection
+echo "2️⃣  Starting connection..."
+START_RESPONSE=$(curl -s -X POST "$BASE_URL/api/connect/start" \
     -H "Content-Type: application/json" \
-    -d "{\"phoneNumber\": \"$PHONE_NUMBER\", \"message\": \"Hey! Please connect my iMessage to Manus\"}")
+    -d "{\"phoneNumber\": \"$PHONE_NUMBER\"}")
 
-CONNECTION_ID=$(echo "$INITIATE_RESPONSE" | grep -o '"connectionId":"[^"]*"' | cut -d'"' -f4)
+CONNECTION_ID=$(echo "$START_RESPONSE" | grep -o '"connectionId":"[^"]*"' | cut -d'"' -f4)
 
 if [ -z "$CONNECTION_ID" ]; then
-    echo -e "${RED}✗ Failed to initiate connection${NC}"
-    echo "Response: $INITIATE_RESPONSE"
+    echo -e "${RED}✗ Failed to start connection${NC}"
+    echo "Response: $START_RESPONSE"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Connection initiated${NC}"
+echo -e "${GREEN}✓ Connection started${NC}"
 echo "Connection ID: $CONNECTION_ID"
 echo ""
 
-# Test 3: Submit Token (this will fail without valid Manus API, but tests the endpoint)
-echo "3️⃣  Testing token submission endpoint..."
-TOKEN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/connect/submit-token" \
+# Test 3: Verify Token (this will fail without valid Manus API, but tests the endpoint)
+echo "3️⃣  Testing token verification endpoint..."
+TOKEN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/connect/verify" \
     -H "Content-Type: application/json" \
     -d "{\"connectionId\": \"$CONNECTION_ID\", \"manusApiKey\": \"$MANUS_API_KEY\"}")
 

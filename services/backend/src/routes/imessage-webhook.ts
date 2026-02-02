@@ -7,6 +7,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@imessage-mcp/database';
 import { z } from 'zod';
+import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 
 // Schema for incoming iMessage webhook
 const IMessageWebhookSchema = z.object({
@@ -24,6 +26,35 @@ const IMessageWebhookSchema = z.object({
   }),
   phoneNumber: z.string(),
 });
+
+// Redis connection for queue
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const redis = new Redis(REDIS_URL, {
+  maxRetriesPerRequest: null,
+});
+
+// Map to cache queues per phone number
+const queues = new Map<string, Queue>();
+
+// Get or create queue for a phone number
+function getQueue(phoneNumber: string): Queue {
+  if (!queues.has(phoneNumber)) {
+    const queue = new Queue(`messages:${phoneNumber}`, {
+      connection: redis,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 100,
+      },
+    });
+    queues.set(phoneNumber, queue);
+  }
+  return queues.get(phoneNumber)!;
+}
 
 export const imessageWebhookRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/imessage/webhook - Receive incoming iMessages
@@ -70,10 +101,16 @@ export const imessageWebhookRoutes: FastifyPluginAsync = async (fastify) => {
         'Received iMessage'
       );
 
-      // Forward to worker for processing
-      // Import dynamically to avoid circular dependencies
-      const { handleIncomingMessage } = await import('../../../worker/src/index.js');
-      await handleIncomingMessage(phoneNumber, messageText, message.guid, attachments);
+      // Add to queue for worker to process
+      const queue = getQueue(phoneNumber);
+      await queue.add('incoming-message', {
+        phoneNumber,
+        messageText,
+        messageGuid: message.guid,
+        attachments,
+      });
+
+      fastify.log.info({ phoneNumber, messageGuid: message.guid }, 'Message added to queue');
 
       return {
         success: true,

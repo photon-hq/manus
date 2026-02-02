@@ -13,7 +13,7 @@ datasource db {
 model Connection {
   id            String    @id @default(uuid())
   connectionId  String    @unique
-  phoneNumber   String
+  phoneNumber   String    @unique
   manusApiKey   String?
   photonApiKey  String?   @unique
   webhookId     String?

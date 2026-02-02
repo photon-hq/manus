@@ -50,8 +50,19 @@ function startWorker(phoneNumber: string) {
   const worker = new Worker(
     `messages:${phoneNumber}`,
     async (job) => {
-      console.log(`Processing message for ${phoneNumber}:`, job.data);
-      await processMessage(phoneNumber, job.data);
+      console.log(`Processing job ${job.name} for ${phoneNumber}:`, job.data);
+      
+      // Handle different job types
+      if (job.name === 'incoming-message') {
+        // Direct message from iMessage webhook
+        const { messageText, messageGuid, attachments } = job.data;
+        await handleIncomingMessage(phoneNumber, messageText, messageGuid, attachments);
+      } else if (job.name === 'process-message') {
+        // Message from queue (debounced)
+        await processMessage(phoneNumber, job.data);
+      } else {
+        console.warn(`Unknown job type: ${job.name}`);
+      }
     },
     {
       connection,

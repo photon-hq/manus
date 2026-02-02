@@ -99,8 +99,11 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
       REDIS_URL: redis://redis:6379
+      IMESSAGE_SERVER_URL: ${IMESSAGE_SERVER_URL}
       IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
-      IMESSAGE_ENDPOINT: ${IMESSAGE_ENDPOINT}
+      PHOTON_NUMBER: ${PHOTON_NUMBER}
+      MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.ai}
+      PUBLIC_URL: ${PUBLIC_URL}
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-development}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
@@ -123,6 +126,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
       BACKEND_URL: http://backend:3000
+      PHOTON_API_KEY: ${PHOTON_API_KEY}
       NODE_ENV: ${NODE_ENV:-development}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
     depends_on:
@@ -142,6 +146,10 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
       REDIS_URL: redis://redis:6379
+      IMESSAGE_SERVER_URL: ${IMESSAGE_SERVER_URL}
+      IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
+      PHOTON_NUMBER: ${PHOTON_NUMBER}
+      MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.ai}
       SLM_SERVICE_URL: http://slm-classifier:3001
       NODE_ENV: ${NODE_ENV:-development}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
