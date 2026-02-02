@@ -43,6 +43,15 @@ fastify.get('/health', async () => {
 // Graceful shutdown
 const closeGracefully = async (signal: string) => {
   fastify.log.info(`Received ${signal}, closing gracefully`);
+  
+  // Disconnect iMessage
+  try {
+    const { disconnectIMessage } = await import('./lib/imessage.js');
+    await disconnectIMessage();
+  } catch (error) {
+    // Ignore if not initialized
+  }
+  
   await prisma.$disconnect();
   await fastify.close();
   process.exit(0);
@@ -54,6 +63,16 @@ process.on('SIGTERM', () => closeGracefully('SIGTERM'));
 // Start server
 const start = async () => {
   try {
+    // Initialize iMessage connection
+    try {
+      const { getIMessageSDK } = await import('./lib/imessage.js');
+      await getIMessageSDK();
+      fastify.log.info('✅ iMessage SDK initialized');
+    } catch (error) {
+      fastify.log.warn('⚠️  iMessage SDK not available - messages will fail');
+      fastify.log.warn('Make sure advanced-imessage-kit server is running on IMESSAGE_SERVER_URL');
+    }
+
     await fastify.listen({ port: PORT, host: HOST });
     fastify.log.info(`Backend server running on http://${HOST}:${PORT}`);
   } catch (err) {

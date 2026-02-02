@@ -43,9 +43,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ connectionId, phoneNumber }, 'Connection initiated');
 
-      // TODO: Send iMessage back to user with link
-      // const linkUrl = `https://your-domain.com/manus/connect/${connectionId}`;
-      // await sendIMessage(phoneNumber, `Sure! Please input your Manus token: ${linkUrl}`);
+      // Send iMessage back to user with link
+      const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/api/connect/page/${connectionId}`;
+      try {
+        const { sendIMessage } = await import('../lib/imessage.js');
+        await sendIMessage(phoneNumber, `Sure! Please input your Manus token in the following link:\n${linkUrl}`);
+      } catch (error) {
+        fastify.log.error({ error }, 'Failed to send iMessage');
+        // Continue anyway - user can still access the link
+      }
 
       return {
         success: true,
@@ -114,8 +120,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         },
       };
 
-      // TODO: Send iMessage with MCP config
-      // await sendIMessage(connection.phoneNumber, `You're all set! 🎉\n\nAdd this to Manus:\n${JSON.stringify(mcpConfig, null, 2)}`);
+      // Send iMessage with MCP config
+      try {
+        const { sendIMessage } = await import('../lib/imessage.js');
+        const configText = JSON.stringify(mcpConfig, null, 2);
+        await sendIMessage(
+          connection.phoneNumber,
+          `You're all set! 🎉\n\nYour Photon API Key:\n${photonApiKey}\n\nAdd this MCP config to Manus:\n\n${configText}`
+        );
+      } catch (error) {
+        fastify.log.error({ error }, 'Failed to send iMessage');
+        // Continue anyway - user sees config on web page
+      }
 
       return {
         success: true,

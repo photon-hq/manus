@@ -101,69 +101,13 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
   });
 };
 
-// Helper functions - these will integrate with your iMessage infrastructure
+// Helper functions - integrate with advanced-imessage-kit
 async function fetchIMessages(phoneNumber: string): Promise<any[]> {
-  // TODO: Integrate with advanced-imessage-kit or your custom iMessage infrastructure
-  // This is a placeholder implementation
-  
-  const endpoint = process.env.IMESSAGE_ENDPOINT;
-  const apiKey = process.env.IMESSAGE_API_KEY;
-
-  if (!endpoint || !apiKey) {
-    throw new Error('iMessage configuration missing');
-  }
-
-  try {
-    const response = await fetch(`${endpoint}/messages?phone=${phoneNumber}&limit=100`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`iMessage API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.messages || [];
-  } catch (error) {
-    console.error('Failed to fetch iMessages:', error);
-    return [];
-  }
+  const { fetchIMessages: fetchMessages } = await import('../lib/imessage.js');
+  return fetchMessages(phoneNumber, 100);
 }
 
 async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
-  // TODO: Integrate with advanced-imessage-kit or your custom iMessage infrastructure
-  // This is a placeholder implementation
-  
-  const endpoint = process.env.IMESSAGE_ENDPOINT;
-  const apiKey = process.env.IMESSAGE_API_KEY;
-
-  if (!endpoint || !apiKey) {
-    throw new Error('iMessage configuration missing');
-  }
-
-  try {
-    const response = await fetch(`${endpoint}/send`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: phoneNumber,
-        message,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`iMessage API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.messageGuid || data.guid || `msg_${Date.now()}`;
-  } catch (error) {
-    console.error('Failed to send iMessage:', error);
-    throw error;
-  }
+  const { sendIMessage: sendMessage } = await import('../lib/imessage.js');
+  return sendMessage(phoneNumber, message);
 }

@@ -14,6 +14,7 @@
   "dependencies": {
     "@imessage-mcp/database": "workspace:*",
     "@imessage-mcp/shared": "workspace:*",
+    "@photon-ai/advanced-imessage-kit": "^1.13.0",
     "@fastify/cors": "^8.5.0",
     "@fastify/env": "^4.3.0",
     "@opentelemetry/api": "^1.7.0",

@@ -160,34 +160,6 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
 
 // Helper function to send iMessage
 async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
-  const endpoint = process.env.IMESSAGE_ENDPOINT;
-  const apiKey = process.env.IMESSAGE_API_KEY;
-
-  if (!endpoint || !apiKey) {
-    throw new Error('iMessage configuration missing');
-  }
-
-  try {
-    const response = await fetch(`${endpoint}/send`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: phoneNumber,
-        message,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`iMessage API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.messageGuid || data.guid || `msg_${Date.now()}`;
-  } catch (error) {
-    console.error('Failed to send iMessage:', error);
-    throw error;
-  }
+  const { sendIMessage: sendMessage } = await import('../lib/imessage.js');
+  return sendMessage(phoneNumber, message);
 }

@@ -203,9 +203,34 @@ async function processMessage(phoneNumber: string, data: any) {
 
 // Get recent messages for context
 async function getRecentMessages(phoneNumber: string, limit: number = 20): Promise<any[]> {
-  // TODO: Fetch from iMessage infrastructure
-  // This is a placeholder
-  return [];
+  try {
+    const { SDK } = await import('@photon-ai/advanced-imessage-kit');
+    const sdk = SDK({
+      serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
+      apiKey: process.env.IMESSAGE_API_KEY,
+      logLevel: 'error',
+    });
+
+    await sdk.connect();
+
+    const chatGuid = `any;-;${phoneNumber}`;
+    const messages = await sdk.messages.getMessages({
+      chatGuid,
+      limit,
+      sort: 'DESC',
+    });
+
+    await sdk.close();
+
+    return messages.map((msg) => ({
+      from: msg.isFromMe ? 'me' : phoneNumber,
+      text: msg.text || '',
+      timestamp: new Date(msg.dateCreated).toISOString(),
+    }));
+  } catch (error) {
+    console.error('Failed to fetch recent messages:', error);
+    return [];
+  }
 }
 
 // Classify message using SLM service

@@ -72,16 +72,30 @@ pnpm dev
 
 ## 🔧 Configuration
 
-1. Copy environment template:
+### 1. Set up iMessage Server
+
+This project uses [advanced-imessage-kit](https://github.com/photon-hq/advanced-imessage-kit) for iMessage integration. You need to run the iMessage server on a Mac:
+
+```bash
+# Install BlueBubbles Server or use advanced-imessage-kit server
+# Default runs on http://localhost:1234
+```
+
+### 2. Configure Environment
+
+Copy environment template:
 ```bash
 cp .env.example .env
 ```
 
-2. Add your credentials:
+Add your credentials:
 ```env
-# iMessage Integration
-IMESSAGE_API_KEY=your_imessage_api_key
-IMESSAGE_ENDPOINT=https://your-imessage-endpoint.com
+# iMessage Integration (advanced-imessage-kit)
+IMESSAGE_SERVER_URL=http://localhost:1234
+IMESSAGE_API_KEY=your_api_key_if_server_requires_auth
+
+# Your iMessage phone number
+PHOTON_NUMBER=+1234567890
 
 # LLM Provider (get from https://openrouter.ai)
 OPENROUTER_API_KEY=your_openrouter_key
@@ -267,29 +281,29 @@ manus/
 
 ## 🔧 Integration Points
 
-The system has placeholder implementations (marked with TODO) for:
+### 1. iMessage Integration ✅ **IMPLEMENTED**
 
-### 1. iMessage Integration
+**Status:** Fully integrated using [advanced-imessage-kit](https://github.com/photon-hq/advanced-imessage-kit)
 
-Files to update:
-- `services/backend/src/routes/connect.ts` - Send connection messages
-- `services/backend/src/routes/mcp.ts` - Fetch/send messages
-- `services/backend/src/routes/webhooks.ts` - Send webhook notifications
+**Implementation:**
+- `services/backend/src/lib/imessage.ts` - Shared iMessage SDK client
+- `services/backend/src/routes/connect.ts` - Sends connection setup messages
+- `services/backend/src/routes/mcp.ts` - Fetches and sends messages
+- `services/backend/src/routes/webhooks.ts` - Sends webhook notifications
+- `services/worker/src/index.ts` - Fetches message context for SLM
 
-Functions to implement:
-```typescript
-// Fetch messages from your iMessage infrastructure
-async function fetchIMessages(phoneNumber: string): Promise<Message[]> {
-  // TODO: Integrate with your advanced-imessage-kit
-  // Return array of messages with: from, to, text, timestamp, guid
-}
+**Features:**
+- ✅ Auto-detect iMessage vs SMS
+- ✅ Send text messages with `[Manus]` prefix
+- ✅ Fetch conversation history (last 100 messages)
+- ✅ Filter out Manus-sent messages
+- ✅ Connection pooling and error handling
+- ✅ Graceful shutdown
 
-// Send message via your iMessage infrastructure
-async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
-  // TODO: Integrate with your advanced-imessage-kit
-  // Return message GUID
-}
-```
+**Requirements:**
+- Mac with iMessage configured
+- BlueBubbles Server or advanced-imessage-kit server running on `localhost:1234`
+- Phone number configured in `PHOTON_NUMBER` env var
 
 ### 2. Manus API Integration
 
