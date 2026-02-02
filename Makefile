@@ -56,6 +56,3 @@ logs: ## View logs from all services
 signoz: ## Open SigNoz dashboard
 	@echo "Opening SigNoz at http://localhost:3301"
 	@open http://localhost:3301 || xdg-open http://localhost:3301
-
-test: ## Run tests (placeholder)
-	@echo "Tests not yet implemented"
