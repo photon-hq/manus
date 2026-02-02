@@ -245,22 +245,13 @@ async function processAttachments(
       try {
         console.log(`Processing attachment: ${attachment.filename}`);
 
-        // Get attachment from iMessage
-        const att = await sdk.attachments.getAttachment({
+        // Download attachment from iMessage
+        const result = await sdk.attachments.downloadAttachment({
           guid: attachment.guid,
         });
 
-        // Download file
-        const response = await fetch(att.url);
-        if (!response.ok) {
-          throw new Error(`Failed to download: ${response.statusText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
         // Upload to Manus
-        const fileId = await uploadFileToManus(buffer, attachment.filename);
+        const fileId = await uploadFileToManus(result.buffer, attachment.filename);
         fileIds.push(fileId);
 
         console.log(`✅ Uploaded ${attachment.filename} to Manus (ID: ${fileId})`);

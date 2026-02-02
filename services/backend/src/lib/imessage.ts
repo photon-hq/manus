@@ -137,42 +137,6 @@ export async function fetchIMessages(
 }
 
 /**
- * Download an attachment from iMessage
- * Returns the file buffer and metadata
- */
-export async function downloadIMessageAttachment(attachmentGuid: string): Promise<{
-  buffer: Buffer;
-  filename: string;
-  mimeType: string;
-}> {
-  const client = await getIMessageSDK();
-  
-  try {
-    const attachment = await client.attachments.getAttachment({
-      guid: attachmentGuid,
-    });
-
-    // Download the file
-    const response = await fetch(attachment.url);
-    if (!response.ok) {
-      throw new Error(`Failed to download attachment: ${response.statusText}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    return {
-      buffer,
-      filename: attachment.transferName || 'file',
-      mimeType: attachment.mimeType || 'application/octet-stream',
-    };
-  } catch (error) {
-    console.error('Failed to download attachment:', error);
-    throw error;
-  }
-}
-
-/**
  * Get chat GUID for a phone number
  */
 export function getChatGuid(phoneNumber: string): string {
