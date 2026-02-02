@@ -159,8 +159,33 @@ Manus AI
 ### Data Flow
 
 1. **Connection Setup**: User sends iMessage → Backend creates connection → User submits Manus token → System activates
-2. **Message Processing**: User message → Queue → Debounce → Classify (NEW_TASK/FOLLOW_UP) → Route to Manus
-3. **Webhook Handling**: Manus event → Backend receives → Throttle/filter → Send iMessage to user
+2. **Message Processing**: User message (+ attachments) → Queue → Debounce → Classify (NEW_TASK/FOLLOW_UP) → Upload files to Manus → Route to Manus
+3. **Webhook Handling**: Manus event → Backend receives → Throttle/filter → Send iMessage to user (with attachment links)
+
+### Attachment Handling
+
+**User → Manus (Sending Files)**
+1. User sends iMessage with attachment (photo, PDF, document, etc.)
+2. Backend receives webhook from iMessage infrastructure
+3. Worker downloads attachment from iMessage server
+4. Worker uploads to Manus via Files API (presigned URL)
+5. Task created with file_id attachment reference
+
+**Manus → User (Receiving Files)**
+1. Manus completes task with attachments
+2. Backend receives webhook with attachment metadata
+3. User receives iMessage with download links:
+   ```
+   [Manus] ✅ Task Complete
+   
+   📎 Attachments (2):
+   1. report.pdf (2.00 MB)
+      https://s3.amazonaws.com/manus-files/report.pdf
+   2. data.xlsx (0.50 MB)
+      https://s3.amazonaws.com/manus-files/data.xlsx
+   ```
+
+**Supported File Types**: All file types supported by iMessage and Manus (images, PDFs, documents, spreadsheets, etc.)
 
 ### Database Schema
 
@@ -234,9 +259,13 @@ manus/
 │   ├── backend/             # Main API server
 │   │   ├── src/
 │   │   │   ├── routes/
-│   │   │   │   ├── connect.ts   # Connection flow
-│   │   │   │   ├── mcp.ts       # MCP endpoints
-│   │   │   │   └── webhooks.ts  # Manus webhooks
+│   │   │   │   ├── connect.ts          # Connection flow
+│   │   │   │   ├── mcp.ts              # MCP endpoints
+│   │   │   │   ├── webhooks.ts         # Manus webhooks
+│   │   │   │   └── imessage-webhook.ts # iMessage incoming messages
+│   │   │   ├── lib/
+│   │   │   │   ├── imessage.ts         # iMessage SDK integration
+│   │   │   │   └── manus-files.ts      # File upload utilities
 │   │   │   ├── index.ts
 │   │   │   └── tracing.ts
 │   │   ├── Dockerfile
@@ -306,6 +335,7 @@ manus/
 - ✅ Send text messages with `[Manus]` prefix
 - ✅ Fetch conversation history (last 100 messages)
 - ✅ Filter out Manus-sent messages
+- ✅ **Download attachments from iMessage**
 - ✅ Connection pooling and error handling
 - ✅ Graceful shutdown
 
@@ -314,22 +344,112 @@ manus/
 - Valid API key for authentication
 - Phone number configured in `PHOTON_NUMBER` env var
 
-### 2. Manus API Integration
+### 2. Manus API Integration ✅ **IMPLEMENTED**
 
-Files to update:
-- `services/worker/src/index.ts` - Task creation/updates
+**Status:** Fully integrated using [Manus AI API](https://open.manus.im/docs/api-reference)
 
-Functions to implement:
-```typescript
-// Create new Manus task
-async function createManusTask(phoneNumber: string, message: string): Promise<void> {
-  // TODO: Call Manus API to create task
-  // Use connection.manusApiKey from database
+**Implementation:**
+- `services/worker/src/index.ts` - Task creation and multi-turn conversations
+- `packages/database/prisma/schema.prisma` - Tracks current task ID per user
+
+**Features:**
+- ✅ Create new tasks via `POST /v1/tasks`
+- ✅ Multi-turn conversations using `taskId` parameter
+- ✅ Interactive mode enabled (Manus can ask follow-up questions)
+- ✅ Automatic task ID tracking per user
+- ✅ Fallback to new task if no active task found
+- ✅ **File attachments support** (upload via Files API)
+- ✅ **Download links for Manus-generated files**
+- ✅ Error handling and logging
+
+**API Endpoints Used:**
+- `POST https://api.manus.ai/v1/tasks` - Create new task or continue existing
+- `POST https://api.manus.ai/v1/files` - Get presigned URL for file upload
+- `PUT <presigned_url>` - Upload file content to S3
+- Uses user's `manusApiKey` from database for authentication
+- Stores `currentTaskId` for follow-up messages
+
+**File Handling:**
+1. User sends iMessage with attachment → Backend downloads from iMessage
+2. Backend uploads to Manus via Files API (presigned S3 URL)
+3. Task created with `file_id` attachment reference
+4. Manus processes file and can return attachments in response
+5. User receives download links in iMessage
+
+## 📡 API Reference
+
+### Backend Endpoints (Port 3000)
+
+#### Connection Flow
+- `POST /api/connect/start` - Initiate connection (send link to user)
+- `POST /api/connect/verify` - Verify Manus token and activate connection
+
+#### MCP Endpoints (Manus AI calls these)
+- `POST /api/mcp/fetch` - Fetch recent messages from user
+- `POST /api/mcp/send` - Send message to user
+
+#### Webhook Endpoints
+- `POST /api/webhooks/manus` - Receive Manus AI events (task_created, task_progress, task_stopped)
+- `POST /api/imessage/webhook` - Receive incoming iMessages with attachments
+
+#### Health Checks
+- `GET /health` - Backend health
+- `GET /api/imessage/health` - iMessage webhook health
+
+### iMessage Webhook Payload
+
+Configure your iMessage infrastructure to send webhooks to `/api/imessage/webhook`:
+
+```json
+{
+  "chatGuid": "any;-;+1234567890",
+  "phoneNumber": "+1234567890",
+  "message": {
+    "guid": "msg_abc123",
+    "text": "Analyze this document",
+    "isFromMe": false,
+    "dateCreated": 1234567890000,
+    "attachments": [
+      {
+        "guid": "att_xyz789",
+        "transferName": "document.pdf",
+        "mimeType": "application/pdf"
+      }
+    ]
+  }
 }
+```
 
-// Append to existing Manus task
-async function appendToTask(phoneNumber: string, message: string): Promise<void> {
-  // TODO: Call Manus API to add context to running task
+**Response:**
+```json
+{
+  "success": true,
+  "messageGuid": "msg_abc123",
+  "attachmentCount": 1
+}
+```
+
+### Manus Webhook Payload
+
+Manus sends webhooks to `/api/webhooks/manus`:
+
+```json
+{
+  "event_type": "task_stopped",
+  "task_detail": {
+    "task_id": "task_abc123",
+    "task_title": "Document Analysis",
+    "task_url": "https://manus.im/app/task_abc123",
+    "message": "I've analyzed the document...",
+    "stop_reason": "finish",
+    "attachments": [
+      {
+        "file_name": "analysis.pdf",
+        "url": "https://s3.amazonaws.com/manus-files/analysis.pdf",
+        "size_bytes": 2048576
+      }
+    ]
+  }
 }
 ```
 

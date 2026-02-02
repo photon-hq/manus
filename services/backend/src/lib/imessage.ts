@@ -89,6 +89,12 @@ export async function fetchIMessages(
   timestamp: string;
   guid: string;
   isFromMe: boolean;
+  attachments?: Array<{
+    guid: string;
+    filename: string;
+    mimeType: string;
+    transferName: string;
+  }>;
 }>> {
   const client = await getIMessageSDK();
   
@@ -111,11 +117,53 @@ export async function fetchIMessages(
       timestamp: new Date(msg.dateCreated).toISOString(),
       guid: msg.guid,
       isFromMe: msg.isFromMe,
+      attachments: msg.attachments?.map((att: any) => ({
+        guid: att.guid,
+        filename: att.transferName || 'file',
+        mimeType: att.mimeType || 'application/octet-stream',
+        transferName: att.transferName,
+      })),
     }));
   } catch (error) {
     console.error('Failed to fetch messages:', error);
     // Return empty array if chat doesn't exist yet
     return [];
+  }
+}
+
+/**
+ * Download an attachment from iMessage
+ * Returns the file buffer and metadata
+ */
+export async function downloadIMessageAttachment(attachmentGuid: string): Promise<{
+  buffer: Buffer;
+  filename: string;
+  mimeType: string;
+}> {
+  const client = await getIMessageSDK();
+  
+  try {
+    const attachment = await client.attachments.getAttachment({
+      guid: attachmentGuid,
+    });
+
+    // Download the file
+    const response = await fetch(attachment.url);
+    if (!response.ok) {
+      throw new Error(`Failed to download attachment: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    return {
+      buffer,
+      filename: attachment.transferName || 'file',
+      mimeType: attachment.mimeType || 'application/octet-stream',
+    };
+  } catch (error) {
+    console.error('Failed to download attachment:', error);
+    throw error;
   }
 }
 

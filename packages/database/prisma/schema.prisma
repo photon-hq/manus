@@ -17,6 +17,7 @@ model Connection {
   manusApiKey   String?
   photonApiKey  String?   @unique
   webhookId     String?
+  currentTaskId String?   // Track the active Manus task for follow-ups
   status        Status    @default(PENDING)
   createdAt     DateTime  @default(now())
   expiresAt     DateTime?
@@ -57,13 +58,14 @@ enum MessageType {
 }
 
 model MessageQueue {
-  id          Int         @id @default(autoincrement())
-  phoneNumber String
-  messageGuid String
-  messageText String      @db.Text
-  status      QueueStatus @default(PENDING)
-  createdAt   DateTime    @default(now())
-  processedAt DateTime?
+  id           Int         @id @default(autoincrement())
+  phoneNumber  String
+  messageGuid  String
+  messageText  String      @db.Text
+  attachments  Json?       // Array of {guid, filename, mimeType}
+  status       QueueStatus @default(PENDING)
+  createdAt    DateTime    @default(now())
+  processedAt  DateTime?
 
   connection Connection @relation(fields: [phoneNumber], references: [phoneNumber])
 

@@ -5,6 +5,7 @@ import { prisma } from '@imessage-mcp/database';
 import { connectRoutes } from './routes/connect';
 import { mcpRoutes } from './routes/mcp';
 import { webhookRoutes } from './routes/webhooks';
+import { imessageWebhookRoutes } from './routes/imessage-webhook';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = '0.0.0.0';
@@ -34,6 +35,7 @@ fastify.register(cors, {
 fastify.register(connectRoutes, { prefix: '/api/connect' });
 fastify.register(mcpRoutes, { prefix: '/api/mcp' });
 fastify.register(webhookRoutes, { prefix: '/api/webhooks' });
+fastify.register(imessageWebhookRoutes, { prefix: '/api/imessage' });
 
 // Health check
 fastify.get('/health', async () => {

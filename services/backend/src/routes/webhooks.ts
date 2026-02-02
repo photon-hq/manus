@@ -2,6 +2,22 @@ import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@imessage-mcp/database';
 import { WebhookEventSchema, formatManusMessage } from '@imessage-mcp/shared';
 
+/**
+ * Webhook Handler for Manus AI Events
+ * 
+ * Current Behavior: Shows ALL webhook data to users via iMessage
+ * TODO: Add filtering logic later to customize what gets shown to users
+ * 
+ * Filtering can be added in:
+ * - handleTaskCreated() - Filter task creation notifications
+ * - handleTaskProgress() - Filter progress updates (currently throttled to 1/min)
+ * - handleTaskStopped() - Filter completion/question notifications
+ * 
+ * Attachment Handling:
+ * - V1: Sends download links in text (current implementation)
+ * - V2: TODO - Add option to download and send actual files via iMessage
+ */
+
 // Throttling state
 const progressTimestamps = new Map<string, number>();
 const taskStartTimes = new Map<string, number>();
@@ -60,9 +76,14 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
 async function handleTaskCreated(phoneNumber: string, event: any) {
   const taskId = event.task_detail?.task_id;
   const taskTitle = event.task_detail?.task_title || 'your task';
+  const taskUrl = event.task_detail?.task_url;
 
-  // Always send confirmation
-  const message = formatManusMessage(`Got it! Working on: "${taskTitle}"`);
+  // Send all data from webhook (can be filtered later)
+  let message = formatManusMessage(`✅ Task Created\n\nTitle: ${taskTitle}`);
+  if (taskUrl) {
+    message += `\n\nView: ${taskUrl}`;
+  }
+  
   const messageGuid = await sendIMessage(phoneNumber, message);
 
   // Record in database
@@ -83,20 +104,14 @@ async function handleTaskCreated(phoneNumber: string, event: any) {
 async function handleTaskProgress(phoneNumber: string, event: any) {
   const taskId = event.progress_detail?.task_id;
   const progressMessage = event.progress_detail?.message;
+  const progressType = event.progress_detail?.progress_type;
 
   if (!taskId || !progressMessage) return;
 
-  // Check if task has been running for at least 2 minutes
-  const taskStartTime = taskStartTimes.get(taskId);
-  if (taskStartTime) {
-    const taskDuration = Date.now() - taskStartTime;
-    if (taskDuration < 120000) {
-      // Skip progress updates for tasks < 2 minutes
-      return;
-    }
-  }
+  // TODO: Add filtering logic here later to decide what to show
+  // For now, show all progress updates with basic throttling
 
-  // Throttle: max 1 update per minute
+  // Throttle: max 1 update per minute (prevent spam)
   const lastSent = progressTimestamps.get(phoneNumber) || 0;
   const now = Date.now();
 
@@ -105,8 +120,13 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
     return;
   }
 
-  // Send progress update
-  const message = formatManusMessage(`🔄 ${progressMessage}`);
+  // Send all progress data (can be filtered later)
+  let message = formatManusMessage(`🔄 Progress Update`);
+  if (progressType) {
+    message += `\n\nType: ${progressType}`;
+  }
+  message += `\n\n${progressMessage}`;
+  
   const messageGuid = await sendIMessage(phoneNumber, message);
 
   // Record in database
@@ -128,22 +148,46 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   const taskTitle = event.task_detail?.task_title;
   const taskUrl = event.task_detail?.task_url;
   const resultMessage = event.task_detail?.message;
+  const attachments = event.task_detail?.attachments;
 
   // Clean up task tracking
   if (taskId) {
     taskStartTimes.delete(taskId);
   }
 
+  // TODO: Add filtering logic here later to customize what to show
+  // For now, show all data from webhook
+
   let message: string;
 
   if (stopReason === 'ask') {
     // Task needs user input - CRITICAL
-    message = formatManusMessage(`❓ I need your input:\n\n${resultMessage}`);
+    message = formatManusMessage(`❓ Question\n\n${resultMessage}`);
+  } else if (stopReason === 'finish') {
+    // Task completed successfully
+    message = formatManusMessage(`✅ Task Complete: "${taskTitle}"`);
+    if (resultMessage) {
+      message += `\n\n${resultMessage}`;
+    }
+    if (taskUrl) {
+      message += `\n\nView full report: ${taskUrl}`;
+    }
+    if (attachments && attachments.length > 0) {
+      message += `\n\n📎 Attachments (${attachments.length}):`;
+      attachments.forEach((att: any, idx: number) => {
+        const sizeMB = (att.size_bytes / 1024 / 1024).toFixed(2);
+        message += `\n${idx + 1}. ${att.file_name} (${sizeMB} MB)\n   ${att.url}`;
+      });
+    }
   } else {
-    // Task completed
-    message = formatManusMessage(
-      `✅ Task complete: "${taskTitle}"\n\n${resultMessage || 'Done!'}\n\nFull report: ${taskUrl}`
-    );
+    // Other stop reasons (error, cancelled, etc.)
+    message = formatManusMessage(`⚠️ Task Stopped: "${taskTitle}"\n\nReason: ${stopReason}`);
+    if (resultMessage) {
+      message += `\n\n${resultMessage}`;
+    }
+    if (taskUrl) {
+      message += `\n\nView: ${taskUrl}`;
+    }
   }
 
   const messageGuid = await sendIMessage(phoneNumber, message);

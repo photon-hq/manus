@@ -71,8 +71,13 @@ function startWorker(phoneNumber: string) {
 }
 
 // Handle incoming message (called by backend or message receiver)
-export async function handleIncomingMessage(phoneNumber: string, message: string, messageGuid: string) {
-  console.log(`Incoming message from ${phoneNumber}`);
+export async function handleIncomingMessage(
+  phoneNumber: string,
+  message: string,
+  messageGuid: string,
+  attachments?: Array<{ guid: string; filename: string; mimeType: string }>
+) {
+  console.log(`Incoming message from ${phoneNumber}`, attachments ? `with ${attachments.length} attachment(s)` : '');
 
   // Clear existing debounce timer
   const existingTimer = debounceTimers.get(phoneNumber);
@@ -91,8 +96,8 @@ export async function handleIncomingMessage(phoneNumber: string, message: string
     },
   });
 
-  if (lastMessage && Date.now() - lastMessage.createdAt.getTime() < DEBOUNCE_WINDOW) {
-    // Combine messages
+  if (lastMessage && Date.now() - lastMessage.createdAt.getTime() < DEBOUNCE_WINDOW && !attachments) {
+    // Combine messages (only if no attachments)
     await prisma.messageQueue.update({
       where: { id: lastMessage.id },
       data: {
@@ -107,6 +112,7 @@ export async function handleIncomingMessage(phoneNumber: string, message: string
         phoneNumber,
         messageGuid,
         messageText: message,
+        attachments: attachments ? JSON.parse(JSON.stringify(attachments)) : null,
         status: QueueStatus.PENDING,
       },
     });
@@ -144,6 +150,7 @@ async function scheduleProcessing(phoneNumber: string) {
     await queue.add('process-message', {
       messageId: msg.id,
       messageText: msg.messageText,
+      attachments: msg.attachments,
     });
 
     // Mark as processing
@@ -158,7 +165,7 @@ async function scheduleProcessing(phoneNumber: string) {
 
 // Process a single message
 async function processMessage(phoneNumber: string, data: any) {
-  const { messageId, messageText } = data;
+  const { messageId, messageText, attachments } = data;
 
   try {
     // Get last task context (last 20 messages)
@@ -169,12 +176,18 @@ async function processMessage(phoneNumber: string, data: any) {
 
     console.log(`Classification for ${phoneNumber}:`, classification);
 
+    // Handle attachments if present
+    let fileIds: string[] = [];
+    if (attachments && attachments.length > 0) {
+      fileIds = await processAttachments(attachments);
+    }
+
     if (classification.type === TaskClassification.NEW_TASK) {
       // Create new Manus task
-      await createManusTask(phoneNumber, messageText);
+      await createManusTask(phoneNumber, messageText, fileIds);
     } else {
       // Follow-up to existing task
-      await appendToTask(phoneNumber, messageText);
+      await appendToTask(phoneNumber, messageText, fileIds);
     }
 
     // Mark as completed
@@ -199,6 +212,96 @@ async function processMessage(phoneNumber: string, data: any) {
 
     throw error;
   }
+}
+
+// Process attachments: download from iMessage and upload to Manus
+async function processAttachments(
+  attachments: Array<{ guid: string; filename: string; mimeType: string }>
+): Promise<string[]> {
+  const fileIds: string[] = [];
+
+  try {
+    const { SDK } = await import('@photon-ai/advanced-imessage-kit');
+    const sdk = SDK({
+      serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
+      apiKey: process.env.IMESSAGE_API_KEY,
+      logLevel: 'error',
+    });
+
+    await sdk.connect();
+
+    for (const attachment of attachments) {
+      try {
+        console.log(`Processing attachment: ${attachment.filename}`);
+
+        // Get attachment from iMessage
+        const att = await sdk.attachments.getAttachment({
+          guid: attachment.guid,
+        });
+
+        // Download file
+        const response = await fetch(att.url);
+        if (!response.ok) {
+          throw new Error(`Failed to download: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        // Upload to Manus
+        const fileId = await uploadFileToManus(buffer, attachment.filename);
+        fileIds.push(fileId);
+
+        console.log(`✅ Uploaded ${attachment.filename} to Manus (ID: ${fileId})`);
+      } catch (error) {
+        console.error(`Failed to process attachment ${attachment.filename}:`, error);
+        // Continue with other attachments
+      }
+    }
+
+    await sdk.close();
+  } catch (error) {
+    console.error('Failed to process attachments:', error);
+  }
+
+  return fileIds;
+}
+
+// Upload file to Manus
+async function uploadFileToManus(fileBuffer: Buffer, filename: string): Promise<string> {
+  const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.ai';
+  const MANUS_API_KEY = process.env.MANUS_API_KEY;
+
+  // Step 1: Create file record
+  const createResponse = await fetch(`${MANUS_API_URL}/v1/files`, {
+    method: 'POST',
+    headers: {
+      'API_KEY': MANUS_API_KEY!,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ filename }),
+  });
+
+  if (!createResponse.ok) {
+    throw new Error(`Failed to create file record: ${await createResponse.text()}`);
+  }
+
+  const fileRecord = await createResponse.json();
+
+  // Step 2: Upload to presigned URL
+  const uploadResponse = await fetch(fileRecord.upload_url, {
+    method: 'PUT',
+    body: fileBuffer,
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`Failed to upload file: ${uploadResponse.statusText}`);
+  }
+
+  return fileRecord.id;
 }
 
 // Get recent messages for context
@@ -260,8 +363,8 @@ async function classifyMessage(message: string, context: any[]): Promise<any> {
 }
 
 // Create new Manus task
-async function createManusTask(phoneNumber: string, message: string) {
-  console.log(`Creating new Manus task for ${phoneNumber}:`, message);
+async function createManusTask(phoneNumber: string, message: string, fileIds: string[] = []) {
+  console.log(`Creating new Manus task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
   // Get connection to get Manus API key
   const connection = await prisma.connection.findFirst({
@@ -272,18 +375,105 @@ async function createManusTask(phoneNumber: string, message: string) {
     throw new Error('No active connection found');
   }
 
-  // TODO: Call Manus API to create task
-  // This would use the Manus API to create a new task
-  console.log('TODO: Implement Manus task creation API call');
+  try {
+    // Build attachments array
+    const attachments = fileIds.map(fileId => ({
+      type: 'file_id',
+      file_id: fileId,
+    }));
+
+    // Call Manus API to create a new task
+    const response = await fetch('https://api.manus.ai/v1/tasks', {
+      method: 'POST',
+      headers: {
+        'API_KEY': connection.manusApiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: message,
+        agentProfile: 'manus-1.6',
+        taskMode: 'agent',
+        ...(attachments.length > 0 && { attachments }),
+        interactiveMode: true, // Allow Manus to ask follow-up questions
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Manus API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Created Manus task:', data.task_id);
+
+    // Store the task ID for follow-ups
+    await prisma.connection.update({
+      where: { phoneNumber },
+      data: { currentTaskId: data.task_id },
+    });
+
+    return data.task_id;
+  } catch (error) {
+    console.error('Failed to create Manus task:', error);
+    throw error;
+  }
 }
 
-// Append to existing task
-async function appendToTask(phoneNumber: string, message: string) {
-  console.log(`Appending to existing task for ${phoneNumber}:`, message);
+// Append to existing task (multi-turn conversation)
+async function appendToTask(phoneNumber: string, message: string, fileIds: string[] = []) {
+  console.log(`Appending to existing task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
-  // TODO: Call Manus API to append to task
-  // This would use the Manus API to add context to running task
-  console.log('TODO: Implement Manus task append API call');
+  // Get connection to get Manus API key and current task ID
+  const connection = await prisma.connection.findFirst({
+    where: { phoneNumber, status: 'ACTIVE' },
+  });
+
+  if (!connection || !connection.manusApiKey) {
+    throw new Error('No active connection found');
+  }
+
+  if (!connection.currentTaskId) {
+    console.warn('No current task ID found, creating new task instead');
+    return createManusTask(phoneNumber, message, fileIds);
+  }
+
+  try {
+    // Build attachments array
+    const attachments = fileIds.map(fileId => ({
+      type: 'file_id',
+      file_id: fileId,
+    }));
+
+    // Continue the existing task by passing taskId
+    const response = await fetch('https://api.manus.ai/v1/tasks', {
+      method: 'POST',
+      headers: {
+        'API_KEY': connection.manusApiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: message,
+        taskId: connection.currentTaskId, // Continue existing task
+        agentProfile: 'manus-1.6',
+        taskMode: 'agent',
+        interactiveMode: true,
+        ...(attachments.length > 0 && { attachments }),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Manus API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Appended to Manus task:', data.task_id);
+
+    return data.task_id;
+  } catch (error) {
+    console.error('Failed to append to Manus task:', error);
+    throw error;
+  }
 }
 
 // Graceful shutdown
