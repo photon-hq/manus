@@ -53,10 +53,6 @@ reset-db: ## Reset database (WARNING: deletes all data)
 logs: ## View logs from all services
 	docker-compose logs -f
 
-signoz: ## Open SigNoz dashboard
-	@echo "Opening SigNoz at http://localhost:3301"
-	@open http://localhost:3301 || xdg-open http://localhost:3301
-
 # MCP Package Publishing
 mcp-build: ## Build MCP package for publishing
 	cd services/mcp-server && pnpm build

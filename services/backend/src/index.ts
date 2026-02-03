@@ -1,4 +1,3 @@
-import './tracing'; // Initialize tracing first
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { prisma } from '@imessage-mcp/database';

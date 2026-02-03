@@ -44,48 +44,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       .send(fs.createReadStream(faviconPath));
   });
 
-  // GET /api/connect/video - Serve background video
-  fastify.get('/video', async (request, reply) => {
-    const fs = await import('fs');
-    const path = await import('path');
-    
-    // Video is in the root of the project
-    const videoPath = path.join(process.cwd(), 'bg-video.mp4');
-    
-    if (!fs.existsSync(videoPath)) {
-      return reply.code(404).send({ error: 'Video not found' });
-    }
-    
-    const stat = fs.statSync(videoPath);
-    const fileSize = stat.size;
-    const range = request.headers.range;
-    
-    if (range) {
-      const parts = range.replace(/bytes=/, '').split('-');
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(videoPath, { start, end });
-      
-      reply.code(206)
-        .header('Content-Range', `bytes ${start}-${end}/${fileSize}`)
-        .header('Accept-Ranges', 'bytes')
-        .header('Content-Length', chunksize)
-        .header('Content-Type', 'video/mp4')
-        .send(file);
-    } else {
-      reply
-        .header('Content-Length', fileSize)
-        .header('Content-Type', 'video/mp4')
-        .send(fs.createReadStream(videoPath));
-    }
-  });
 
   // GET /api/connect - Landing page with "Connect to Manus" button
   fastify.get('/', async (request, reply) => {
     const photonHandle = process.env.PHOTON_HANDLE || '+14158156704';
     const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
-    const videoUrl = '/api/connect/video';
     
     return reply.type('text/html').send(`
       <!DOCTYPE html>
@@ -104,32 +67,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              overflow: hidden;
+              background: #ffffff;
               position: relative;
             }
-            
-            /* Video background */
-            .video-background {
-              position: fixed;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              z-index: 0;
-            }
-            
-            .video-background video {
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-            }
-            
-            /* Removed blur overlay */
             
             /* Content container */
             .content {
-              position: relative;
-              z-index: 2;
               min-height: 100vh;
               display: flex;
               flex-direction: column;
@@ -175,7 +118,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               left: 0;
               right: 0;
               text-align: center;
-              z-index: 2;
             }
             
             .footer a {
@@ -190,28 +132,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             .footer a:hover {
               color: rgba(0, 0, 0, 0.9);
             }
-            
-            /* Loading state */
-            .video-background::before {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              background: #000000;
-              z-index: -1;
-            }
           </style>
         </head>
         <body>
-          <!-- Video Background -->
-          <div class="video-background">
-            <video autoplay muted loop playsinline>
-              <source src="${videoUrl}" type="video/mp4">
-            </video>
-          </div>
-          
           <!-- Content -->
           <div class="content">
             <a href="${smsLink}" class="connect-btn">Connect to Manus</a>

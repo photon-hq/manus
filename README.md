@@ -15,7 +15,6 @@ A production-ready TypeScript monorepo with 4 microservices that bridge iMessage
    - Connection management flow
    - MCP endpoints (fetch/send)
    - Webhook receiver for Manus events
-   - OpenTelemetry tracing
 
 2. **MCP Server** (stdio) - Published as `photon-manus-mcp`
    - Model Context Protocol implementation
@@ -147,7 +146,6 @@ PUBLIC_URL=http://localhost:3000
 |---------|------|-----|---------|
 | Backend API | 3000 | http://localhost:3000 | Main API, webhooks, MCP |
 | SLM Classifier | 3001 | http://localhost:3001 | Task classification |
-| SigNoz Dashboard | 3301 | http://localhost:3301 | Observability UI |
 | PostgreSQL | 5432 | localhost:5432 | Database |
 | Redis | 6379 | localhost:6379 | Message queue |
 
@@ -343,8 +341,6 @@ manus/
 │   ├── quick-start.sh       # One-command setup
 │   ├── test-connection-flow.sh
 │   └── cleanup.sh
-├── signoz/
-│   └── otel-collector-config.yaml
 ├── docker-compose.yml
 ├── pnpm-workspace.yaml
 ├── package.json
@@ -585,17 +581,6 @@ server {
 - **Database**: Use connection pooling, consider read replicas
 - **Redis**: Increase memory, enable persistence
 
-## 📊 Monitoring
-
-Access SigNoz dashboard at http://localhost:3301
-
-Key metrics:
-- Request latency (p50, p95, p99)
-- Error rates
-- Queue depth
-- Message processing time
-- Webhook delivery success
-
 ## 🐛 Troubleshooting
 
 ### Services won't start
@@ -622,7 +607,6 @@ docker-compose logs -f [service-name]
 ✅ **Smart Queue** - Message debouncing (2s window), sequential per-user  
 ✅ **AI Classification** - NEW_TASK vs FOLLOW_UP detection (Gemini Flash)  
 ✅ **Webhook Handling** - Intelligent throttling for task updates  
-✅ **Full Observability** - SigNoz with traces, metrics, logs  
 ✅ **Docker Ready** - Complete infrastructure with one command  
 ✅ **Type Safe** - TypeScript throughout with Prisma ORM  
 ✅ **Production Ready** - Health checks, graceful shutdown, error handling

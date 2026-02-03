@@ -46,8 +46,8 @@ pnpm install
 echo ""
 
 # Start infrastructure
-echo "🐳 Starting Docker services (PostgreSQL, Redis, SigNoz)..."
-docker-compose up -d postgres redis clickhouse signoz-otel-collector signoz-query-service signoz-frontend
+echo "🐳 Starting Docker services (PostgreSQL, Redis)..."
+docker-compose up -d postgres redis
 echo ""
 
 # Wait for services

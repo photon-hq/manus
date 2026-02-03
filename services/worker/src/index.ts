@@ -1,4 +1,3 @@
-import './tracing';
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
 import { prisma, QueueStatus } from '@imessage-mcp/database';
