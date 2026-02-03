@@ -16,8 +16,8 @@ TypeScript monorepo with 3 microservices that bridge iMessage and Manus AI.
 ## User Setup
 
 1. Visit `manus.photon.codes` → Click "Connect to Manus"
-2. Send iMessage → Submit Manus API key
-3. Copy SSE config → Paste in [Manus Settings](https://manus.im/settings/mcp)
+2. Send iMessage → Submit Manus API key ([Get key](https://manus.im/app#settings/integrations/api))
+3. Copy SSE config → Paste in [Manus Settings](https://manus.im/app#settings/connectors/mcp-server)
 
 **Config format:**
 ```json

@@ -107,6 +107,73 @@ export async function startIMessageListener() {
 
       const phoneNumber = parts[1];
 
+      // Extract message text
+      const messageText = message.text || '';
+
+      // Check if this is a connection initiation message
+      const isConnectionRequest = /hey\s+manus.*connect.*imessage/i.test(messageText) || 
+                                  /connect.*imessage/i.test(messageText);
+
+      if (isConnectionRequest) {
+        console.log('🔗 Connection request detected from:', phoneNumber);
+        
+        // Check if connection already exists
+        const existingConnection = await prisma.connection.findFirst({
+          where: { phoneNumber },
+        });
+
+        if (existingConnection && existingConnection.status === 'ACTIVE') {
+          console.log('ℹ️  Connection already active for:', phoneNumber);
+          // Send reminder message
+          const { sendIMessage } = await import('../lib/imessage.js');
+          await sendIMessage(phoneNumber, "You're already connected! You can start using Manus with your iMessage.");
+          return;
+        }
+
+        // Create new connection via internal API call
+        try {
+          const { generateConnectionId, getConnectionExpiry } = await import('@imessage-mcp/shared');
+          const connectionId = generateConnectionId();
+          const expiresAt = getConnectionExpiry();
+
+          // Create pending connection
+          await prisma.connection.upsert({
+            where: { phoneNumber },
+            create: {
+              connectionId,
+              phoneNumber,
+              status: 'PENDING',
+              expiresAt,
+            },
+            update: {
+              connectionId,
+              status: 'PENDING',
+              expiresAt,
+            },
+          });
+
+          console.log('✅ Connection created:', { connectionId, phoneNumber });
+
+          // Send response with link
+          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+          const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
+
+          // [2 sec typing indicator] "Sure!"
+          await sendTypingIndicator(phoneNumber, 2000);
+          await sendIMessage(phoneNumber, 'Sure!');
+
+          // [3 sec typing indicator] "Please input your Manus token..."
+          await sendTypingIndicator(phoneNumber, 3000);
+          await sendIMessage(phoneNumber, `Please input your Manus token in the following link:\n\n${linkUrl}`);
+
+          console.log('✅ Connection setup message sent to:', phoneNumber);
+        } catch (error) {
+          console.error('❌ Failed to handle connection request:', error);
+        }
+        
+        return; // Don't process as regular message
+      }
+
       // Check if connection exists and is active
       const connection = await prisma.connection.findFirst({
         where: {
@@ -117,11 +184,54 @@ export async function startIMessageListener() {
 
       if (!connection) {
         console.log('⏭️  No active connection for:', phoneNumber);
+        
+        // Check if user is trying to disconnect
+        if (/disconnect|stop|remove|revoke/i.test(messageText)) {
+          const { sendIMessage } = await import('../lib/imessage.js');
+          await sendIMessage(phoneNumber, "You don't have an active connection.");
+          return;
+        }
+        
+        // Send helpful message
+        const { sendIMessage } = await import('../lib/imessage.js');
+        await sendIMessage(phoneNumber, `Please connect first: ${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect`);
         return;
       }
 
-      // Extract message text
-      const messageText = message.text || '';
+      // Check if user wants to disconnect
+      if (/disconnect|stop manus|remove connection/i.test(messageText)) {
+        console.log('🔌 Disconnect request from:', phoneNumber);
+        
+        try {
+          // Delete webhook from Manus
+          if (connection.webhookId && connection.manusApiKey) {
+            await fetch(`https://api.manus.im/v1/webhooks/${connection.webhookId}`, {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${connection.manusApiKey}`,
+              },
+            });
+          }
+
+          // Update status to REVOKED
+          await prisma.connection.update({
+            where: { id: connection.id },
+            data: {
+              status: 'REVOKED',
+              revokedAt: new Date(),
+            },
+          });
+
+          const { sendIMessage } = await import('../lib/imessage.js');
+          await sendIMessage(phoneNumber, 'Your connection has been disconnected. Thanks for using Manus!');
+          
+          console.log('✅ Connection revoked for:', phoneNumber);
+        } catch (error) {
+          console.error('❌ Failed to disconnect:', error);
+        }
+        
+        return;
+      }
 
       // Extract attachments
       const attachments = message.attachments?.map((att: any) => ({
