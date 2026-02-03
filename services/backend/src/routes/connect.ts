@@ -23,7 +23,7 @@ const VerifySchema = z.object({
 });
 
 const RevokeSchema = z.object({
-  photonApiKey: z.string().startsWith('photon_sk_'),
+  photonApiKey: z.string().regex(/^ph_(live|test)_[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{24}$/),
 });
 
 export const connectRoutes: FastifyPluginAsync = async (fastify) => {

@@ -26,7 +26,7 @@ TypeScript monorepo with 3 microservices that bridge iMessage and Manus AI.
     "photon-imessage": {
       "type": "sse",
       "url": "https://manus.photon.codes/mcp",
-      "headers": { "Authorization": "Bearer photon_sk_xxx" }
+      "headers": { "Authorization": "Bearer ph_live_AbC123XyZ789PqR45678" }
     }
   }
 }
@@ -149,7 +149,7 @@ manus/
 docker compose logs -f backend
 
 # Test SSE
-curl -N -H "Authorization: Bearer photon_sk_xxx" http://localhost:3000/mcp
+curl -N -H "Authorization: Bearer ph_live_AbC123XyZ789PqR45678" http://localhost:3000/mcp
 
 # Reset
 docker compose down -v && docker compose up -d
