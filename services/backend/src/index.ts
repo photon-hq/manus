@@ -35,7 +35,7 @@ fastify.register(cors, {
 fastify.register(connectRoutes, { prefix: '/api/connect' });
 fastify.register(mcpRoutes, { prefix: '/api/mcp' });
 fastify.register(webhookRoutes, { prefix: '/api/webhooks' });
-fastify.register(imessageWebhookRoutes, { prefix: '/api/imessage' });
+fastify.register(imessageWebhookRoutes, { prefix: '/api/imessage' }); // Health endpoint only
 
 // Health check
 fastify.get('/health', async () => {
@@ -45,6 +45,14 @@ fastify.get('/health', async () => {
 // Graceful shutdown
 const closeGracefully = async (signal: string) => {
   fastify.log.info(`Received ${signal}, closing gracefully`);
+  
+  // Stop iMessage event listener
+  try {
+    const { stopIMessageListener } = await import('./routes/imessage-webhook.js');
+    await stopIMessageListener();
+  } catch (error) {
+    // Ignore if not initialized
+  }
   
   // Disconnect iMessage
   try {
@@ -65,11 +73,16 @@ process.on('SIGTERM', () => closeGracefully('SIGTERM'));
 // Start server
 const start = async () => {
   try {
-    // Initialize iMessage connection
+    // Initialize iMessage connection and event listener
     try {
       const { getIMessageSDK } = await import('./lib/imessage.js');
       await getIMessageSDK();
       fastify.log.info('✅ Connected to Photon iMessage infrastructure');
+      
+      // Start event listener for incoming messages
+      const { startIMessageListener } = await import('./routes/imessage-webhook.js');
+      await startIMessageListener();
+      fastify.log.info('✅ iMessage event listener started');
     } catch (error) {
       fastify.log.error('❌ Failed to connect to Photon iMessage infrastructure');
       fastify.log.error('Check IMESSAGE_SERVER_URL and IMESSAGE_API_KEY in .env');

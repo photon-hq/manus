@@ -169,8 +169,8 @@ curl http://localhost:3001/health
 User (iMessage)
       ↓
 iMessage Infrastructure (advanced-imessage-kit)
-      ↓
-Backend Service (Fastify) - Connection flow, webhooks, MCP endpoints
+      ↓ (SDK events: new-message)
+Backend Service (Fastify) - Event listener, connection flow, webhooks, MCP endpoints
       ↓
    ┌──┴──┐
    ↓     ↓
@@ -179,6 +179,12 @@ Server         (BullMQ Queue)
    ↓
 Manus AI
 ```
+
+**Key Features:**
+- Real-time message reception via SDK events (no webhooks)
+- Automatic filtering: ignores self-messages and group chats
+- Persistent SDK connection with auto-reconnection
+- Built-in message deduplication
 
 ### Connection Flow (User Onboarding)
 
@@ -199,17 +205,19 @@ Manus AI
 
 ### Data Flow
 
-1. **Message Processing**: User message (+ attachments) → Queue → Debounce → Classify (NEW_TASK/FOLLOW_UP) → Upload files to Manus → Route to Manus
-2. **Webhook Handling**: Manus event → Backend receives → Throttle/filter → Send iMessage to user (with attachment links)
+1. **Message Reception**: User sends iMessage → SDK emits `new-message` event → Backend listener filters (ignore self/groups) → Queue
+2. **Message Processing**: Queue → Debounce → Classify (NEW_TASK/FOLLOW_UP) → Upload files to Manus → Route to Manus
+3. **Webhook Handling**: Manus event → Backend receives → Throttle/filter → Send iMessage to user (with attachment links)
 
 ### Attachment Handling
 
 **User → Manus (Sending Files)**
 1. User sends iMessage with attachment (photo, PDF, document, etc.)
-2. Backend receives webhook from iMessage infrastructure
-3. Worker downloads attachment from iMessage server
-4. Worker uploads to Manus via Files API (presigned URL)
-5. Task created with file_id attachment reference
+2. SDK emits `new-message` event with attachment metadata
+3. Backend listener adds to queue
+4. Worker downloads attachment from iMessage server
+5. Worker uploads to Manus via Files API (presigned URL)
+6. Task created with file_id attachment reference
 
 **Manus → User (Receiving Files)**
 1. Manus completes task with attachments
@@ -347,7 +355,8 @@ manus/
 - ✅ Phone number privacy (never exposed to Manus)
 - ✅ Environment variable secrets
 - ✅ Connection status tracking
-- ✅ Webhook signature validation
+- ✅ Webhook signature validation (Manus webhooks)
+- ✅ **No public iMessage webhook endpoint** (uses SDK events)
 
 ## 📈 Performance
 
@@ -365,19 +374,25 @@ manus/
 
 **Implementation:**
 - `services/backend/src/lib/imessage.ts` - Shared iMessage SDK client
+- `services/backend/src/routes/imessage-webhook.ts` - Event listener for incoming messages
 - `services/backend/src/routes/connect.ts` - Sends connection setup messages
 - `services/backend/src/routes/mcp.ts` - Fetches and sends messages
 - `services/backend/src/routes/webhooks.ts` - Sends webhook notifications
 - `services/worker/src/index.ts` - Fetches message context for SLM
 
 **Features:**
+- ✅ **Real-time event-based message reception** (SDK events, not HTTP webhooks)
 - ✅ Auto-detect iMessage vs SMS
 - ✅ Support both phone numbers and iCloud email addresses
+- ✅ **Automatic filtering**: Ignores self-messages and group chats
 - ✅ Send text messages with `[Manus]` prefix
 - ✅ **Typing indicators** for natural conversation flow
+- ✅ **Rich link previews** for URLs
 - ✅ Fetch conversation history (last 100 messages)
 - ✅ Filter out Manus-sent messages using `isFromMe` flag
 - ✅ **Download attachments from iMessage**
+- ✅ Built-in message deduplication
+- ✅ Automatic reconnection on disconnect
 - ✅ Connection pooling and error handling
 - ✅ Graceful shutdown
 
@@ -433,15 +448,29 @@ manus/
 
 #### Webhook Endpoints
 - `POST /api/webhooks/manus` - Receive Manus AI events (task_created, task_progress, task_stopped)
-- `POST /api/imessage/webhook` - Receive incoming iMessages with attachments
 
 #### Health Checks
 - `GET /health` - Backend health
-- `GET /api/imessage/health` - iMessage webhook health
+- `GET /api/imessage/health` - iMessage event listener health
 
-### iMessage Webhook Payload
+### iMessage Event Listener
 
-Configure your iMessage infrastructure to send webhooks to `/api/imessage/webhook`:
+**No webhook configuration needed!** The backend uses SDK event listeners:
+
+```typescript
+sdk.on('new-message', (message) => {
+  // Automatically receives all incoming messages
+  // Filters: ignores self-messages and group chats
+  // Adds to queue for processing
+});
+```
+
+**Filters applied:**
+- `isFromMe: true` - Ignored (our own messages)
+- `chatGuid` contains `;+;` - Ignored (group chats)
+- No active connection - Ignored
+
+**Old webhook payload format (deprecated):**
 
 ```json
 {

@@ -1,31 +1,14 @@
 /**
- * iMessage Webhook Handler
- * Receives incoming messages from iMessage infrastructure
- * Processes attachments and forwards to worker queue
+ * iMessage Event Listener
+ * Listens for incoming messages via SDK events (not webhooks)
+ * Filters and forwards to worker queue for processing
  */
 
 import { FastifyPluginAsync } from 'fastify';
+import { getIMessageSDK } from '../lib/imessage.js';
 import { prisma } from '@imessage-mcp/database';
-import { z } from 'zod';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
-
-// Schema for incoming iMessage webhook
-const IMessageWebhookSchema = z.object({
-  chatGuid: z.string(),
-  message: z.object({
-    guid: z.string(),
-    text: z.string().optional(),
-    isFromMe: z.boolean(),
-    dateCreated: z.number(),
-    attachments: z.array(z.object({
-      guid: z.string(),
-      transferName: z.string(),
-      mimeType: z.string().optional(),
-    })).optional(),
-  }),
-  phoneNumber: z.string(),
-});
 
 // Redis connection for queue
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -56,17 +39,38 @@ function getQueue(phoneNumber: string): Queue {
   return queues.get(phoneNumber)!;
 }
 
-export const imessageWebhookRoutes: FastifyPluginAsync = async (fastify) => {
-  // POST /api/imessage/webhook - Receive incoming iMessages
-  fastify.post('/webhook', async (request, reply) => {
-    try {
-      const data = IMessageWebhookSchema.parse(request.body);
-      const { phoneNumber, message } = data;
+/**
+ * Start listening for incoming iMessages via SDK events
+ */
+export async function startIMessageListener() {
+  const sdk = await getIMessageSDK();
 
-      // Ignore messages from us
+  console.log('🎧 Starting iMessage event listener...');
+
+  // Listen for new messages
+  sdk.on('new-message', async (message) => {
+    try {
+      // Filter 1: Ignore our own messages
       if (message.isFromMe) {
-        return { success: true, ignored: true, reason: 'from_me' };
+        console.log('⏭️  Ignoring message from self:', message.guid);
+        return;
       }
+
+      // Filter 2: Ignore group chats (chatGuid contains ;+;)
+      if (message.chatGuid.includes(';+;')) {
+        console.log('⏭️  Ignoring group chat message:', message.guid);
+        return;
+      }
+
+      // Extract phone number from chatGuid
+      // Format: any;-;+1234567890 or iMessage;-;user@icloud.com
+      const parts = message.chatGuid.split(';-;');
+      if (parts.length !== 2) {
+        console.warn('⚠️  Invalid chatGuid format:', message.chatGuid);
+        return;
+      }
+
+      const phoneNumber = parts[1];
 
       // Check if connection exists and is active
       const connection = await prisma.connection.findFirst({
@@ -77,29 +81,32 @@ export const imessageWebhookRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (!connection) {
-        fastify.log.warn({ phoneNumber }, 'No active connection found for incoming message');
-        return { success: true, ignored: true, reason: 'no_connection' };
+        console.log('⏭️  No active connection for:', phoneNumber);
+        return;
       }
 
-      // Extract text
+      // Extract message text
       const messageText = message.text || '';
-      
-      // Skip empty messages without attachments
-      if (!messageText && (!message.attachments || message.attachments.length === 0)) {
-        return { success: true, ignored: true, reason: 'empty_message' };
-      }
 
       // Extract attachments
-      const attachments = message.attachments?.map(att => ({
+      const attachments = message.attachments?.map((att: any) => ({
         guid: att.guid,
         filename: att.transferName || 'file',
         mimeType: att.mimeType || 'application/octet-stream',
       }));
 
-      fastify.log.info(
-        { phoneNumber, messageGuid: message.guid, hasAttachments: !!attachments?.length },
-        'Received iMessage'
-      );
+      // Skip empty messages without attachments
+      if (!messageText && (!attachments || attachments.length === 0)) {
+        console.log('⏭️  Ignoring empty message:', message.guid);
+        return;
+      }
+
+      console.log('📨 Received iMessage:', {
+        phoneNumber,
+        messageGuid: message.guid,
+        textLength: messageText.length,
+        attachmentCount: attachments?.length || 0,
+      });
 
       // Add to queue for worker to process
       const queue = getQueue(phoneNumber);
@@ -110,21 +117,55 @@ export const imessageWebhookRoutes: FastifyPluginAsync = async (fastify) => {
         attachments,
       });
 
-      fastify.log.info({ phoneNumber, messageGuid: message.guid }, 'Message added to queue');
-
-      return {
-        success: true,
-        messageGuid: message.guid,
-        attachmentCount: attachments?.length || 0,
-      };
+      console.log('✅ Message queued:', message.guid);
     } catch (error) {
-      fastify.log.error(error, 'Failed to process iMessage webhook');
-      return reply.code(500).send({ error: 'Failed to process message' });
+      console.error('❌ Error processing message:', error);
+      // Don't throw - continue listening for other messages
     }
   });
 
+  // Handle SDK events for monitoring
+  sdk.on('disconnect', () => {
+    console.warn('⚠️  iMessage SDK disconnected - will auto-reconnect');
+  });
+
+  sdk.on('ready', () => {
+    console.log('✅ iMessage SDK ready');
+  });
+
+  sdk.on('error', (error) => {
+    console.error('❌ iMessage SDK error:', error);
+  });
+
+  // Periodic cleanup to prevent memory leaks
+  setInterval(() => {
+    sdk.clearProcessedMessages(1000);
+    console.log('🧹 Cleared processed messages cache');
+  }, 5 * 60 * 1000); // Every 5 minutes
+
+  console.log('✅ iMessage event listener started');
+}
+
+/**
+ * Cleanup function for graceful shutdown
+ */
+export async function stopIMessageListener() {
+  // Close all queues
+  for (const queue of queues.values()) {
+    await queue.close();
+  }
+  queues.clear();
+
+  // Disconnect Redis
+  await redis.quit();
+
+  console.log('🛑 iMessage event listener stopped');
+}
+
+// Legacy webhook routes (kept for backwards compatibility, but not used)
+export const imessageWebhookRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/imessage/health - Health check
   fastify.get('/health', async () => {
-    return { status: 'ok', service: 'imessage-webhook' };
+    return { status: 'ok', service: 'imessage-events' };
   });
 };
