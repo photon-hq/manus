@@ -22,7 +22,9 @@ console.log('Worker service starting...');
 // Function to get or create queue for a phone number
 function getQueue(phoneNumber: string): Queue {
   if (!queues.has(phoneNumber)) {
-    const queue = new Queue(`messages:${phoneNumber}`, {
+    // Sanitize phone number for queue name (remove + and other special chars)
+    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
+    const queue = new Queue(`messages-${sanitizedPhone}`, {
       connection,
       defaultJobOptions: {
         attempts: 3,
@@ -46,8 +48,10 @@ function getQueue(phoneNumber: string): Queue {
 function startWorker(phoneNumber: string) {
   if (workers.has(phoneNumber)) return;
 
+  // Sanitize phone number for queue name (remove + and other special chars)
+  const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
   const worker = new Worker(
-    `messages:${phoneNumber}`,
+    `messages-${sanitizedPhone}`,
     async (job) => {
       console.log(`Processing job ${job.name} for ${phoneNumber}:`, job.data);
       
@@ -268,7 +272,7 @@ async function processAttachments(
 
 // Upload file to Manus
 async function uploadFileToManus(fileBuffer: Buffer, filename: string): Promise<string> {
-  const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.ai';
+  const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.im';
   const MANUS_API_KEY = process.env.MANUS_API_KEY;
 
   // Step 1: Create file record
@@ -382,7 +386,8 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
     }));
 
     // Call Manus API to create a new task
-    const response = await fetch('https://api.manus.ai/v1/tasks', {
+    const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.im';
+    const response = await fetch(`${MANUS_API_URL}/v1/tasks`, {
       method: 'POST',
       headers: {
         'API_KEY': connection.manusApiKey,
@@ -444,7 +449,8 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     }));
 
     // Continue the existing task by passing taskId
-    const response = await fetch('https://api.manus.ai/v1/tasks', {
+    const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.im';
+    const response = await fetch(`${MANUS_API_URL}/v1/tasks`, {
       method: 'POST',
       headers: {
         'API_KEY': connection.manusApiKey,
@@ -502,4 +508,29 @@ const shutdown = async () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-console.log('Worker service ready and listening for messages');
+// Initialize workers for existing queues on startup
+async function initializeExistingQueues() {
+  try {
+    // Get all active connections from database
+    const activeConnections = await prisma.connection.findMany({
+      where: { status: 'ACTIVE' },
+      select: { phoneNumber: true },
+    });
+
+    console.log(`Found ${activeConnections.length} active connection(s)`);
+
+    // Start workers for each active phone number
+    for (const conn of activeConnections) {
+      console.log(`Starting worker for ${conn.phoneNumber}`);
+      getQueue(conn.phoneNumber); // This will create queue and start worker
+    }
+
+    console.log('Worker service ready and listening for messages');
+  } catch (error) {
+    console.error('Failed to initialize existing queues:', error);
+    console.log('Worker service ready and listening for messages');
+  }
+}
+
+// Initialize on startup
+initializeExistingQueues();

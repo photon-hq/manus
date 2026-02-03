@@ -52,14 +52,52 @@ pnpm dev
 
 **Required environment variables:**
 ```env
+# Database
+DATABASE_URL=postgresql://postgres:password@localhost:5432/manus_imessage
+DB_PASSWORD=password
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# iMessage Integration (Photon)
 IMESSAGE_SERVER_URL=https://your-imessage-server.photon.codes
-IMESSAGE_API_KEY=your_key
+IMESSAGE_API_KEY=your_photon_api_key
 PHOTON_HANDLE=+1234567890
-OPENROUTER_API_KEY=your_key
-PUBLIC_URL=http://localhost:3000
+
+# Manus API
+MANUS_API_URL=https://api.manus.im
+
+# LLM Provider
+OPENROUTER_API_KEY=your_openrouter_key
+
+# App Config
+PORT=3000
+NODE_ENV=production
+PUBLIC_URL=https://manus.photon.codes
 ```
 
 **Ports:** Backend (3000), Classifier (3001), PostgreSQL (5432), Redis (6379)
+
+**Environment Variable Details:**
+
+*Required:*
+- `IMESSAGE_SERVER_URL` - Your Photon iMessage server endpoint
+- `IMESSAGE_API_KEY` - Your Photon API key for iMessage integration
+- `PHOTON_HANDLE` - Phone number or iCloud email for landing page SMS link
+- `OPENROUTER_API_KEY` - API key for LLM classification service
+- `PUBLIC_URL` - Your deployed backend URL (e.g., `https://manus.photon.codes`)
+
+*Optional (have defaults):*
+- `DATABASE_URL` - PostgreSQL connection string (default: `postgresql://postgres:password@localhost:5432/manus_imessage`)
+- `DB_PASSWORD` - PostgreSQL password (default: `password`)
+- `REDIS_URL` - Redis connection string (default: `redis://localhost:6379`)
+- `MANUS_API_URL` - Manus API base URL (default: `https://api.manus.im`)
+- `PORT` - Backend server port (default: `3000`)
+- `NODE_ENV` - Environment mode (default: `development`, set to `production` for deployment)
+
+*Not Required:*
+- `PHOTON_API_KEY` - Not needed! Each user provides their own Manus API key during setup
+- `LANDING_VIDEO_URL` - Optional background video URL for landing page
 
 ## Architecture
 
@@ -109,7 +147,7 @@ location /mcp {
 }
 ```
 
-**Production env:** Set `PUBLIC_URL`, `NODE_ENV=production`, and all credentials.
+**Production env:** Set `PUBLIC_URL=https://manus.photon.codes`, `NODE_ENV=production`, and all credentials.
 
 ## Development
 

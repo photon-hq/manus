@@ -45,7 +45,7 @@ services:
       REDIS_URL: redis://redis:6379
       IMESSAGE_SERVER_URL: ${IMESSAGE_SERVER_URL}
       IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
-      MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.ai}
+      MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.im}
       PUBLIC_URL: ${PUBLIC_URL}
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-development}
@@ -78,7 +78,7 @@ services:
       REDIS_URL: redis://redis:6379
       IMESSAGE_SERVER_URL: ${IMESSAGE_SERVER_URL}
       IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
-      MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.ai}
+      MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.im}
       SLM_SERVICE_URL: http://slm-classifier:3001
       NODE_ENV: ${NODE_ENV:-development}
     depends_on:

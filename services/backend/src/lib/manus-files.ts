@@ -3,11 +3,11 @@
  * Handles uploading files to Manus via the Files API
  */
 
-const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.ai';
+const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.im';
 const MANUS_API_KEY = process.env.MANUS_API_KEY;
 
 if (!MANUS_API_KEY) {
-  throw new Error('MANUS_API_KEY environment variable is required');
+  console.warn('MANUS_API_KEY environment variable not set - file uploads will use per-user API keys');
 }
 
 interface ManusFile {

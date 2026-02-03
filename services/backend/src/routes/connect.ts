@@ -29,24 +29,6 @@ const RevokeSchema = z.object({
 export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   // GET / - Landing page with "Connect to Manus" button
   fastify.get('/', async (request, reply) => {
-    const fs = await import('fs');
-    const path = await import('path');
-    
-    const faviconPath = path.join(process.cwd(), 'favicon.png');
-    
-    if (!fs.existsSync(faviconPath)) {
-      return reply.code(404).send({ error: 'Favicon not found' });
-    }
-    
-    reply
-      .header('Content-Type', 'image/png')
-      .header('Cache-Control', 'public, max-age=31536000')
-      .send(fs.createReadStream(faviconPath));
-  });
-
-
-  // GET /api/connect - Landing page with "Connect to Manus" button
-  fastify.get('/', async (request, reply) => {
     const photonHandle = process.env.PHOTON_HANDLE || '+14158156704';
     const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
     
@@ -257,8 +239,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(400).send({ error: 'Connection expired' });
       }
 
-      // Register webhook with Manus
-      const webhookId = await registerManusWebhook(manusApiKey);
+      // Register webhook with Manus (optional - will fail for localhost)
+      let webhookId: string | null = null;
+      try {
+        webhookId = await registerManusWebhook(manusApiKey);
+        console.log('✅ Webhook registered:', webhookId);
+      } catch (error) {
+        console.warn('⚠️  Webhook registration failed (expected for localhost):', error instanceof Error ? error.message : error);
+        // Continue without webhook - it's optional for development
+      }
 
       // Generate Photon API key
       const photonApiKey = generatePhotonApiKey();
@@ -295,19 +284,23 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
         const configText = JSON.stringify(mcpConfig, null, 2);
         
-        // [1 sec typing indicator] "You're all set! 🎉"
+        // [1 sec typing indicator] "All set!"
         await sendTypingIndicator(connection.phoneNumber, 1000);
-        await sendIMessage(connection.phoneNumber, "You're all set! 🎉");
+        await sendIMessage(connection.phoneNumber, "All set!");
         
-        // [1 sec typing indicator] "Add this MCP config to Manus:"
+        // [1 sec typing indicator] "Copy and paste this config:"
         await sendTypingIndicator(connection.phoneNumber, 1000);
-        await sendIMessage(connection.phoneNumber, "Add this MCP config to Manus:");
+        await sendIMessage(connection.phoneNumber, "Copy and paste this config:");
         
         // Send MCP config
         await sendIMessage(connection.phoneNumber, configText);
         
+        // [1 sec typing indicator] "Then add it here:"
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        await sendIMessage(connection.phoneNumber, "Then add it here:");
+        
         // Send link to Manus settings
-        await sendIMessage(connection.phoneNumber, "Paste it here: https://manus.im/settings/mcp");
+        await sendIMessage(connection.phoneNumber, "https://manus.im/app#settings/connectors/mcp-server");
       } catch (error) {
         fastify.log.error({ error }, 'Failed to send iMessage');
         // Continue anyway - user sees config on web page
@@ -794,7 +787,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               <h1>Connect to Manus</h1>
               <p class="subtitle">Enter your Manus API key to complete the connection</p>
               
-              <a href="https://manus.im/app#settings/integrations/api" target="_blank" class="get-key-link">Get your API key →</a>
+              <a href="https://manus.im/app#settings/integrations/api" target="_blank" class="get-key-link">Get your API key &rarr;</a>
               
               <form id="tokenForm">
                 <div class="input-wrapper">
@@ -815,7 +808,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             <!-- Success Section -->
             <div id="success-section">
-              <h1 class="success-title">All Set! 🎉</h1>
+              <h1 class="success-title">All Set!</h1>
               <p class="success-subtitle">Copy the configuration below and paste it in Manus</p>
               
               <div class="config-container">
@@ -824,7 +817,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </div>
               
               <a href="https://manus.im/app#settings/connectors/mcp-server" target="_blank" class="action-btn">
-                Open Manus Settings →
+                Open Manus Settings &rarr;
               </a>
               
               <p class="note">Configuration also sent to your iMessage</p>
@@ -926,7 +919,9 @@ async function registerManusWebhook(manusApiKey: string): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to register webhook with Manus');
+    const errorText = await response.text();
+    console.error('❌ Webhook registration failed:', response.status, errorText);
+    throw new Error(`Failed to register webhook with Manus: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json() as { webhook_id?: string; id?: string };

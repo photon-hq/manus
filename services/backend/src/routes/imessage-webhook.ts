@@ -22,7 +22,9 @@ const queues = new Map<string, Queue>();
 // Get or create queue for a phone number
 function getQueue(phoneNumber: string): Queue {
   if (!queues.has(phoneNumber)) {
-    const queue = new Queue(`messages:${phoneNumber}`, {
+    // Sanitize phone number for queue name (remove + and other special chars)
+    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
+    const queue = new Queue(`messages-${sanitizedPhone}`, {
       connection: redis,
       defaultJobOptions: {
         attempts: 3,
@@ -158,12 +160,12 @@ export async function startIMessageListener() {
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
           const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
 
-          // [2 sec typing indicator] "Sure!"
-          await sendTypingIndicator(phoneNumber, 2000);
+          // [1 sec typing indicator] "Sure!"
+          await sendTypingIndicator(phoneNumber, 1000);
           await sendIMessage(phoneNumber, 'Sure!');
 
-          // [3 sec typing indicator] "Please input your Manus token..."
-          await sendTypingIndicator(phoneNumber, 3000);
+          // [1.5 sec typing indicator] "Please input your Manus token..."
+          await sendTypingIndicator(phoneNumber, 1500);
           await sendIMessage(phoneNumber, `Please input your Manus token in the following link:\n\n${linkUrl}`);
 
           console.log('✅ Connection setup message sent to:', phoneNumber);
@@ -309,8 +311,5 @@ export async function stopIMessageListener() {
 
 // Legacy webhook routes (kept for backwards compatibility, but not used)
 export const imessageWebhookRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /api/imessage/health - Health check
-  fastify.get('/health', async () => {
-    return { status: 'ok', service: 'imessage-events' };
-  });
+  // No routes needed here - health check is in main index.ts
 };
