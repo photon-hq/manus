@@ -12,11 +12,12 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@imessage-mcp/database": "workspace:*",
-    "@imessage-mcp/shared": "workspace:*",
-    "@photon-ai/advanced-imessage-kit": "^1.13.0",
     "@fastify/cors": "^8.5.0",
     "@fastify/env": "^4.3.0",
+    "@imessage-mcp/database": "workspace:*",
+    "@imessage-mcp/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@photon-ai/advanced-imessage-kit": "^1.13.0",
     "bullmq": "^5.1.0",
     "fastify": "^4.25.2",
     "ioredis": "^5.3.2",

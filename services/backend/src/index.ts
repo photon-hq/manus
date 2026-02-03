@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { prisma } from '@imessage-mcp/database';
 import { connectRoutes } from './routes/connect';
 import { mcpRoutes } from './routes/mcp';
+import { mcpSSERoutes } from './routes/mcp-sse';
 import { webhookRoutes } from './routes/webhooks';
 import { imessageWebhookRoutes } from './routes/imessage-webhook';
 
@@ -17,12 +18,19 @@ const fastify = Fastify({
 
 // Register plugins
 fastify.register(cors, {
-  origin: true,
+  origin: [
+    'https://manus.im',
+    'https://app.manus.im',
+    'https://open.manus.im',
+    process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : null,
+  ].filter(Boolean) as string[],
+  credentials: true,
 });
 
 // Register routes
 fastify.register(connectRoutes, { prefix: '/api/connect' });
 fastify.register(mcpRoutes, { prefix: '/api/mcp' });
+fastify.register(mcpSSERoutes, { prefix: '/api/mcp' });
 fastify.register(webhookRoutes, { prefix: '/api/webhooks' });
 fastify.register(imessageWebhookRoutes, { prefix: '/api/imessage' }); // Health endpoint only
 

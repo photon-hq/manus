@@ -257,11 +257,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       const mcpConfig = {
         mcpServers: {
           'photon-imessage': {
-            command: 'npx',
-            args: ['photon-manus-mcp@latest'],
-            env: {
-              PHOTON_API_KEY: photonApiKey,
-              BACKEND_URL: process.env.PUBLIC_URL || 'https://manus.photon.codes',
+            type: 'sse',
+            url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/api/mcp/sse`,
+            headers: {
+              Authorization: `Bearer ${photonApiKey}`,
             },
           },
         },
@@ -276,9 +275,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         await sendTypingIndicator(connection.phoneNumber, 1000);
         await sendIMessage(connection.phoneNumber, "You're all set! 🎉");
         
-        // [1 sec typing indicator] "You can also add the MCP config..."
+        // [1 sec typing indicator] "Add this MCP config to Manus:"
         await sendTypingIndicator(connection.phoneNumber, 1000);
-        await sendIMessage(connection.phoneNumber, "You can also add the MCP config to your Manus:");
+        await sendIMessage(connection.phoneNumber, "Add this MCP config to Manus:");
         
         // Send MCP config
         await sendIMessage(connection.phoneNumber, configText);

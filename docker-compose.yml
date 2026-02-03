@@ -60,9 +60,9 @@ services:
       - manus-network
     restart: unless-stopped
 
-  # Note: MCP server is NOT run as a container!
-  # Each user runs their own MCP server via: npx @photon-ai/manus-mcp@latest
-  # The MCP server connects to the backend API using their photonApiKey
+  # Note: MCP server is integrated into backend service via SSE endpoint
+  # Users connect to: https://manus.photon.codes/api/mcp/sse
+  # No separate container needed - SSE endpoint is part of the backend service
 
   worker:
     build:
