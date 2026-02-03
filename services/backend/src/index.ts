@@ -39,9 +39,14 @@ fastify.register(mcpSSERoutes, { prefix: '/mcp' });
 fastify.register(webhookRoutes, { prefix: '' }); // Root level
 fastify.register(imessageWebhookRoutes, { prefix: '' }); // Root level for health
 
-// Health check
-fastify.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
+// Internal health check endpoint (Docker only, not publicly exposed)
+fastify.get('/health', async (request, reply) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return reply.code(200).send({ status: 'ok' });
+  } catch (error) {
+    return reply.code(503).send({ status: 'unhealthy' });
+  }
 });
 
 // Serve favicon at root

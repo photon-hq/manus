@@ -235,7 +235,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.put('/:connectionId', async (request, reply) => {
     try {
       const { connectionId } = request.params as { connectionId: string };
-      const body = z.object({ manusApiKey: z.string().startsWith('manus_') }).parse(request.body);
+      const body = z.object({ 
+        manusApiKey: z.string().regex(/^sk-[A-Za-z0-9_-]{70,100}$/, 'Invalid Manus API key format')
+      }).parse(request.body);
       const { manusApiKey } = body;
 
       // Find pending connection
