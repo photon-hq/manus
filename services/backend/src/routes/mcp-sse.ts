@@ -20,8 +20,8 @@ const activeConnections = new Map<string, { server: Server; transport: SSEServer
 const CONNECTION_TIMEOUT_MS = 60 * 60 * 1000;
 
 export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /api/mcp/sse - Establish SSE connection
-  fastify.get('/sse', async (request, reply) => {
+  // GET /mcp - Establish SSE connection
+  fastify.get('/', async (request, reply) => {
     try {
       // Extract and validate API key
       const authHeader = request.headers.authorization;
@@ -186,7 +186,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       // Create SSE transport
-      const transport = new SSEServerTransport('/api/mcp/message', reply.raw);
+      const transport = new SSEServerTransport('/mcp', reply.raw);
       
       // Setup connection lifecycle handlers
       transport.onclose = () => {
@@ -232,8 +232,8 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // POST /api/mcp/message - Receive messages from client
-  fastify.post('/message', async (request, reply) => {
+  // POST /mcp - Receive messages from client
+  fastify.post('/', async (request, reply) => {
     try {
       // Extract session ID from query or body
       const sessionId = (request.query as any).sessionId || (request.body as any)?.sessionId;
@@ -257,7 +257,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // GET /api/mcp/status - Check connection status (optional, for debugging)
+  // GET /mcp/status - Check connection status (optional, for debugging)
   fastify.get('/status', async (request, reply) => {
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

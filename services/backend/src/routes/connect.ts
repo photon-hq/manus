@@ -27,8 +27,8 @@ const RevokeSchema = z.object({
 });
 
 export const connectRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /api/connect/favicon - Serve favicon
-  fastify.get('/favicon', async (request, reply) => {
+  // GET / - Landing page with "Connect to Manus" button
+  fastify.get('/', async (request, reply) => {
     const fs = await import('fs');
     const path = await import('path');
     
@@ -56,7 +56,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <head>
           <title>Connect to Manus</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="icon" type="image/png" href="/api/connect/favicon">
+          <link rel="icon" type="image/png" href="/favicon.png">
           <style>
             * { 
               box-sizing: border-box; 
@@ -149,8 +149,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     `);
   });
 
-  // POST /api/connect/start - Handle initial iMessage (new flow)
-  fastify.post('/start', async (request, reply) => {
+  // POST /connect - Handle initial iMessage
+  fastify.post('/', async (request, reply) => {
     try {
       const body = StartSchema.parse(request.body);
       const phoneNumber = normalizePhoneNumber(body.phoneNumber);
@@ -170,7 +170,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       fastify.log.info({ connectionId, phoneNumber }, 'Connection started');
 
       // Send iMessage back to user with typing indicators
-      const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/api/connect/page/${connectionId}`;
+      const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
       try {
         const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
         
@@ -197,24 +197,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // POST /api/connect/initiate - Handle initial iMessage (legacy, redirects to /start)
-  fastify.post('/initiate', async (request, reply) => {
-    return fastify.inject({
-      method: 'POST',
-      url: '/api/connect/start',
-      payload: request.body as any,
-      headers: request.headers,
-    }).then(res => {
-      reply.code(res.statusCode);
-      return res.json();
-    });
-  });
+  // Legacy endpoint removed - use POST /connect instead
 
-  // POST /api/connect/verify - Submit Manus API key
-  fastify.post('/verify', async (request, reply) => {
+  // PUT /connect/:id - Submit Manus API key and activate connection
+  fastify.put('/:connectionId', async (request, reply) => {
     try {
-      const body = VerifySchema.parse(request.body);
-      const { connectionId, manusApiKey } = body;
+      const { connectionId } = request.params as { connectionId: string };
+      const body = z.object({ manusApiKey: z.string().startsWith('manus_') }).parse(request.body);
+      const { manusApiKey } = body;
 
       // Find pending connection
       const connection = await prisma.connection.findUnique({
@@ -258,7 +248,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         mcpServers: {
           'photon-imessage': {
             type: 'sse',
-            url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/api/mcp/sse`,
+            url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/mcp`,
             headers: {
               Authorization: `Bearer ${photonApiKey}`,
             },
@@ -301,26 +291,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // POST /api/connect/submit-token - Legacy endpoint (redirects to /verify)
-  fastify.post('/submit-token', async (request, reply) => {
-    const res = await fastify.inject({
-      method: 'POST',
-      url: '/api/connect/verify',
-      payload: request.body as object,
-      headers: request.headers as Record<string, string>,
-    });
-    reply.code(res.statusCode);
-    return res.json();
-  });
+  // Legacy endpoint removed - use PUT /connect/:id instead
 
-  // POST /api/connect/revoke - Revoke connection
-  fastify.post('/revoke', async (request, reply) => {
+  // DELETE /connect/:id - Revoke connection
+  fastify.delete('/:connectionId', async (request, reply) => {
     try {
-      const body = RevokeSchema.parse(request.body);
-      const { photonApiKey } = body;
+      const { connectionId } = request.params as { connectionId: string };
 
       const connection = await prisma.connection.findUnique({
-        where: { photonApiKey },
+        where: { connectionId },
       });
 
       if (!connection) {
@@ -334,14 +313,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Update status to REVOKED
       await prisma.connection.update({
-        where: { photonApiKey },
+        where: { connectionId },
         data: {
           status: 'REVOKED',
           revokedAt: new Date(),
         },
       });
 
-      fastify.log.info({ photonApiKey }, 'Connection revoked');
+      fastify.log.info({ connectionId }, 'Connection revoked');
 
       return {
         success: true,
@@ -353,8 +332,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // GET /manus/connect/:connectionId - Landing page for token input
-  fastify.get('/page/:connectionId', async (request, reply) => {
+  // GET /connect/:connectionId - Token input page
+  fastify.get('/:connectionId', async (request, reply) => {
     const { connectionId } = request.params as { connectionId: string };
 
     const connection = await prisma.connection.findUnique({
@@ -439,10 +418,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               errorDiv.textContent = '';
               
               try {
-                const response = await fetch('/api/connect/verify', {
-                  method: 'POST',
+                const response = await fetch('/connect/${connectionId}', {
+                  method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ connectionId: '${connectionId}', manusApiKey })
+                  body: JSON.stringify({ manusApiKey })
                 });
                 
                 const data = await response.json();
@@ -492,7 +471,7 @@ async function registerManusWebhook(manusApiKey: string): Promise<string> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/api/webhooks/manus`,
+      url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/webhook`,
       events: ['task_created', 'task_progress', 'task_stopped'],
     }),
   });

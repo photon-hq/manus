@@ -15,7 +15,7 @@ TypeScript monorepo with 3 microservices that bridge iMessage and Manus AI.
 
 ## User Setup
 
-1. Visit deployment URL → Click "Connect to Manus"
+1. Visit `manus.photon.codes` → Click "Connect to Manus"
 2. Send iMessage → Submit Manus API key
 3. Copy SSE config → Paste in [Manus Settings](https://manus.im/settings/mcp)
 
@@ -25,7 +25,7 @@ TypeScript monorepo with 3 microservices that bridge iMessage and Manus AI.
   "mcpServers": {
     "photon-imessage": {
       "type": "sse",
-      "url": "https://your-domain.com/api/mcp/sse",
+      "url": "https://manus.photon.codes/mcp",
       "headers": { "Authorization": "Bearer photon_sk_xxx" }
     }
   }
@@ -78,10 +78,10 @@ User → iMessage SDK → Backend (SSE MCP + Events) → Worker → Classifier
 
 ## API Endpoints
 
-**Connection:** `/api/connect`, `/api/connect/start`, `/api/connect/verify`  
-**SSE MCP:** `/api/mcp/sse`, `/api/mcp/message`, `/api/mcp/status`  
-**Webhooks:** `/api/webhooks/manus`  
-**Health:** `/health`, `/api/imessage/health`
+**Connection:** `GET /connect`, `POST /connect`, `PUT /connect/:id`, `DELETE /connect/:id`  
+**MCP:** `GET /mcp` (SSE stream), `POST /mcp` (messages), `GET /mcp/status`  
+**Webhooks:** `POST /webhook`  
+**Health:** `GET /health`
 
 ## Security
 
@@ -100,7 +100,7 @@ docker compose exec backend pnpm db:migrate
 
 **Nginx SSE config:**
 ```nginx
-location /api/mcp/sse {
+location /mcp {
     proxy_pass http://backend:3000;
     proxy_http_version 1.1;
     proxy_set_header Connection '';
@@ -127,7 +127,7 @@ make reset-db
 # Testing
 ./scripts/test-connection-flow.sh
 curl http://localhost:3000/health
-curl -N -H "Authorization: Bearer photon_sk_xxx" http://localhost:3000/api/mcp/sse
+curl -N -H "Authorization: Bearer photon_sk_xxx" http://localhost:3000/mcp
 ```
 
 ## Structure
@@ -149,7 +149,7 @@ manus/
 docker compose logs -f backend
 
 # Test SSE
-curl -N -H "Authorization: Bearer photon_sk_xxx" http://localhost:3000/api/mcp/sse
+curl -N -H "Authorization: Bearer photon_sk_xxx" http://localhost:3000/mcp
 
 # Reset
 docker compose down -v && docker compose up -d

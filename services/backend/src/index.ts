@@ -27,16 +27,38 @@ fastify.register(cors, {
   credentials: true,
 });
 
+// Root redirect to /connect landing page
+fastify.get('/', async (request, reply) => {
+  return reply.redirect(301, '/connect');
+});
+
 // Register routes
-fastify.register(connectRoutes, { prefix: '/api/connect' });
-fastify.register(mcpRoutes, { prefix: '/api/mcp' });
-fastify.register(mcpSSERoutes, { prefix: '/api/mcp' });
-fastify.register(webhookRoutes, { prefix: '/api/webhooks' });
-fastify.register(imessageWebhookRoutes, { prefix: '/api/imessage' }); // Health endpoint only
+fastify.register(connectRoutes, { prefix: '/connect' });
+fastify.register(mcpRoutes, { prefix: '/mcp' });
+fastify.register(mcpSSERoutes, { prefix: '/mcp' });
+fastify.register(webhookRoutes, { prefix: '' }); // Root level
+fastify.register(imessageWebhookRoutes, { prefix: '' }); // Root level for health
 
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
+});
+
+// Serve favicon at root
+fastify.get('/favicon.png', async (request, reply) => {
+  const fs = await import('fs');
+  const path = await import('path');
+  
+  const faviconPath = path.join(process.cwd(), 'favicon.png');
+  
+  if (!fs.existsSync(faviconPath)) {
+    return reply.code(404).send({ error: 'Favicon not found' });
+  }
+  
+  reply
+    .header('Content-Type', 'image/png')
+    .header('Cache-Control', 'public, max-age=31536000')
+    .send(fs.createReadStream(faviconPath));
 });
 
 // Graceful shutdown

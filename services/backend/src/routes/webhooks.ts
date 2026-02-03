@@ -24,7 +24,7 @@ const taskStartTimes = new Map<string, number>();
 
 export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/webhooks/manus - Receive webhooks from Manus
-  fastify.post('/manus', async (request, reply) => {
+  fastify.post('/webhook', async (request, reply) => {
     try {
       // Validate webhook event
       const event = WebhookEventSchema.parse(request.body);
