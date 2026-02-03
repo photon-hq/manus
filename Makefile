@@ -74,4 +74,4 @@ mcp-publish: mcp-build ## Publish MCP package to NPM (latest)
 
 mcp-promote: ## Promote beta version to latest
 	@read -p "Enter version to promote (e.g., 1.0.0): " version; \
-	cd services/mcp-server && npm dist-tag add @photon-ai/manus-mcp@$$version latest
+	cd services/mcp-server && npm dist-tag add photon-manus-mcp@$$version latest

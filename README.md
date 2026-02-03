@@ -17,11 +17,11 @@ A production-ready TypeScript monorepo with 4 microservices that bridge iMessage
    - Webhook receiver for Manus events
    - OpenTelemetry tracing
 
-2. **MCP Server** (stdio) - Published as `@photon-ai/manus-mcp`
+2. **MCP Server** (stdio) - Published as `photon-manus-mcp`
    - Model Context Protocol implementation
    - Two tools: `fetch` and `send`
    - Communicates with backend via HTTP
-   - Users install via: `npx @photon-ai/manus-mcp@latest`
+   - Users install via: `npx photon-manus-mcp@latest`
 
 3. **Worker Service** (Background)
    - BullMQ message queue
@@ -55,7 +55,7 @@ That's it! You can now use iMessage tools in Manus AI.
 
 ### MCP Package
 
-The MCP server is published as [`@photon-ai/manus-mcp`](https://www.npmjs.com/package/@photon-ai/manus-mcp) on NPM.
+The MCP server is published as [`photon-manus-mcp`](https://www.npmjs.com/package/photon-manus-mcp) on NPM.
 
 **Installation:** Automatic via `npx` (included in MCP config)
 

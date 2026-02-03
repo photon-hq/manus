@@ -136,7 +136,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         mcpServers: {
           'photon-imessage': {
             command: 'npx',
-            args: ['@photon-ai/manus-mcp@latest'],
+            args: ['photon-manus-mcp@latest'],
             env: {
               PHOTON_API_KEY: photonApiKey,
               BACKEND_URL: process.env.PUBLIC_URL || 'https://manus.photon.codes',

@@ -1,4 +1,4 @@
-# Photon iMessage MCP Server
+# photon-manus-mcp
 
 MCP (Model Context Protocol) server for integrating iMessage with Manus AI through Photon's infrastructure.
 
@@ -34,7 +34,7 @@ Copy the MCP configuration provided during onboarding and paste it into your Man
   "mcpServers": {
     "photon-imessage": {
       "command": "npx",
-      "args": ["@photon-ai/manus-mcp@latest"],
+      "args": ["photon-manus-mcp@latest"],
       "env": {
         "PHOTON_API_KEY": "photon_sk_your_key_here",
         "BACKEND_URL": "https://manus.photon.codes"
@@ -106,7 +106,7 @@ If the MCP server can't connect to the backend:
 
 1. Check your internet connection
 2. Verify `BACKEND_URL` is set correctly
-3. Try running with explicit URL: `BACKEND_URL=https://manus.photon.codes npx @photon-ai/manus-mcp@latest`
+3. Try running with explicit URL: `BACKEND_URL=https://manus.photon.codes npx photon-manus-mcp@latest`
 
 ## Support
 
