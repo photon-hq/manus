@@ -126,6 +126,7 @@ Add your credentials:
 # iMessage Integration (advanced-imessage-kit)
 IMESSAGE_SERVER_URL=https://your-imessage-server.photon.codes
 IMESSAGE_API_KEY=your_photon_imessage_api_key
+PHOTON_HANDLE=+1234567890  # or support@photon.codes (for landing page)
 
 # LLM Provider (get from https://openrouter.ai)
 OPENROUTER_API_KEY=your_openrouter_key
@@ -188,20 +189,22 @@ Manus AI
 
 ### Connection Flow (User Onboarding)
 
-1. **User Initiates**: Sends "Hey Manus! Please connect my iMessage" to Photon number/email
-2. **Backend Captures**: Creates connection record, generates `connectionId`
-3. **Typing Indicator (2 sec)**: Shows "typing..." in iMessage
-4. **Response 1**: "Sure!"
-5. **Typing Indicator (3 sec)**: Shows "typing..." again
-6. **Response 2**: "Please input your Manus token in the following link: [URL]"
-7. **User Opens Link**: Web page with token input form
-8. **User Submits Token**: Validates format (`manus_sk_xxx`), registers webhook
-9. **Backend Generates**: Creates `photonApiKey` for user
-10. **Typing Indicator (1 sec)**: "You're all set! 🎉"
-11. **Typing Indicator (1 sec)**: "You can also add the MCP config to your Manus:"
-12. **Sends MCP Config**: JSON config sent via iMessage
-13. **Sends Link**: "Paste it here: https://manus.im/settings/mcp"
-14. **Web Page**: Shows success with copy button for MCP config
+1. **Landing Page**: User visits `GET /api/connect` - Shows "Connect to Manus" button
+2. **Opens iMessage**: Button opens Messages app with pre-filled message to `PHOTON_HANDLE`
+3. **User Sends Message**: "Hey Manus! Please connect my iMessage"
+4. **Backend Captures**: Creates connection record, generates `connectionId`
+5. **Typing Indicator (2 sec)**: Shows "typing..." in iMessage
+6. **Response 1**: "Sure!"
+7. **Typing Indicator (3 sec)**: Shows "typing..." again
+8. **Response 2**: "Please input your Manus token in the following link: [URL]"
+9. **User Opens Link**: Web page with token input form
+10. **User Submits Token**: Validates format (`manus_sk_xxx`), registers webhook
+11. **Backend Generates**: Creates `photonApiKey` for user
+12. **Typing Indicator (1 sec)**: "You're all set! 🎉"
+13. **Typing Indicator (1 sec)**: "You can also add the MCP config to your Manus:"
+14. **Sends MCP Config**: JSON config sent via iMessage
+15. **Sends Link**: "Paste it here: https://manus.im/settings/mcp"
+16. **Web Page**: Shows success with copy button for MCP config
 
 ### Data Flow
 
@@ -437,6 +440,7 @@ manus/
 ### Backend Endpoints (Port 3000)
 
 #### Connection Flow
+- `GET /api/connect` - Landing page with "Connect to Manus" button (opens iMessage)
 - `POST /api/connect/start` - Initiate connection (with typing indicators and link)
 - `POST /api/connect/verify` - Verify Manus token and activate connection
 - `GET /api/connect/page/:connectionId` - Token input page (HTML)

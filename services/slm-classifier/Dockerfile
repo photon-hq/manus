@@ -1,28 +1,31 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
-
-FROM base AS dependencies
-WORKDIR /app
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-COPY packages/shared/package.json ./packages/shared/
-COPY services/slm-classifier/package.json ./services/slm-classifier/
-RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 WORKDIR /app
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=dependencies /app/packages ./packages
-COPY . .
+
+# Copy workspace files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.json ./
+COPY packages ./packages
+COPY services/slm-classifier ./services/slm-classifier
+
+# Install all dependencies
+RUN pnpm install --no-frozen-lockfile
+
+# Build packages
+RUN pnpm --filter @imessage-mcp/shared build
 RUN pnpm --filter @imessage-mcp/slm-classifier build
 
 FROM base AS runner
 WORKDIR /app
+
+# Copy everything from build
+COPY --from=build /app ./
+
+# Set working directory to service
+WORKDIR /app/services/slm-classifier
+
 ENV NODE_ENV=production
-
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/packages ./packages
-COPY --from=build /app/services/slm-classifier/dist ./services/slm-classifier/dist
-COPY --from=build /app/services/slm-classifier/package.json ./services/slm-classifier/
-
 EXPOSE 3001
-CMD ["node", "services/slm-classifier/dist/index.js"]
+CMD ["node", "dist/index.js"]

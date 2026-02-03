@@ -44,7 +44,7 @@ export async function uploadFileToManus(
       throw new Error(`Failed to create file record: ${error}`);
     }
 
-    const fileRecord: ManusFile = await createResponse.json();
+    const fileRecord = await createResponse.json() as ManusFile;
 
     // Step 2: Upload file content to presigned URL
     const uploadResponse = await fetch(fileRecord.upload_url, {

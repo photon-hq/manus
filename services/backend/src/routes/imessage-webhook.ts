@@ -50,23 +50,58 @@ export async function startIMessageListener() {
   // Listen for new messages
   sdk.on('new-message', async (message) => {
     try {
+      // Debug: Log full message structure
+      console.log('🔍 DEBUG: Received message:', JSON.stringify({
+        guid: message.guid,
+        isFromMe: message.isFromMe,
+        text: message.text?.substring(0, 50),
+        chatGuid: (message as any).chatGuid,
+        chats: (message as any).chats,
+        handle: (message as any).handle,
+        handleId: (message as any).handleId,
+        keys: Object.keys(message),
+      }, null, 2));
+
       // Filter 1: Ignore our own messages
       if (message.isFromMe) {
         console.log('⏭️  Ignoring message from self:', message.guid);
         return;
       }
 
+      // Try to get chatGuid from message or from chats array
+      let chatGuid = (message as any).chatGuid as string | undefined;
+      
+      // If chatGuid is not directly on the message, check if chats array exists
+      if (!chatGuid) {
+        const chats = (message as any).chats as Array<{ guid: string }> | undefined;
+        if (chats && chats.length > 0) {
+          chatGuid = chats[0].guid;
+          console.log('📍 Extracted chatGuid from chats array:', chatGuid);
+        }
+      }
+      
+      if (!chatGuid) {
+        console.warn('⚠️  Message missing chatGuid:', message.guid);
+        console.log('Available properties:', Object.keys(message));
+        return;
+      }
+      
       // Filter 2: Ignore group chats (chatGuid contains ;+;)
-      if (message.chatGuid.includes(';+;')) {
+      if (chatGuid.includes(';+;')) {
+        console.log('⏭️  Ignoring group chat message:', message.guid);
+        return;
+      }
+      
+      if (chatGuid.includes(';+;')) {
         console.log('⏭️  Ignoring group chat message:', message.guid);
         return;
       }
 
       // Extract phone number from chatGuid
       // Format: any;-;+1234567890 or iMessage;-;user@icloud.com
-      const parts = message.chatGuid.split(';-;');
+      const parts = chatGuid.split(';-;');
       if (parts.length !== 2) {
-        console.warn('⚠️  Invalid chatGuid format:', message.chatGuid);
+        console.warn('⚠️  Invalid chatGuid format:', chatGuid);
         return;
       }
 

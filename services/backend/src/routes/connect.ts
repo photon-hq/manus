@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { prisma, Status } from '@imessage-mcp/database';
+import { prisma } from '@imessage-mcp/database';
 import {
   generateConnectionId,
   generatePhotonApiKey,
@@ -27,6 +27,205 @@ const RevokeSchema = z.object({
 });
 
 export const connectRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /api/connect/favicon - Serve favicon
+  fastify.get('/favicon', async (request, reply) => {
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    const faviconPath = path.join(process.cwd(), 'favicon.png');
+    
+    if (!fs.existsSync(faviconPath)) {
+      return reply.code(404).send({ error: 'Favicon not found' });
+    }
+    
+    reply
+      .header('Content-Type', 'image/png')
+      .header('Cache-Control', 'public, max-age=31536000')
+      .send(fs.createReadStream(faviconPath));
+  });
+
+  // GET /api/connect/video - Serve background video
+  fastify.get('/video', async (request, reply) => {
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    // Video is in the root of the project
+    const videoPath = path.join(process.cwd(), 'bg-video.mp4');
+    
+    if (!fs.existsSync(videoPath)) {
+      return reply.code(404).send({ error: 'Video not found' });
+    }
+    
+    const stat = fs.statSync(videoPath);
+    const fileSize = stat.size;
+    const range = request.headers.range;
+    
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(videoPath, { start, end });
+      
+      reply.code(206)
+        .header('Content-Range', `bytes ${start}-${end}/${fileSize}`)
+        .header('Accept-Ranges', 'bytes')
+        .header('Content-Length', chunksize)
+        .header('Content-Type', 'video/mp4')
+        .send(file);
+    } else {
+      reply
+        .header('Content-Length', fileSize)
+        .header('Content-Type', 'video/mp4')
+        .send(fs.createReadStream(videoPath));
+    }
+  });
+
+  // GET /api/connect - Landing page with "Connect to Manus" button
+  fastify.get('/', async (request, reply) => {
+    const photonHandle = process.env.PHOTON_HANDLE || '+14158156704';
+    const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
+    const videoUrl = '/api/connect/video';
+    
+    return reply.type('text/html').send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Connect to Manus</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <link rel="icon" type="image/png" href="/api/connect/favicon">
+          <style>
+            * { 
+              box-sizing: border-box; 
+              margin: 0; 
+              padding: 0; 
+            }
+            
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              min-height: 100vh;
+              overflow: hidden;
+              position: relative;
+            }
+            
+            /* Video background */
+            .video-background {
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              z-index: 0;
+            }
+            
+            .video-background video {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+            
+            /* Removed blur overlay */
+            
+            /* Content container */
+            .content {
+              position: relative;
+              z-index: 2;
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+            }
+            
+            /* Dynamic Island button */
+            .connect-btn { 
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 20px 48px;
+              background: rgba(0, 0, 0, 0.85);
+              backdrop-filter: blur(20px);
+              -webkit-backdrop-filter: blur(20px);
+              color: #ffffff;
+              text-decoration: none;
+              font-size: 17px;
+              font-weight: 500;
+              border-radius: 50px;
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+              letter-spacing: -0.01em;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .connect-btn:hover { 
+              transform: scale(1.05);
+              box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+              background: rgba(0, 0, 0, 0.9);
+            }
+            
+            .connect-btn:active {
+              transform: scale(0.98);
+            }
+            
+            /* Footer */
+            .footer {
+              position: fixed;
+              bottom: 30px;
+              left: 0;
+              right: 0;
+              text-align: center;
+              z-index: 2;
+            }
+            
+            .footer a {
+              color: rgba(0, 0, 0, 0.6);
+              text-decoration: none;
+              font-size: 14px;
+              font-weight: 500;
+              transition: color 0.2s;
+              letter-spacing: -0.01em;
+            }
+            
+            .footer a:hover {
+              color: rgba(0, 0, 0, 0.9);
+            }
+            
+            /* Loading state */
+            .video-background::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background: #000000;
+              z-index: -1;
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Video Background -->
+          <div class="video-background">
+            <video autoplay muted loop playsinline>
+              <source src="${videoUrl}" type="video/mp4">
+            </video>
+          </div>
+          
+          <!-- Content -->
+          <div class="content">
+            <a href="${smsLink}" class="connect-btn">Connect to Manus</a>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            <a href="https://photon.codes" target="_blank">photon.codes</a>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+
   // POST /api/connect/start - Handle initial iMessage (new flow)
   fastify.post('/start', async (request, reply) => {
     try {
@@ -40,7 +239,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         data: {
           connectionId,
           phoneNumber,
-          status: Status.PENDING,
+          status: 'PENDING',
           expiresAt,
         },
       });
@@ -80,7 +279,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     return fastify.inject({
       method: 'POST',
       url: '/api/connect/start',
-      payload: request.body,
+      payload: request.body as any,
       headers: request.headers,
     }).then(res => {
       reply.code(res.statusCode);
@@ -103,7 +302,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(404).send({ error: 'Connection not found' });
       }
 
-      if (connection.status !== Status.PENDING) {
+      if (connection.status !== 'PENDING') {
         return reply.code(400).send({ error: 'Connection already processed' });
       }
 
@@ -124,7 +323,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           manusApiKey,
           photonApiKey,
           webhookId,
-          status: Status.ACTIVE,
+          status: 'ACTIVE',
           activatedAt: new Date(),
         },
       });
@@ -182,15 +381,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
   // POST /api/connect/submit-token - Legacy endpoint (redirects to /verify)
   fastify.post('/submit-token', async (request, reply) => {
-    return fastify.inject({
+    const res = await fastify.inject({
       method: 'POST',
       url: '/api/connect/verify',
-      payload: request.body,
-      headers: request.headers,
-    }).then(res => {
-      reply.code(res.statusCode);
-      return res.json();
+      payload: request.body as object,
+      headers: request.headers as Record<string, string>,
     });
+    reply.code(res.statusCode);
+    return res.json();
   });
 
   // POST /api/connect/revoke - Revoke connection
@@ -216,7 +414,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       await prisma.connection.update({
         where: { photonApiKey },
         data: {
-          status: Status.REVOKED,
+          status: 'REVOKED',
           revokedAt: new Date(),
         },
       });
@@ -381,8 +579,8 @@ async function registerManusWebhook(manusApiKey: string): Promise<string> {
     throw new Error('Failed to register webhook with Manus');
   }
 
-  const data = await response.json();
-  return data.webhook_id || data.id;
+  const data = await response.json() as { webhook_id?: string; id?: string };
+  return data.webhook_id || data.id || '';
 }
 
 async function deleteManusWebhook(manusApiKey: string, webhookId: string): Promise<void> {

@@ -246,12 +246,10 @@ async function processAttachments(
         console.log(`Processing attachment: ${attachment.filename}`);
 
         // Download attachment from iMessage
-        const result = await sdk.attachments.downloadAttachment({
-          guid: attachment.guid,
-        });
+        const result = await sdk.attachments.downloadAttachment(attachment.guid);
 
         // Upload to Manus
-        const fileId = await uploadFileToManus(result.buffer, attachment.filename);
+        const fileId = await uploadFileToManus(Buffer.from(result), attachment.filename);
         fileIds.push(fileId);
 
         console.log(`✅ Uploaded ${attachment.filename} to Manus (ID: ${fileId})`);
@@ -288,7 +286,7 @@ async function uploadFileToManus(fileBuffer: Buffer, filename: string): Promise<
     throw new Error(`Failed to create file record: ${await createResponse.text()}`);
   }
 
-  const fileRecord = await createResponse.json();
+  const fileRecord = await createResponse.json() as { upload_url: string; id: string };
 
   // Step 2: Upload to presigned URL
   const uploadResponse = await fetch(fileRecord.upload_url, {
@@ -405,7 +403,7 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
       throw new Error(`Manus API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { task_id: string };
     console.log('✅ Created Manus task:', data.task_id);
 
     // Store the task ID for follow-ups
@@ -468,7 +466,7 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
       throw new Error(`Manus API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { task_id: string };
     console.log('✅ Appended to Manus task:', data.task_id);
 
     return data.task_id;

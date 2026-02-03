@@ -1,29 +1,32 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
-
-FROM base AS dependencies
-WORKDIR /app
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-COPY packages/database/package.json ./packages/database/
-COPY packages/shared/package.json ./packages/shared/
-COPY services/worker/package.json ./services/worker/
-RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 WORKDIR /app
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=dependencies /app/packages ./packages
-COPY . .
+
+# Copy workspace files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.json ./
+COPY packages ./packages
+COPY services/worker ./services/worker
+
+# Install all dependencies
+RUN pnpm install --no-frozen-lockfile
+
+# Build packages
+RUN pnpm --filter @imessage-mcp/shared build
 RUN pnpm --filter @imessage-mcp/database generate
+RUN pnpm --filter @imessage-mcp/database build
 RUN pnpm --filter @imessage-mcp/worker build
 
 FROM base AS runner
 WORKDIR /app
+
+# Copy everything from build
+COPY --from=build /app ./
+
+# Set working directory to service
+WORKDIR /app/services/worker
+
 ENV NODE_ENV=production
-
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/packages ./packages
-COPY --from=build /app/services/worker/dist ./services/worker/dist
-COPY --from=build /app/services/worker/package.json ./services/worker/
-
-CMD ["node", "services/worker/dist/index.js"]
+CMD ["node", "dist/index.js"]
