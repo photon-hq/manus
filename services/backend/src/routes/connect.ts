@@ -139,6 +139,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             args: ['@photon-ai/manus-mcp@latest'],
             env: {
               PHOTON_API_KEY: photonApiKey,
+              BACKEND_URL: process.env.PUBLIC_URL || 'https://manus.photon.codes',
             },
           },
         },

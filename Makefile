@@ -56,3 +56,22 @@ logs: ## View logs from all services
 signoz: ## Open SigNoz dashboard
 	@echo "Opening SigNoz at http://localhost:3301"
 	@open http://localhost:3301 || xdg-open http://localhost:3301
+
+# MCP Package Publishing
+mcp-build: ## Build MCP package for publishing
+	cd services/mcp-server && pnpm build
+
+mcp-test: ## Test MCP package locally
+	cd services/mcp-server && pnpm build
+	@echo "Testing MCP package..."
+	@echo "Run: PHOTON_API_KEY=test_key BACKEND_URL=http://localhost:3000 node services/mcp-server/dist/index.js"
+
+mcp-publish-beta: mcp-build ## Publish MCP package to NPM (beta tag)
+	cd services/mcp-server && npm publish --tag beta --access public
+
+mcp-publish: mcp-build ## Publish MCP package to NPM (latest)
+	cd services/mcp-server && npm publish --access public
+
+mcp-promote: ## Promote beta version to latest
+	@read -p "Enter version to promote (e.g., 1.0.0): " version; \
+	cd services/mcp-server && npm dist-tag add @photon-ai/manus-mcp@$$version latest

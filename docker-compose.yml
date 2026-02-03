@@ -117,25 +117,9 @@ services:
       - manus-network
     restart: unless-stopped
 
-  mcp-server:
-    build:
-      context: .
-      dockerfile: services/mcp-server/Dockerfile
-    container_name: manus-mcp-server
-    environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
-      BACKEND_URL: http://backend:3000
-      PHOTON_API_KEY: ${PHOTON_API_KEY}
-      NODE_ENV: ${NODE_ENV:-development}
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4318
-    depends_on:
-      postgres:
-        condition: service_healthy
-      backend:
-        condition: service_started
-    networks:
-      - manus-network
-    restart: unless-stopped
+  # Note: MCP server is NOT run as a container!
+  # Each user runs their own MCP server via: npx @photon-ai/manus-mcp@latest
+  # The MCP server connects to the backend API using their photonApiKey
 
   worker:
     build:

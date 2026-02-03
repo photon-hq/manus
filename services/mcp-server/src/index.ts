@@ -77,7 +77,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Backend API error: ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data = await response.json() as { messages: any[] };
 
         return {
           content: [
@@ -110,7 +110,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Backend API error: ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data = await response.json() as { messageGuid: string };
 
         return {
           content: [

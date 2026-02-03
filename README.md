@@ -17,11 +17,11 @@ A production-ready TypeScript monorepo with 4 microservices that bridge iMessage
    - Webhook receiver for Manus events
    - OpenTelemetry tracing
 
-2. **MCP Server** (stdio)
+2. **MCP Server** (stdio) - Published as `@photon-ai/manus-mcp`
    - Model Context Protocol implementation
    - Two tools: `fetch` and `send`
    - Communicates with backend via HTTP
-   - Used by Manus AI
+   - Users install via: `npx @photon-ai/manus-mcp@latest`
 
 3. **Worker Service** (Background)
    - BullMQ message queue
@@ -39,7 +39,31 @@ A production-ready TypeScript monorepo with 4 microservices that bridge iMessage
 - **@imessage-mcp/shared** - Types, utilities, Zod schemas
 - **@imessage-mcp/database** - Prisma schema & client
 
-## 🚀 Quick Start
+## 👥 For End Users
+
+Want to connect your iMessage to Manus AI? Visit **[manus.photon.codes](https://manus.photon.codes)** to get started!
+
+### Quick Setup (2 minutes)
+
+1. Visit [manus.photon.codes](https://manus.photon.codes)
+2. Enter your phone number or iCloud email
+3. Submit your Manus API key
+4. Copy the MCP configuration
+5. Paste it in [Manus Settings](https://manus.im/settings/mcp)
+
+That's it! You can now use iMessage tools in Manus AI.
+
+### MCP Package
+
+The MCP server is published as [`@photon-ai/manus-mcp`](https://www.npmjs.com/package/@photon-ai/manus-mcp) on NPM.
+
+**Installation:** Automatic via `npx` (included in MCP config)
+
+**Documentation:** See [`services/mcp-server/README.md`](services/mcp-server/README.md)
+
+---
+
+## 🚀 For Developers - Quick Start
 
 ### Prerequisites
 

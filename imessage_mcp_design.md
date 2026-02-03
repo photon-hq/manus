@@ -1,7 +1,19 @@
 # iMessage Backend System - Complete Design Document
 
 ## Overview
-Build a backend system that integrates user's iMessage with Manus AI, enabling bidirectional communication and task management through iMessage. The system includes an MCP server component that exposes tools to Manus, along with connection management, message routing, and task classification services.
+Build a backend system that integrates user's iMessage with Manus AI, enabling bidirectional communication and task management through iMessage. The system includes an MCP server component (published as `@photon-ai/manus-mcp` on NPM) that exposes tools to Manus, along with connection management, message routing, and task classification services.
+
+## Implementation Status: ✅ COMPLETE
+
+All core features have been implemented:
+- Backend API with MCP endpoints
+- Connection flow with web UI
+- MCP package ready for NPM publishing
+- Worker service with message processing
+- Webhook handling (Manus + iMessage)
+- File attachment support (user → Manus)
+- Rich link previews
+- Typing indicators
 
 ---
 
@@ -124,7 +136,8 @@ Add this MCP config to Manus:
       "command": "npx",
       "args": ["@photon-ai/manus-mcp@latest"],
       "env": {
-        "PHOTON_API_KEY": "photon_sk_xxx"
+        "PHOTON_API_KEY": "photon_sk_xxx",
+        "BACKEND_URL": "https://manus.photon.codes"
       }
     }
   }
