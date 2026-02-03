@@ -74,3 +74,38 @@ export function getConnectionExpiry(): Date {
   expiry.setMinutes(expiry.getMinutes() + 5);
   return expiry;
 }
+
+/**
+ * Sanitize handle (phone number or email) for use in queue names
+ * - Phone numbers: +1234567890 -> 1234567890
+ * - iCloud emails: user@icloud.com -> user-at-icloud-com
+ * - Removes special characters that can't be used in Redis keys
+ */
+export function sanitizeHandle(handle: string): string {
+  // Check if it's an email (contains @)
+  if (handle.includes('@')) {
+    // Replace @ with -at- and . with -
+    return handle
+      .toLowerCase()
+      .replace(/@/g, '-at-')
+      .replace(/\./g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+  }
+  
+  // It's a phone number - remove all non-numeric characters
+  return handle.replace(/[^0-9]/g, '');
+}
+
+/**
+ * Check if a handle is an email address
+ */
+export function isEmail(handle: string): boolean {
+  return handle.includes('@');
+}
+
+/**
+ * Check if a handle is a phone number
+ */
+export function isPhoneNumber(handle: string): boolean {
+  return /^\+?\d+$/.test(handle.replace(/[\s\-()]/g, ''));
+}

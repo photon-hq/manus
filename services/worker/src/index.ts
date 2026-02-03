@@ -1,7 +1,7 @@
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
 import { prisma, QueueStatus } from '@imessage-mcp/database';
-import { TaskClassification } from '@imessage-mcp/shared';
+import { TaskClassification, sanitizeHandle } from '@imessage-mcp/shared';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
@@ -19,12 +19,12 @@ const debounceTimers = new Map<string, NodeJS.Timeout>();
 
 console.log('Worker service starting...');
 
-// Function to get or create queue for a phone number
-function getQueue(phoneNumber: string): Queue {
-  if (!queues.has(phoneNumber)) {
-    // Sanitize phone number for queue name (remove + and other special chars)
-    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
-    const queue = new Queue(`messages-${sanitizedPhone}`, {
+// Function to get or create queue for a handle (phone number or email)
+function getQueue(handle: string): Queue {
+  if (!queues.has(handle)) {
+    // Sanitize handle for queue name (works for both phone numbers and emails)
+    const sanitizedHandle = sanitizeHandle(handle);
+    const queue = new Queue(`messages-${sanitizedHandle}`, {
       connection,
       defaultJobOptions: {
         attempts: 3,
@@ -36,33 +36,33 @@ function getQueue(phoneNumber: string): Queue {
         removeOnFail: 100,
       },
     });
-    queues.set(phoneNumber, queue);
+    queues.set(handle, queue);
 
     // Start worker for this queue
-    startWorker(phoneNumber);
+    startWorker(handle);
   }
-  return queues.get(phoneNumber)!;
+  return queues.get(handle)!;
 }
 
-// Start worker for a specific phone number queue
-function startWorker(phoneNumber: string) {
-  if (workers.has(phoneNumber)) return;
+// Start worker for a specific handle queue
+function startWorker(handle: string) {
+  if (workers.has(handle)) return;
 
-  // Sanitize phone number for queue name (remove + and other special chars)
-  const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
+  // Sanitize handle for queue name (works for both phone numbers and emails)
+  const sanitizedHandle = sanitizeHandle(handle);
   const worker = new Worker(
-    `messages-${sanitizedPhone}`,
+    `messages-${sanitizedHandle}`,
     async (job) => {
-      console.log(`Processing job ${job.name} for ${phoneNumber}:`, job.data);
+      console.log(`Processing job ${job.name} for ${handle}:`, job.data);
       
       // Handle different job types
       if (job.name === 'incoming-message') {
         // Direct message from iMessage webhook
         const { messageText, messageGuid, attachments } = job.data;
-        await handleIncomingMessage(phoneNumber, messageText, messageGuid, attachments);
+        await handleIncomingMessage(handle, messageText, messageGuid, attachments);
       } else if (job.name === 'process-message') {
         // Message from queue (debounced)
-        await processMessage(phoneNumber, job.data);
+        await processMessage(handle, job.data);
       } else {
         console.warn(`Unknown job type: ${job.name}`);
       }
@@ -74,14 +74,14 @@ function startWorker(phoneNumber: string) {
   );
 
   worker.on('completed', (job) => {
-    console.log(`Job ${job.id} completed for ${phoneNumber}`);
+    console.log(`Job ${job.id} completed for ${handle}`);
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed for ${phoneNumber}:`, err);
+    console.error(`Job ${job?.id} failed for ${handle}:`, err);
   });
 
-  workers.set(phoneNumber, worker);
+  workers.set(handle, worker);
 }
 
 // Handle incoming message (called by backend or message receiver)

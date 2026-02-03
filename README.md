@@ -16,8 +16,12 @@ TypeScript monorepo with 3 microservices that bridge iMessage and Manus AI.
 ## User Setup
 
 1. Visit `manus.photon.codes` → Click "Connect to Manus"
-2. Send iMessage → Submit Manus API key ([Get key](https://manus.im/app#settings/integrations/api))
+2. Send iMessage (via phone number or iCloud email) → Submit Manus API key ([Get key](https://manus.im/app#settings/integrations/api))
 3. Copy SSE config → Paste in [Manus Settings](https://manus.im/app#settings/connectors/mcp-server)
+
+**Supported Handles:**
+- Phone numbers: `+1234567890` (SMS or iMessage)
+- iCloud emails: `user@icloud.com` (iMessage only)
 
 **Config format:**
 ```json
@@ -97,7 +101,6 @@ PUBLIC_URL=https://manus.photon.codes
 
 *Not Required:*
 - `PHOTON_API_KEY` - Not needed! Each user provides their own Manus API key during setup
-- `LANDING_VIDEO_URL` - Optional background video URL for landing page
 
 ## Architecture
 

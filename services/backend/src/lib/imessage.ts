@@ -59,14 +59,18 @@ export async function disconnectIMessage() {
 }
 
 /**
- * Send an iMessage to a phone number
+ * Send an iMessage to a phone number or iCloud email
  * Automatically enables rich link previews for messages containing URLs
+ * 
+ * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
+ * @param message - Message text to send
  */
-export async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
+export async function sendIMessage(handle: string, message: string): Promise<string> {
   const client = await getIMessageSDK();
   
-  // Build chatGuid - use 'any' to auto-detect service type
-  const chatGuid = `any;-;${phoneNumber}`;
+  // Build chatGuid - use 'any' to auto-detect service type (SMS vs iMessage)
+  // Format: any;-;+1234567890 (for phone) or any;-;user@icloud.com (for email)
+  const chatGuid = `any;-;${handle}`;
   
   // Check if message contains a URL (http:// or https://)
   const containsUrl = /https?:\/\/[^\s]+/.test(message);
@@ -81,11 +85,14 @@ export async function sendIMessage(phoneNumber: string, message: string): Promis
 }
 
 /**
- * Fetch recent messages from a phone number
+ * Fetch recent messages from a phone number or iCloud email
  * Returns last N messages, filtered to exclude Manus-sent messages
+ * 
+ * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
+ * @param limit - Maximum number of messages to fetch
  */
 export async function fetchIMessages(
-  phoneNumber: string,
+  handle: string,
   limit: number = 100
 ): Promise<Array<{
   from: string;
@@ -103,8 +110,8 @@ export async function fetchIMessages(
 }>> {
   const client = await getIMessageSDK();
   
-  // Build chatGuid
-  const chatGuid = `any;-;${phoneNumber}`;
+  // Build chatGuid - use 'any' to auto-detect service type
+  const chatGuid = `any;-;${handle}`;
   
   try {
     // Get messages from the chat
@@ -116,8 +123,8 @@ export async function fetchIMessages(
 
     // Transform to our format
     return messages.map((msg) => ({
-      from: msg.isFromMe ? 'me' : phoneNumber,
-      to: msg.isFromMe ? phoneNumber : 'me',
+      from: msg.isFromMe ? 'me' : handle,
+      to: msg.isFromMe ? handle : 'me',
       text: msg.text || '',
       timestamp: new Date(msg.dateCreated).toISOString(),
       guid: msg.guid,
@@ -137,18 +144,23 @@ export async function fetchIMessages(
 }
 
 /**
- * Get chat GUID for a phone number
+ * Get chat GUID for a phone number or iCloud email
+ * 
+ * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
  */
-export function getChatGuid(phoneNumber: string): string {
-  return `any;-;${phoneNumber}`;
+export function getChatGuid(handle: string): string {
+  return `any;-;${handle}`;
 }
 
 /**
  * Send typing indicator and wait
+ * 
+ * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
+ * @param durationMs - Duration in milliseconds to show typing indicator
  */
-export async function sendTypingIndicator(phoneNumber: string, durationMs: number): Promise<void> {
+export async function sendTypingIndicator(handle: string, durationMs: number): Promise<void> {
   const client = await getIMessageSDK();
-  const chatGuid = `any;-;${phoneNumber}`;
+  const chatGuid = `any;-;${handle}`;
   
   try {
     await client.chats.startTyping(chatGuid);

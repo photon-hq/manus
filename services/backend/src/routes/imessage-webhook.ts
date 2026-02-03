@@ -7,6 +7,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { getIMessageSDK } from '../lib/imessage.js';
 import { prisma } from '@imessage-mcp/database';
+import { sanitizeHandle } from '@imessage-mcp/shared';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
@@ -19,12 +20,12 @@ const redis = new Redis(REDIS_URL, {
 // Map to cache queues per phone number
 const queues = new Map<string, Queue>();
 
-// Get or create queue for a phone number
-function getQueue(phoneNumber: string): Queue {
-  if (!queues.has(phoneNumber)) {
-    // Sanitize phone number for queue name (remove + and other special chars)
-    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
-    const queue = new Queue(`messages-${sanitizedPhone}`, {
+// Get or create queue for a handle (phone number or email)
+function getQueue(handle: string): Queue {
+  if (!queues.has(handle)) {
+    // Sanitize handle for queue name (works for both phone numbers and emails)
+    const sanitizedHandle = sanitizeHandle(handle);
+    const queue = new Queue(`messages-${sanitizedHandle}`, {
       connection: redis,
       defaultJobOptions: {
         attempts: 3,
@@ -36,9 +37,9 @@ function getQueue(phoneNumber: string): Queue {
         removeOnFail: 100,
       },
     });
-    queues.set(phoneNumber, queue);
+    queues.set(handle, queue);
   }
-  return queues.get(phoneNumber)!;
+  return queues.get(handle)!;
 }
 
 /**
@@ -99,15 +100,16 @@ export async function startIMessageListener() {
         return;
       }
 
-      // Extract phone number from chatGuid
-      // Format: any;-;+1234567890 or iMessage;-;user@icloud.com
+      // Extract handle (phone number or email) from chatGuid
+      // Format: any;-;+1234567890 (SMS/iMessage via phone)
+      //     or: iMessage;-;user@icloud.com (iMessage via iCloud)
       const parts = chatGuid.split(';-;');
       if (parts.length !== 2) {
         console.warn('⚠️  Invalid chatGuid format:', chatGuid);
         return;
       }
 
-      const phoneNumber = parts[1];
+      const handle = parts[1]; // Can be phone number or iCloud email
 
       // Extract message text
       const messageText = message.text || '';
@@ -117,18 +119,18 @@ export async function startIMessageListener() {
                                   /connect.*imessage/i.test(messageText);
 
       if (isConnectionRequest) {
-        console.log('🔗 Connection request detected from:', phoneNumber);
+        console.log('🔗 Connection request detected from:', handle);
         
         // Check if connection already exists
         const existingConnection = await prisma.connection.findFirst({
-          where: { phoneNumber },
+          where: { phoneNumber: handle },
         });
 
         if (existingConnection && existingConnection.status === 'ACTIVE') {
-          console.log('ℹ️  Connection already active for:', phoneNumber);
+          console.log('ℹ️  Connection already active for:', handle);
           // Send reminder message
           const { sendIMessage } = await import('../lib/imessage.js');
-          await sendIMessage(phoneNumber, "You're already connected! You can start using Manus with your iMessage.");
+          await sendIMessage(handle, "You're already connected! You can start using Manus with your iMessage.");
           return;
         }
 
@@ -140,10 +142,10 @@ export async function startIMessageListener() {
 
           // Create pending connection
           await prisma.connection.upsert({
-            where: { phoneNumber },
+            where: { phoneNumber: handle },
             create: {
               connectionId,
-              phoneNumber,
+              phoneNumber: handle,
               status: 'PENDING',
               expiresAt,
             },
@@ -154,21 +156,21 @@ export async function startIMessageListener() {
             },
           });
 
-          console.log('✅ Connection created:', { connectionId, phoneNumber });
+          console.log('✅ Connection created:', { connectionId, handle });
 
           // Send response with link
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
           const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
 
           // [1 sec typing indicator] "Sure!"
-          await sendTypingIndicator(phoneNumber, 1000);
-          await sendIMessage(phoneNumber, 'Sure!');
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, 'Sure!');
 
           // [1.5 sec typing indicator] "Please input your Manus token..."
-          await sendTypingIndicator(phoneNumber, 1500);
-          await sendIMessage(phoneNumber, `Please input your Manus token in the following link:\n\n${linkUrl}`);
+          await sendTypingIndicator(handle, 1500);
+          await sendIMessage(handle, `Please input your Manus token in the following link:\n\n${linkUrl}`);
 
-          console.log('✅ Connection setup message sent to:', phoneNumber);
+          console.log('✅ Connection setup message sent to:', handle);
         } catch (error) {
           console.error('❌ Failed to handle connection request:', error);
         }
@@ -179,30 +181,30 @@ export async function startIMessageListener() {
       // Check if connection exists and is active
       const connection = await prisma.connection.findFirst({
         where: {
-          phoneNumber,
+          phoneNumber: handle,
           status: 'ACTIVE',
         },
       });
 
       if (!connection) {
-        console.log('⏭️  No active connection for:', phoneNumber);
+        console.log('⏭️  No active connection for:', handle);
         
         // Check if user is trying to disconnect
         if (/disconnect|stop|remove|revoke/i.test(messageText)) {
           const { sendIMessage } = await import('../lib/imessage.js');
-          await sendIMessage(phoneNumber, "You don't have an active connection.");
+          await sendIMessage(handle, "You don't have an active connection.");
           return;
         }
         
         // Send helpful message
         const { sendIMessage } = await import('../lib/imessage.js');
-        await sendIMessage(phoneNumber, `Please connect first: ${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect`);
+        await sendIMessage(handle, `Please connect first: ${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect`);
         return;
       }
 
       // Check if user wants to disconnect
       if (/disconnect|stop manus|remove connection/i.test(messageText)) {
-        console.log('🔌 Disconnect request from:', phoneNumber);
+        console.log('🔌 Disconnect request from:', handle);
         
         try {
           // Delete webhook from Manus
@@ -225,9 +227,9 @@ export async function startIMessageListener() {
           });
 
           const { sendIMessage } = await import('../lib/imessage.js');
-          await sendIMessage(phoneNumber, 'Your connection has been disconnected. Thanks for using Manus!');
+          await sendIMessage(handle, 'Your connection has been disconnected. Thanks for using Manus!');
           
-          console.log('✅ Connection revoked for:', phoneNumber);
+          console.log('✅ Connection revoked for:', handle);
         } catch (error) {
           console.error('❌ Failed to disconnect:', error);
         }
@@ -249,16 +251,16 @@ export async function startIMessageListener() {
       }
 
       console.log('📨 Received iMessage:', {
-        phoneNumber,
+        handle,
         messageGuid: message.guid,
         textLength: messageText.length,
         attachmentCount: attachments?.length || 0,
       });
 
       // Add to queue for worker to process
-      const queue = getQueue(phoneNumber);
+      const queue = getQueue(handle);
       await queue.add('incoming-message', {
-        phoneNumber,
+        phoneNumber: handle,
         messageText,
         messageGuid: message.guid,
         attachments,
