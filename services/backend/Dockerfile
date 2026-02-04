@@ -26,9 +26,13 @@ WORKDIR /app
 # Copy everything from build
 COPY --from=build /app ./
 
+# Copy entrypoint script
+COPY services/backend/docker-entrypoint.sh /app/services/backend/
+RUN chmod +x /app/services/backend/docker-entrypoint.sh
+
 # Set working directory to service
 WORKDIR /app/services/backend
 
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["/app/services/backend/docker-entrypoint.sh"]
