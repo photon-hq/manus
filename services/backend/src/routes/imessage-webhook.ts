@@ -189,6 +189,77 @@ export async function startIMessageListener() {
         return;
       }
 
+      // Check for revocation confirmation FIRST (before other commands)
+      if (/^yes\s+revoke$/i.test(messageText.trim())) {
+        console.log('🔌 Revoke confirmation from:', handle);
+        
+        try {
+          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+          
+          // Send processing message
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, 'Revoking your connection...');
+          
+          // Delete webhook from Manus
+          if (connection.webhookId && connection.manusApiKey) {
+            try {
+              await fetch(`https://api.manus.im/v1/webhooks/${connection.webhookId}`, {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${connection.manusApiKey}`,
+                },
+              });
+              console.log('✅ Webhook deleted from Manus');
+            } catch (error) {
+              console.warn('⚠️  Failed to delete webhook from Manus:', error);
+            }
+          }
+
+          // Clean up all user data in a transaction
+          await prisma.$transaction(async (tx) => {
+            // Delete all message queue entries
+            const deletedQueueItems = await tx.messageQueue.deleteMany({
+              where: { phoneNumber: handle },
+            });
+            console.log(`✅ Deleted ${deletedQueueItems.count} message queue items`);
+
+            // Delete all Manus messages
+            const deletedManusMessages = await tx.manusMessage.deleteMany({
+              where: { phoneNumber: handle },
+            });
+            console.log(`✅ Deleted ${deletedManusMessages.count} Manus messages`);
+
+            // Update connection status to REVOKED and clear sensitive data
+            await tx.connection.update({
+              where: { id: connection.id },
+              data: {
+                status: 'REVOKED',
+                revokedAt: new Date(),
+                manusApiKey: null,
+                currentTaskId: null,
+              },
+            });
+          });
+
+          // Send confirmation
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, '✅ Your connection has been revoked and all data deleted.\n\nTo reconnect in the future, text "Hey Manus! Please connect my iMessage"');
+          
+          console.log('✅ Connection revoked and data cleaned up for:', handle);
+        } catch (error) {
+          console.error('❌ Failed to revoke connection:', error);
+          
+          try {
+            const { sendIMessage } = await import('../lib/imessage.js');
+            await sendIMessage(handle, '❌ Failed to revoke connection. Please try again or visit https://manus.photon.codes/connect/revoke');
+          } catch (sendError) {
+            console.error('❌ Failed to send error message:', sendError);
+          }
+        }
+        
+        return;
+      }
+
       // Check if user wants to revoke/disconnect
       const revokeKeywords = /revoke|disconnect|stop manus|remove connection|delete.*data|unlink/i;
       if (revokeKeywords.test(messageText)) {
@@ -257,77 +328,6 @@ Your iMessage is connected to Manus AI.`;
           console.log('✅ Sent status message to:', handle);
         } catch (error) {
           console.error('❌ Failed to send status message:', error);
-        }
-        
-        return;
-      }
-
-      // Check for revocation confirmation
-      if (/^yes\s+revoke$/i.test(messageText.trim())) {
-        console.log('🔌 Revoke confirmation from:', handle);
-        
-        try {
-          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          
-          // Send processing message
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, 'Revoking your connection...');
-          
-          // Delete webhook from Manus
-          if (connection.webhookId && connection.manusApiKey) {
-            try {
-              await fetch(`https://api.manus.im/v1/webhooks/${connection.webhookId}`, {
-                method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${connection.manusApiKey}`,
-                },
-              });
-              console.log('✅ Webhook deleted from Manus');
-            } catch (error) {
-              console.warn('⚠️  Failed to delete webhook from Manus:', error);
-            }
-          }
-
-          // Clean up all user data in a transaction
-          await prisma.$transaction(async (tx) => {
-            // Delete all message queue entries
-            const deletedQueueItems = await tx.messageQueue.deleteMany({
-              where: { phoneNumber: handle },
-            });
-            console.log(`✅ Deleted ${deletedQueueItems.count} message queue items`);
-
-            // Delete all Manus messages
-            const deletedManusMessages = await tx.manusMessage.deleteMany({
-              where: { phoneNumber: handle },
-            });
-            console.log(`✅ Deleted ${deletedManusMessages.count} Manus messages`);
-
-            // Update connection status to REVOKED and clear sensitive data
-            await tx.connection.update({
-              where: { id: connection.id },
-              data: {
-                status: 'REVOKED',
-                revokedAt: new Date(),
-                manusApiKey: null,
-                currentTaskId: null,
-              },
-            });
-          });
-
-          // Send confirmation
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, '✅ Your connection has been revoked and all data deleted.\n\nTo reconnect in the future, text "Hey Manus! Please connect my iMessage"');
-          
-          console.log('✅ Connection revoked and data cleaned up for:', handle);
-        } catch (error) {
-          console.error('❌ Failed to revoke connection:', error);
-          
-          try {
-            const { sendIMessage } = await import('../lib/imessage.js');
-            await sendIMessage(handle, '❌ Failed to revoke connection. Please try again or visit https://manus.photon.codes/connect/revoke');
-          } catch (sendError) {
-            console.error('❌ Failed to send error message:', sendError);
-          }
         }
         
         return;
