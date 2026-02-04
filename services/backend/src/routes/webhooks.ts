@@ -226,7 +226,8 @@ async function sendIMessage(phoneNumber: string, message: string, retries = 3): 
   
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      return await sendMessage(phoneNumber, message);
+      // Disable rich link previews for Manus responses to ensure full message text is visible
+      return await sendMessage(phoneNumber, message, { disableRichLink: true });
     } catch (error) {
       console.error(`❌ Failed to send iMessage (attempt ${attempt}/${retries}):`, error);
       
