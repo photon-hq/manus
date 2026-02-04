@@ -77,23 +77,26 @@ export function getConnectionExpiry(): Date {
 
 /**
  * Sanitize handle (phone number or email) for use in queue names
- * - Phone numbers: +1234567890 -> 1234567890
- * - iCloud emails: user@icloud.com -> user-at-icloud-com
+ * - Phone numbers: +918527438574 -> phone-918527438574 (preserves country code)
+ * - iCloud emails: user@icloud.com -> email-user-at-icloud-com
+ * - Adds prefix to prevent collisions and preserve full identity
  * - Removes special characters that can't be used in Redis keys
  */
 export function sanitizeHandle(handle: string): string {
   // Check if it's an email (contains @)
   if (handle.includes('@')) {
-    // Replace @ with -at- and . with -
-    return handle
+    // Replace @ with -at- and . with - (dots), add email- prefix
+    return 'email-' + handle
       .toLowerCase()
       .replace(/@/g, '-at-')
       .replace(/\./g, '-')
       .replace(/[^a-z0-9-]/g, '');
   }
   
-  // It's a phone number - remove all non-numeric characters
-  return handle.replace(/[^0-9]/g, '');
+  // It's a phone number - keep all digits including country code, add phone- prefix
+  // This preserves the full number: +918527438574 -> phone-918527438574
+  const digits = handle.replace(/[^0-9]/g, '');
+  return 'phone-' + digits;
 }
 
 /**
@@ -108,4 +111,25 @@ export function isEmail(handle: string): boolean {
  */
 export function isPhoneNumber(handle: string): boolean {
   return /^\+?\d+$/.test(handle.replace(/[\s\-()]/g, ''));
+}
+
+/**
+ * Validate phone number has country code
+ * Returns true if phone number starts with + and has at least 10 digits
+ */
+export function hasCountryCode(phoneNumber: string): boolean {
+  if (!phoneNumber.startsWith('+')) {
+    return false;
+  }
+  const digits = phoneNumber.replace(/[^0-9]/g, '');
+  return digits.length >= 10; // Minimum international format
+}
+
+/**
+ * Normalize phone number to international format
+ * Ensures it starts with + and contains only digits
+ */
+export function normalizePhoneToInternational(phone: string): string {
+  const digits = phone.replace(/[^0-9]/g, '');
+  return digits.startsWith('+') ? phone : `+${digits}`;
 }

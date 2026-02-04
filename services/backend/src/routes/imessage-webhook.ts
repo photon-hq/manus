@@ -7,7 +7,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { getIMessageSDK } from '../lib/imessage.js';
 import { prisma } from '@imessage-mcp/database';
-import { sanitizeHandle } from '@imessage-mcp/shared';
+import { sanitizeHandle, isEmail, hasCountryCode } from '@imessage-mcp/shared';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
@@ -110,6 +110,12 @@ export async function startIMessageListener() {
       }
 
       const handle = parts[1]; // Can be phone number or iCloud email
+
+      // Validate phone number has country code (for proper queue separation)
+      if (!isEmail(handle) && !hasCountryCode(handle)) {
+        console.warn('⚠️  Phone number missing country code:', handle);
+        console.warn('⚠️  This may cause issues with international users. Recommend using international format (+country_code)');
+      }
 
       // Extract message text
       const messageText = message.text || '';
