@@ -62,6 +62,7 @@ services:
     build:
       context: .
       dockerfile: services/worker/Dockerfile
+    container_name: manus-worker
     environment:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
       REDIS_URL: redis://redis:6379
@@ -91,7 +92,6 @@ services:
     build:
       context: .
       dockerfile: services/slm-classifier/Dockerfile
-    container_name: manus-slm-classifier
     environment:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       PORT: 3001
