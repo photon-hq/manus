@@ -306,13 +306,13 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
       const sessionId = (request.query as any).sessionId || (request.body as any)?.sessionId;
       
       if (!sessionId) {
-        return reply.code(400).send({ error: 'Missing sessionId' });
+        return reply.code(400).send({ error: 'Invalid request' });
       }
 
       const connection = activeConnections.get(sessionId);
       
       if (!connection) {
-        return reply.code(404).send({ error: 'Session not found' });
+        return reply.code(400).send({ error: 'Invalid request' });
       }
 
       // Handle the POST message
@@ -328,7 +328,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/status', async (request, reply) => {
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return reply.code(401).send({ error: 'Missing or invalid authorization header' });
+      return reply.code(401).send({ error: 'Unauthorized' });
     }
 
     const photonApiKey = authHeader.replace('Bearer ', '');
@@ -338,7 +338,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
     });
 
     if (!connection) {
-      return reply.code(404).send({ error: 'Connection not found' });
+      return reply.code(401).send({ error: 'Unauthorized' });
     }
 
     // Find active session for this connection

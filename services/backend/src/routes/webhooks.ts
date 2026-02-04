@@ -32,7 +32,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
       // Get Manus API key from Authorization header
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return reply.code(401).send({ error: 'Missing authorization' });
+        return reply.code(401).send({ error: 'Unauthorized' });
       }
 
       const manusApiKey = authHeader.replace('Bearer ', '');
@@ -43,7 +43,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (!connection) {
-        return reply.code(404).send({ error: 'Connection not found' });
+        return reply.code(401).send({ error: 'Unauthorized' });
       }
 
       const { phoneNumber } = connection;
