@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "Running database migrations..."
+echo "Running database migrations... (v2)"
 cd /app/packages/database
 
 # Check if RESET_DATABASE env var is set to explicitly reset the database
