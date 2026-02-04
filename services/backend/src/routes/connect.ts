@@ -39,6 +39,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <title>Connect to Manus</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <link rel="icon" type="image/png" href="/favicon.png">
+          
+          <!-- Open Graph / Facebook -->
+          <meta property="og:type" content="website">
+          <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
+          <meta property="og:title" content="Connect to Manus">
+          <meta property="og:description" content="Connect your iMessage to Manus AI assistant">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          
+          <!-- Twitter -->
+          <meta property="twitter:card" content="summary_large_image">
+          <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
+          <meta property="twitter:title" content="Connect to Manus">
+          <meta property="twitter:description" content="Connect your iMessage to Manus AI assistant">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          
           <style>
             * { 
               box-sizing: border-box; 
@@ -379,6 +394,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <title>Connect to Manus</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <link rel="icon" type="image/png" href="/favicon.png">
+          
+          <!-- Open Graph / Facebook -->
+          <meta property="og:type" content="website">
+          <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
+          <meta property="og:title" content="Connect to Manus">
+          <meta property="og:description" content="Enter your Manus API key to complete the connection">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          
+          <!-- Twitter -->
+          <meta property="twitter:card" content="summary_large_image">
+          <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
+          <meta property="twitter:title" content="Connect to Manus">
+          <meta property="twitter:description" content="Enter your Manus API key to complete the connection">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          
           <style>
             * { 
               box-sizing: border-box; 
