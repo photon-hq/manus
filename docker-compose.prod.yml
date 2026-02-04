@@ -34,8 +34,8 @@ services:
       context: .
       dockerfile: services/backend/Dockerfile
     container_name: manus-backend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
       REDIS_URL: redis://redis:6379
