@@ -42,6 +42,7 @@ services:
       PUBLIC_URL: ${PUBLIC_URL}
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-development}
+      RESET_DATABASE: ${RESET_DATABASE:-false}
     depends_on:
       postgres:
         condition: service_healthy
