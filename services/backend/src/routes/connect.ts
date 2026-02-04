@@ -442,11 +442,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         await sendTypingIndicator(connection.phoneNumber, 1000);
         await sendIMessage(connection.phoneNumber, "All set!");
         
-        // [2 sec typing indicator] "Copy and paste this config into Manus:"
-        await sendTypingIndicator(connection.phoneNumber, 2000);
+        // [1 sec typing indicator] "Copy and paste this config into Manus:"
+        await sendTypingIndicator(connection.phoneNumber, 1000);
         await sendIMessage(connection.phoneNumber, "Copy and paste this config into Manus:");
         
-        // Send MCP config as JSON
+        // [1 sec typing indicator] Send MCP config as separate message for easy copying
+        await sendTypingIndicator(connection.phoneNumber, 1000);
         await sendIMessage(connection.phoneNumber, configText);
       } catch (error) {
         fastify.log.error({ error }, 'Failed to send iMessage');
