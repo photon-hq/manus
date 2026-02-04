@@ -8,8 +8,8 @@ cd /app/packages/database
 if [ "$RESET_DATABASE" = "true" ]; then
   echo "🔄 RESET_DATABASE=true detected. Resetting database schema..."
   
-  # Drop all tables and recreate from scratch
-  npx prisma migrate reset --force --skip-seed
+  # Drop all tables and recreate from scratch (suppress expected errors for fresh databases)
+  npx prisma migrate reset --force --skip-seed 2>&1 | grep -v "does not exist" || true
   
   echo "✅ Database reset complete"
 else

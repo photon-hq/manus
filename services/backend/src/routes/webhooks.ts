@@ -32,6 +32,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
       // Get Manus API key from Authorization header
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        fastify.log.warn('Webhook authentication failed: Missing or invalid Authorization header');
         return reply.code(401).send({ error: 'Unauthorized' });
       }
 
@@ -43,6 +44,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (!connection) {
+        fastify.log.warn({ manusApiKey: manusApiKey.substring(0, 10) + '...' }, 'Webhook authentication failed: No active connection found for API key');
         return reply.code(401).send({ error: 'Unauthorized' });
       }
 
@@ -85,6 +87,7 @@ async function handleTaskCreated(phoneNumber: string, event: any) {
   }
   
   const messageGuid = await sendIMessage(phoneNumber, message);
+  console.log(`✅ Task created notification sent to ${phoneNumber} (task: ${taskId})`);
 
   // Record in database
   await prisma.manusMessage.create({
@@ -111,12 +114,14 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   // TODO: Add filtering logic here later to decide what to show
   // For now, show all progress updates with basic throttling
 
-  // Throttle: max 1 update per minute (prevent spam)
-  const lastSent = progressTimestamps.get(phoneNumber) || 0;
+  // Throttle: max 1 update per minute per task (prevent spam)
+  // Use task-specific key so multiple concurrent tasks don't interfere
+  const throttleKey = `${phoneNumber}:${taskId}`;
+  const lastSent = progressTimestamps.get(throttleKey) || 0;
   const now = Date.now();
 
   if (now - lastSent < 60000) {
-    // Skip if less than 1 minute since last progress update
+    // Skip if less than 1 minute since last progress update for this task
     return;
   }
 
@@ -128,6 +133,7 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   message += `\n\n${progressMessage}`;
   
   const messageGuid = await sendIMessage(phoneNumber, message);
+  console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId})`);
 
   // Record in database
   await prisma.manusMessage.create({
@@ -138,8 +144,8 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
     },
   });
 
-  // Update timestamp
-  progressTimestamps.set(phoneNumber, now);
+  // Update timestamp for this specific task
+  progressTimestamps.set(throttleKey, now);
 }
 
 async function handleTaskStopped(phoneNumber: string, event: any) {
@@ -153,6 +159,14 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   // Clean up task tracking
   if (taskId) {
     taskStartTimes.delete(taskId);
+    
+    // Clear currentTaskId from connection when task finishes successfully
+    if (stopReason === 'finish') {
+      await prisma.connection.updateMany({
+        where: { currentTaskId: taskId },
+        data: { currentTaskId: null },
+      });
+    }
   }
 
   // TODO: Add filtering logic here later to customize what to show
@@ -191,6 +205,7 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   }
 
   const messageGuid = await sendIMessage(phoneNumber, message);
+  console.log(`✅ Task completion notification sent to ${phoneNumber} (task: ${taskId}, reason: ${stopReason})`);
 
   // Record in database
   await prisma.manusMessage.create({
@@ -202,8 +217,28 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   });
 }
 
-// Helper function to send iMessage
-async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
+// Helper function to send iMessage with retry logic
+async function sendIMessage(phoneNumber: string, message: string, retries = 3): Promise<string> {
   const { sendIMessage: sendMessage } = await import('../lib/imessage.js');
-  return sendMessage(phoneNumber, message);
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await sendMessage(phoneNumber, message);
+    } catch (error) {
+      console.error(`❌ Failed to send iMessage (attempt ${attempt}/${retries}):`, error);
+      
+      if (attempt === retries) {
+        // Last attempt failed - log and rethrow
+        console.error('❌ All retry attempts exhausted for iMessage send');
+        throw error;
+      }
+      
+      // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+      const delayMs = Math.pow(2, attempt - 1) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  
+  // This should never be reached, but TypeScript needs it
+  throw new Error('Unexpected error in sendIMessage');
 }
