@@ -26,26 +26,48 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/webhooks/manus - Receive webhooks from Manus
   fastify.post('/webhook', async (request, reply) => {
     try {
+      // Log incoming webhook for debugging
+      fastify.log.info({ 
+        headers: request.headers, 
+        body: request.body 
+      }, 'Incoming webhook - full details');
+      
       // Validate webhook event
       const event = WebhookEventSchema.parse(request.body);
       
-      // Get Manus API key from Authorization header
-      const authHeader = request.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        fastify.log.warn('Webhook authentication failed: Missing or invalid Authorization header');
-        return reply.code(401).send({ error: 'Unauthorized' });
+      // Extract task ID from the event to find the connection
+      const taskId = event.task_detail?.task_id || event.progress_detail?.task_id;
+      
+      if (!taskId) {
+        fastify.log.warn('Webhook missing task_id');
+        return reply.code(400).send({ error: 'Missing task_id' });
       }
 
-      const manusApiKey = authHeader.replace('Bearer ', '');
-
-      // Find connection by Manus API key
-      const connection = await prisma.connection.findFirst({
-        where: { manusApiKey, status: 'ACTIVE' },
+      // Find connection by task ID (stored in currentTaskId or check message history)
+      let connection = await prisma.connection.findFirst({
+        where: { 
+          currentTaskId: taskId,
+          status: 'ACTIVE' 
+        },
       });
 
+      // If not found by currentTaskId, try to find via webhookId in the URL or other means
+      // For now, if we can't find the connection, try to match based on webhook signature/headers
       if (!connection) {
-        fastify.log.warn({ manusApiKey: manusApiKey.substring(0, 10) + '...' }, 'Webhook authentication failed: No active connection found for API key');
-        return reply.code(401).send({ error: 'Unauthorized' });
+        // Check if there's a signature header we can use to identify the user
+        const authHeader = request.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const apiKey = authHeader.replace('Bearer ', '');
+          connection = await prisma.connection.findFirst({
+            where: { manusApiKey: apiKey, status: 'ACTIVE' },
+          });
+        }
+      }
+
+      if (!connection) {
+        fastify.log.warn({ taskId }, 'No active connection found for task');
+        // Accept the webhook but can't deliver
+        return { success: true, message: 'No active connection found' };
       }
 
       const { phoneNumber } = connection;
