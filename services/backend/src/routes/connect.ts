@@ -447,8 +447,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         await sendIMessage(connection.phoneNumber, "Copy and paste this config into Manus:");
         
         // [1 sec typing indicator] Send MCP config as separate message for easy copying
+        // Disable rich link preview to show the full JSON text instead of just the URL
         await sendTypingIndicator(connection.phoneNumber, 1000);
-        await sendIMessage(connection.phoneNumber, configText);
+        await sendIMessage(connection.phoneNumber, configText, { disableRichLink: true });
       } catch (error) {
         fastify.log.error({ error }, 'Failed to send iMessage');
         // Continue anyway - user sees config on web page

@@ -64,8 +64,13 @@ export async function disconnectIMessage() {
  * 
  * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
  * @param message - Message text to send
+ * @param options - Optional settings for the message
  */
-export async function sendIMessage(handle: string, message: string): Promise<string> {
+export async function sendIMessage(
+  handle: string, 
+  message: string,
+  options?: { disableRichLink?: boolean }
+): Promise<string> {
   const client = await getIMessageSDK();
   
   // Build chatGuid - use 'any' to auto-detect service type (SMS vs iMessage)
@@ -75,10 +80,13 @@ export async function sendIMessage(handle: string, message: string): Promise<str
   // Check if message contains a URL (http:// or https://)
   const containsUrl = /https?:\/\/[^\s]+/.test(message);
   
+  // Enable rich link only if URL is present AND not explicitly disabled
+  const enableRichLink = containsUrl && !options?.disableRichLink;
+  
   const result = await client.messages.sendMessage({
     chatGuid,
     message,
-    richLink: containsUrl, // Enable rich link preview if URL is present
+    richLink: enableRichLink,
   });
 
   return result.guid;
