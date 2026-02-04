@@ -81,7 +81,12 @@ function startWorker(handle: string) {
     console.error(`Job ${job?.id} failed for ${handle}:`, err);
   });
 
+  worker.on('error', (err) => {
+    console.error(`Worker error for ${handle}:`, err);
+  });
+
   workers.set(handle, worker);
+  console.log(`✅ Worker started for queue: messages-${sanitizedHandle}`);
 }
 
 // Handle incoming message (called by backend or message receiver)

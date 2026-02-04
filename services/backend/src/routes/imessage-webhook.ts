@@ -90,12 +90,7 @@ export async function startIMessageListener() {
       }
       
       // Filter 2: Ignore group chats (chatGuid contains ;+;)
-      if (chatGuid.includes(';+;')) {
-        console.log('⏭️  Ignoring group chat message:', message.guid);
-        return;
-      }
-      
-      if (chatGuid.includes(';+;')) {
+      if (chatGuid && chatGuid.includes(';+;')) {
         console.log('⏭️  Ignoring group chat message:', message.guid);
         return;
       }
