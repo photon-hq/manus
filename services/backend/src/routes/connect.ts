@@ -420,6 +420,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection activated');
 
+      // Notify worker to start processing for this phone number
+      try {
+        const Redis = (await import('ioredis')).default;
+        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        await redis.publish('connection-activated', connection.phoneNumber);
+        await redis.quit();
+      } catch (error) {
+        // Non-critical - worker will pick it up in the next periodic check
+        console.warn('Failed to notify worker:', error);
+      }
+
       // MCP config for user
       const mcpConfig = {
         mcpServers: {

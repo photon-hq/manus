@@ -402,6 +402,14 @@ Your iMessage is connected to Manus AI.`;
       });
 
       console.log('✅ Message queued for processing');
+
+      // Notify worker to ensure it's processing this queue
+      try {
+        await redis.publish('message-queued', handle);
+      } catch (error) {
+        // Non-critical - worker should pick it up anyway
+        console.warn('Failed to notify worker of queued message:', error);
+      }
     } catch (error) {
       console.error('❌ Error processing message:', error);
       // Don't throw - continue listening for other messages

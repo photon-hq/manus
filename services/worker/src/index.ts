@@ -546,5 +546,66 @@ async function initializeExistingQueues() {
   }
 }
 
+// Periodically check for new active connections (every 10 seconds)
+async function checkForNewConnections() {
+  try {
+    const activeConnections = await prisma.connection.findMany({
+      where: { status: 'ACTIVE' },
+      select: { phoneNumber: true },
+    });
+
+    // Start workers for any new connections
+    for (const conn of activeConnections) {
+      if (!workers.has(conn.phoneNumber)) {
+        console.log(`📱 New active connection detected: ${conn.phoneNumber}`);
+        console.log(`Starting worker for ${conn.phoneNumber}`);
+        getQueue(conn.phoneNumber); // This will create queue and start worker
+      }
+    }
+  } catch (error) {
+    console.error('Failed to check for new connections:', error);
+  }
+}
+
+// Listen for connection activation and message events via Redis pub/sub
+async function listenForEvents() {
+  try {
+    const Redis = (await import('ioredis')).default;
+    const subscriber = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    
+    subscriber.subscribe('connection-activated', 'message-queued', (err) => {
+      if (err) {
+        console.error('Failed to subscribe to Redis channels:', err);
+      } else {
+        console.log('📡 Listening for connection and message events...');
+      }
+    });
+
+    subscriber.on('message', (channel, phoneNumber) => {
+      if (channel === 'connection-activated') {
+        console.log(`🔔 Connection activated: ${phoneNumber}`);
+        if (!workers.has(phoneNumber)) {
+          console.log(`Starting worker immediately for ${phoneNumber}`);
+          getQueue(phoneNumber); // Start worker immediately
+        }
+      } else if (channel === 'message-queued') {
+        console.log(`📬 Message queued for: ${phoneNumber}`);
+        if (!workers.has(phoneNumber)) {
+          console.log(`Starting worker for ${phoneNumber}`);
+          getQueue(phoneNumber); // Ensure worker exists
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Failed to set up event listeners:', error);
+  }
+}
+
 // Initialize on startup
 initializeExistingQueues();
+
+// Listen for instant activation and message notifications
+listenForEvents();
+
+// Check for new connections every 10 seconds (backup mechanism)
+setInterval(checkForNewConnections, 10000);
