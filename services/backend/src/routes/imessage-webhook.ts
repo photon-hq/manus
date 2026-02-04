@@ -246,7 +246,7 @@ export async function startIMessageListener() {
               await fetch(`https://api.manus.im/v1/webhooks/${connection.webhookId}`, {
                 method: 'DELETE',
                 headers: {
-                  Authorization: `Bearer ${connection.manusApiKey}`,
+                  'API_KEY': connection.manusApiKey,
                 },
               });
               console.log('✅ Webhook deleted from Manus');

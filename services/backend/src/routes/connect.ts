@@ -1191,12 +1191,13 @@ async function registerManusWebhook(manusApiKey: string): Promise<string> {
   const response = await fetch('https://api.manus.im/v1/webhooks', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${manusApiKey}`,
+      'API_KEY': manusApiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/webhook`,
-      events: ['task_created', 'task_progress', 'task_stopped'],
+      webhook: {
+        url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/webhook`,
+      },
     }),
   });
 
@@ -1214,7 +1215,7 @@ async function deleteManusWebhook(manusApiKey: string, webhookId: string): Promi
   await fetch(`https://api.manus.im/v1/webhooks/${webhookId}`, {
     method: 'DELETE',
     headers: {
-      Authorization: `Bearer ${manusApiKey}`,
+      'API_KEY': manusApiKey,
     },
   });
 }
