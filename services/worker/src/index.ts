@@ -335,6 +335,7 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20): Promi
 
     return messages.map((msg) => ({
       from: msg.isFromMe ? 'me' : phoneNumber,
+      to: msg.isFromMe ? phoneNumber : 'me',
       text: msg.text || '',
       timestamp: new Date(msg.dateCreated).toISOString(),
     }));

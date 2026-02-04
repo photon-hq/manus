@@ -51,6 +51,9 @@ CREATE TABLE "message_queue" (
 CREATE UNIQUE INDEX "connections_connectionId_key" ON "connections"("connectionId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "connections_phoneNumber_key" ON "connections"("phoneNumber");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "connections_photonApiKey_key" ON "connections"("photonApiKey");
 
 -- CreateIndex
