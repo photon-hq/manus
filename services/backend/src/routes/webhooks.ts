@@ -99,26 +99,10 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
 
 async function handleTaskCreated(phoneNumber: string, event: any) {
   const taskId = event.task_detail?.task_id;
-  const taskTitle = event.task_detail?.task_title || 'your task';
-  const taskUrl = event.task_detail?.task_url;
-
-  // Send all data from webhook (can be filtered later)
-  let message = formatManusMessage(`✅ Task Created\n\nTitle: ${taskTitle}`);
-  if (taskUrl) {
-    message += `\n\nView: ${taskUrl}`;
-  }
   
-  const messageGuid = await sendIMessage(phoneNumber, message);
-  console.log(`✅ Task created notification sent to ${phoneNumber} (task: ${taskId})`);
-
-  // Record in database
-  await prisma.manusMessage.create({
-    data: {
-      messageGuid,
-      phoneNumber,
-      messageType: 'WEBHOOK',
-    },
-  });
+  // Don't send notification for task creation - it's usually followed immediately by task completion
+  // Users will just get the final result, which is cleaner
+  console.log(`📋 Task created for ${phoneNumber} (task: ${taskId})`);
 
   // Track task start time
   if (taskId) {
@@ -147,12 +131,8 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
     return;
   }
 
-  // Send all progress data (can be filtered later)
-  let message = formatManusMessage(`🔄 Progress Update`);
-  if (progressType) {
-    message += `\n\nType: ${progressType}`;
-  }
-  message += `\n\n${progressMessage}`;
+  // Send just the progress message without extra formatting
+  const message = formatManusMessage(`🔄 ${progressMessage}`);
   
   const messageGuid = await sendIMessage(phoneNumber, message);
   console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId})`);
@@ -200,14 +180,18 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     // Task needs user input - CRITICAL
     message = formatManusMessage(`❓ Question\n\n${resultMessage}`);
   } else if (stopReason === 'finish') {
-    // Task completed successfully
-    message = formatManusMessage(`✅ Task Complete: "${taskTitle}"`);
+    // Task completed successfully - just send the result message
     if (resultMessage) {
-      message += `\n\n${resultMessage}`;
+      message = formatManusMessage(resultMessage);
+    } else {
+      // Fallback if no message
+      message = formatManusMessage(`✅ Task Complete: "${taskTitle}"`);
+      if (taskUrl) {
+        message += `\n\nView: ${taskUrl}`;
+      }
     }
-    if (taskUrl) {
-      message += `\n\nView full report: ${taskUrl}`;
-    }
+    
+    // Add attachments if any (with download links)
     if (attachments && attachments.length > 0) {
       message += `\n\n📎 Attachments (${attachments.length}):`;
       attachments.forEach((att: any, idx: number) => {
@@ -220,9 +204,6 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     message = formatManusMessage(`⚠️ Task Stopped: "${taskTitle}"\n\nReason: ${stopReason}`);
     if (resultMessage) {
       message += `\n\n${resultMessage}`;
-    }
-    if (taskUrl) {
-      message += `\n\nView: ${taskUrl}`;
     }
   }
 
