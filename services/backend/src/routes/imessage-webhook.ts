@@ -53,21 +53,9 @@ export async function startIMessageListener() {
   // Listen for new messages
   sdk.on('new-message', async (message) => {
     try {
-      // Debug: Log full message structure
-      console.log('🔍 DEBUG: Received message:', JSON.stringify({
-        guid: message.guid,
-        isFromMe: message.isFromMe,
-        text: message.text?.substring(0, 50),
-        chatGuid: (message as any).chatGuid,
-        chats: (message as any).chats,
-        handle: (message as any).handle,
-        handleId: (message as any).handleId,
-        keys: Object.keys(message),
-      }, null, 2));
-
       // Filter 1: Ignore our own messages
       if (message.isFromMe) {
-        console.log('⏭️  Ignoring message from self:', message.guid);
+        console.log('⏭️  Ignoring message from self');
         return;
       }
 
@@ -79,19 +67,17 @@ export async function startIMessageListener() {
         const chats = (message as any).chats as Array<{ guid: string }> | undefined;
         if (chats && chats.length > 0) {
           chatGuid = chats[0].guid;
-          console.log('📍 Extracted chatGuid from chats array:', chatGuid);
         }
       }
       
       if (!chatGuid) {
-        console.warn('⚠️  Message missing chatGuid:', message.guid);
-        console.log('Available properties:', Object.keys(message));
+        console.warn('⚠️  Message missing chatGuid');
         return;
       }
       
       // Filter 2: Ignore group chats (chatGuid contains ;+;)
       if (chatGuid && chatGuid.includes(';+;')) {
-        console.log('⏭️  Ignoring group chat message:', message.guid);
+        console.log('⏭️  Ignoring group chat message');
         return;
       }
 
@@ -251,11 +237,10 @@ export async function startIMessageListener() {
         return;
       }
 
-      console.log('📨 Received iMessage:', {
-        handle,
-        messageGuid: message.guid,
-        textLength: messageText.length,
-        attachmentCount: attachments?.length || 0,
+      console.log('📨 Message received:', {
+        from: handle,
+        text: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+        attachments: attachments?.length || 0,
       });
 
       // Add to queue for worker to process
@@ -267,7 +252,7 @@ export async function startIMessageListener() {
         attachments,
       });
 
-      console.log('✅ Message queued:', message.guid);
+      console.log('✅ Message queued for processing');
     } catch (error) {
       console.error('❌ Error processing message:', error);
       // Don't throw - continue listening for other messages
