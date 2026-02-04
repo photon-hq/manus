@@ -183,9 +183,45 @@ export async function startIMessageListener() {
           return;
         }
         
-        // Send helpful message
-        const { sendIMessage } = await import('../lib/imessage.js');
-        await sendIMessage(handle, `Please connect first: ${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect`);
+        // Create connection for any message (not just magic phrase)
+        console.log('🔗 Creating connection for unconnected user:', handle);
+        
+        try {
+          const { generateConnectionId, getConnectionExpiry } = await import('@imessage-mcp/shared');
+          const connectionId = generateConnectionId();
+          const expiresAt = getConnectionExpiry();
+
+          // Create or update to pending connection
+          await prisma.connection.upsert({
+            where: { phoneNumber: handle },
+            create: {
+              connectionId,
+              phoneNumber: handle,
+              status: 'PENDING',
+              expiresAt,
+            },
+            update: {
+              connectionId,
+              status: 'PENDING',
+              expiresAt,
+            },
+          });
+
+          console.log('✅ Connection created:', { connectionId, handle });
+
+          // Send response with connection link
+          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+          const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
+
+          // [1 sec typing indicator] "Please connect to Manus here:"
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, `Please connect to Manus here:\n\n${linkUrl}`);
+
+          console.log('✅ Generic connection message sent to:', handle);
+        } catch (error) {
+          console.error('❌ Failed to create connection:', error);
+        }
+        
         return;
       }
 
