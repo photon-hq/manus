@@ -242,16 +242,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         where: { connectionId },
       });
 
-      if (!connection) {
-        return reply.code(404).send({ error: 'Connection not found' });
-      }
-
-      if (connection.status !== 'PENDING') {
-        return reply.code(400).send({ error: 'Connection already processed' });
-      }
-
-      if (connection.expiresAt && new Date() > connection.expiresAt) {
-        return reply.code(400).send({ error: 'Connection expired' });
+      // Return generic error to prevent enumeration
+      if (!connection || connection.status !== 'PENDING' || (connection.expiresAt && new Date() > connection.expiresAt)) {
+        return reply.code(400).send({ error: 'Invalid or expired connection' });
       }
 
       // Register webhook with Manus (optional - will fail for localhost)
@@ -303,19 +296,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         await sendTypingIndicator(connection.phoneNumber, 1000);
         await sendIMessage(connection.phoneNumber, "All set!");
         
-        // [1 sec typing indicator] "Copy and paste this config:"
-        await sendTypingIndicator(connection.phoneNumber, 1000);
-        await sendIMessage(connection.phoneNumber, "Copy and paste this config:");
+        // [2 sec typing indicator] "Copy and paste this config into Manus:"
+        await sendTypingIndicator(connection.phoneNumber, 2000);
+        await sendIMessage(connection.phoneNumber, "Copy and paste this config into Manus:");
         
-        // Send MCP config
+        // Send MCP config as JSON
         await sendIMessage(connection.phoneNumber, configText);
-        
-        // [1 sec typing indicator] "Then add it here:"
-        await sendTypingIndicator(connection.phoneNumber, 1000);
-        await sendIMessage(connection.phoneNumber, "Then add it here:");
-        
-        // Send link to Manus settings
-        await sendIMessage(connection.phoneNumber, "https://manus.im/app#settings/connectors/mcp-server");
       } catch (error) {
         fastify.log.error({ error }, 'Failed to send iMessage');
         // Continue anyway - user sees config on web page
@@ -344,8 +330,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         where: { connectionId },
       });
 
+      // Return generic error to prevent enumeration
       if (!connection) {
-        return reply.code(404).send({ error: 'Connection not found' });
+        return reply.code(400).send({ error: 'Invalid connection' });
       }
 
       // Delete webhook from Manus
@@ -382,9 +369,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       where: { connectionId },
     });
 
-    if (!connection) {
-      return reply.code(404).send('Connection not found');
-    }
+    // Don't reveal if connection exists - always show the form
+    // Backend validation will handle invalid connections
+    const connectionExists = !!connection;
 
     // HTML form with improved UI
     return reply.type('text/html').send(`
