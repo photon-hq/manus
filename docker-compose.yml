@@ -1,15 +1,12 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: manus-postgres
     environment:
       POSTGRES_DB: manus_imessage
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -20,9 +17,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: manus-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -37,9 +31,8 @@ services:
     build:
       context: .
       dockerfile: services/backend/Dockerfile
-    container_name: manus-backend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
       REDIS_URL: redis://redis:6379
@@ -72,7 +65,6 @@ services:
     build:
       context: .
       dockerfile: services/worker/Dockerfile
-    container_name: manus-worker
     environment:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/manus_imessage
       REDIS_URL: redis://redis:6379
