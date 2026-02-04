@@ -13,7 +13,49 @@ const HOST = '0.0.0.0';
 const fastify = Fastify({
   logger: {
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    // Exclude health checks from logs to reduce noise
+    serializers: {
+      req(request) {
+        // Don't log health check requests
+        if (request.url === '/health') {
+          return undefined;
+        }
+        return {
+          method: request.method,
+          url: request.url,
+          hostname: request.hostname,
+          remoteAddress: request.ip,
+          remotePort: request.socket?.remotePort,
+        };
+      },
+      res(reply) {
+        // Don't log health check responses
+        if (reply.request?.url === '/health') {
+          return undefined;
+        }
+        return {
+          statusCode: reply.statusCode,
+        };
+      },
+    },
   },
+  // Disable request logging for health checks
+  disableRequestLogging: false,
+});
+
+// Skip logging for health checks
+fastify.addHook('onRequest', async (request, reply) => {
+  if (request.url === '/health') {
+    request.log = {
+      info: () => {},
+      error: () => {},
+      debug: () => {},
+      fatal: () => {},
+      warn: () => {},
+      trace: () => {},
+      child: () => request.log,
+    } as any;
+  }
 });
 
 // Register plugins
