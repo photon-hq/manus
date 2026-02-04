@@ -13,10 +13,9 @@ const HOST = '0.0.0.0';
 const fastify = Fastify({
   logger: {
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    // Exclude health checks from logs to reduce noise
     serializers: {
       req(request) {
-        // Don't log health check requests
+        // Skip logging for health checks
         if (request.url === '/health') {
           return undefined;
         }
@@ -24,22 +23,15 @@ const fastify = Fastify({
           method: request.method,
           url: request.url,
           hostname: request.hostname,
-          remoteAddress: request.ip,
-          remotePort: request.socket?.remotePort,
         };
       },
       res(reply) {
-        // Don't log health check responses
-        if (reply.request?.url === '/health') {
-          return undefined;
-        }
         return {
           statusCode: reply.statusCode,
         };
       },
     },
   },
-  // Disable request logging for health checks
   disableRequestLogging: false,
 });
 
