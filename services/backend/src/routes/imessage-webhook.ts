@@ -153,9 +153,13 @@ export async function startIMessageListener() {
           await sendTypingIndicator(handle, 1000);
           await sendIMessage(handle, 'Sure!');
 
-          // [1.5 sec typing indicator] "Please input your Manus token..."
+          // [1.5 sec typing indicator] "Please input your Manus token in the following link:"
           await sendTypingIndicator(handle, 1500);
-          await sendIMessage(handle, `Please input your Manus token in the following link:\n\n${linkUrl}`);
+          await sendIMessage(handle, 'Please input your Manus token in the following link:');
+          
+          // [1 sec typing indicator] Send link as separate message
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, linkUrl);
 
           console.log('✅ Connection setup message sent to:', handle);
         } catch (error) {
@@ -215,7 +219,11 @@ export async function startIMessageListener() {
 
           // [1 sec typing indicator] "Please connect to Manus here:"
           await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, `Please connect to Manus here:\n\n${linkUrl}`);
+          await sendIMessage(handle, "Please connect to Manus here:");
+          
+          // [1 sec typing indicator] Send link as separate message
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, linkUrl);
 
           console.log('✅ Generic connection message sent to:', handle);
         } catch (error) {
@@ -231,10 +239,6 @@ export async function startIMessageListener() {
         
         try {
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          
-          // Send processing message
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, 'Revoking your connection...');
           
           // Delete webhook from Manus
           if (connection.webhookId && connection.manusApiKey) {
@@ -279,7 +283,7 @@ export async function startIMessageListener() {
 
           // Send confirmation
           await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, '✅ Your connection has been revoked and all data deleted.\n\nTo reconnect in the future, text "Hey Manus! Please connect my iMessage"');
+          await sendIMessage(handle, 'Done. All data deleted.');
           
           console.log('✅ Connection revoked and data cleaned up for:', handle);
         } catch (error) {
@@ -287,7 +291,7 @@ export async function startIMessageListener() {
           
           try {
             const { sendIMessage } = await import('../lib/imessage.js');
-            await sendIMessage(handle, '❌ Failed to revoke connection. Please try again or visit https://manus.photon.codes/connect/revoke');
+            await sendIMessage(handle, 'Something went wrong. Please try again.');
           } catch (sendError) {
             console.error('❌ Failed to send error message:', sendError);
           }
@@ -297,7 +301,7 @@ export async function startIMessageListener() {
       }
 
       // Check if user wants to revoke/disconnect
-      const revokeKeywords = /revoke|disconnect|stop manus|remove connection|delete.*data|unlink/i;
+      const revokeKeywords = /revoke|disconnect|stop|remove|delete|unlink/i;
       if (revokeKeywords.test(messageText)) {
         console.log('🔌 Revoke request from:', handle);
         
@@ -306,7 +310,7 @@ export async function startIMessageListener() {
           
           // Send confirmation prompt
           await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, '⚠️ Are you sure you want to revoke your connection?\n\nThis will:\n• Disconnect your iMessage from Manus\n• Delete all your messages and data\n• Remove the MCP connector\n\nReply "YES REVOKE" to confirm, or anything else to cancel.');
+          await sendIMessage(handle, 'This will disconnect and delete all your data.\n\nReply "YES REVOKE" to confirm.');
           
           console.log('✅ Sent revocation confirmation prompt to:', handle);
         } catch (error) {
