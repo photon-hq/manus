@@ -13,26 +13,7 @@ const HOST = '0.0.0.0';
 const fastify = Fastify({
   logger: {
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    serializers: {
-      req(request) {
-        // Skip logging for health checks
-        if (request.url === '/health') {
-          return undefined;
-        }
-        return {
-          method: request.method,
-          url: request.url,
-          hostname: request.hostname,
-        };
-      },
-      res(reply) {
-        return {
-          statusCode: reply.statusCode,
-        };
-      },
-    },
   },
-  disableRequestLogging: false,
 });
 
 // Skip logging for health checks
