@@ -103,8 +103,19 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
         where: { photonApiKey },
       });
 
-      if (!connection || connection.status !== Status.ACTIVE) {
-        return reply.code(401).send({ error: 'Invalid or inactive API key' });
+      if (!connection) {
+        return reply.code(401).send({ error: 'Invalid API key' });
+      }
+
+      if (connection.status === Status.REVOKED) {
+        return reply.code(403).send({ 
+          error: 'Connection revoked',
+          message: 'This connection has been revoked. Please reconnect at https://manus.photon.codes/connect'
+        });
+      }
+
+      if (connection.status !== Status.ACTIVE) {
+        return reply.code(401).send({ error: 'Inactive API key' });
       }
 
       // Validate Origin header to prevent DNS rebinding attacks
@@ -339,6 +350,14 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
 
     if (!connection) {
       return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    if (connection.status === Status.REVOKED) {
+      return {
+        status: 'REVOKED',
+        message: 'Connection has been revoked',
+        reconnectUrl: 'https://manus.photon.codes/connect',
+      };
     }
 
     // Find active session for this connection

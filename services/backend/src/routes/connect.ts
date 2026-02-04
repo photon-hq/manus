@@ -27,6 +27,152 @@ const RevokeSchema = z.object({
 });
 
 export const connectRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /revoke - Revoke connection page
+  fastify.get('/revoke', async (request, reply) => {
+    return reply.type('text/html').send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Revoke Manus Connection</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <link rel="icon" type="image/png" href="/favicon.png">
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              min-height: 100vh;
+              background: #ffffff;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+            }
+            .container { max-width: 480px; width: 100%; text-align: center; }
+            h1 { font-size: 32px; font-weight: 600; color: #000000; margin-bottom: 12px; }
+            .subtitle { font-size: 17px; color: rgba(0, 0, 0, 0.6); margin-bottom: 32px; line-height: 1.5; }
+            .warning { 
+              background: rgba(255, 59, 48, 0.1); 
+              border: 1px solid rgba(255, 59, 48, 0.3);
+              border-radius: 12px;
+              padding: 16px;
+              margin-bottom: 24px;
+              color: #ff3b30;
+              font-size: 15px;
+            }
+            input {
+              width: 100%;
+              padding: 16px 20px;
+              font-size: 17px;
+              border: 1px solid rgba(0, 0, 0, 0.1);
+              border-radius: 12px;
+              background: rgba(0, 0, 0, 0.02);
+              margin-bottom: 16px;
+            }
+            input:focus { outline: none; border-color: rgba(0, 0, 0, 0.3); background: #ffffff; }
+            .btn {
+              width: 100%;
+              padding: 16px 48px;
+              background: #ff3b30;
+              color: #ffffff;
+              border: none;
+              font-size: 17px;
+              font-weight: 500;
+              border-radius: 12px;
+              cursor: pointer;
+              transition: all 0.3s;
+            }
+            .btn:hover:not(:disabled) { background: #ff2d1f; transform: translateY(-1px); }
+            .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            .success { 
+              background: rgba(52, 199, 89, 0.1); 
+              border: 1px solid rgba(52, 199, 89, 0.3);
+              border-radius: 12px;
+              padding: 16px;
+              color: #34c759;
+              font-size: 15px;
+              display: none;
+            }
+            .error { 
+              background: rgba(255, 59, 48, 0.1); 
+              border: 1px solid rgba(255, 59, 48, 0.3);
+              border-radius: 12px;
+              padding: 16px;
+              color: #ff3b30;
+              font-size: 15px;
+              display: none;
+              margin-top: 16px;
+            }
+            .show { display: block; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Revoke Connection</h1>
+            <p class="subtitle">Disconnect your iMessage from Manus and delete all your data</p>
+            
+            <div class="warning">
+              ⚠️ This action cannot be undone. All your messages and data will be permanently deleted.
+            </div>
+            
+            <form id="revokeForm">
+              <input 
+                type="text" 
+                id="photonApiKey" 
+                placeholder="Enter your Photon API key (ph_live_...)" 
+                required 
+              />
+              <button type="submit" class="btn" id="revokeBtn">Revoke Connection</button>
+            </form>
+            
+            <div id="success" class="success"></div>
+            <div id="error" class="error"></div>
+          </div>
+          
+          <script>
+            document.getElementById('revokeForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const btn = document.getElementById('revokeBtn');
+              const errorDiv = document.getElementById('error');
+              const successDiv = document.getElementById('success');
+              const photonApiKey = document.getElementById('photonApiKey').value.trim();
+              
+              btn.disabled = true;
+              btn.textContent = 'Revoking...';
+              errorDiv.classList.remove('show');
+              successDiv.classList.remove('show');
+              
+              try {
+                const response = await fetch('/connect/revoke', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ photonApiKey })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                  successDiv.textContent = '✅ Connection revoked successfully! All your data has been deleted. You will receive a confirmation via iMessage.';
+                  successDiv.classList.add('show');
+                  document.getElementById('revokeForm').style.display = 'none';
+                } else {
+                  errorDiv.textContent = data.error || 'Failed to revoke connection';
+                  errorDiv.classList.add('show');
+                  btn.disabled = false;
+                  btn.textContent = 'Revoke Connection';
+                }
+              } catch (error) {
+                errorDiv.textContent = 'Failed to revoke connection. Please try again.';
+                errorDiv.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = 'Revoke Connection';
+              }
+            });
+          </script>
+        </body>
+      </html>
+    `);
+  });
+
   // GET / - Landing page with "Connect to Manus" button
   fastify.get('/', async (request, reply) => {
     const photonHandle = process.env.PHOTON_HANDLE || '+14158156704';
@@ -321,7 +467,82 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Legacy endpoint removed - use PUT /connect/:id instead
 
-  // DELETE /connect/:id - Revoke connection
+  // POST /connect/revoke - Revoke connection by Photon API key
+  fastify.post('/revoke', async (request, reply) => {
+    try {
+      const body = RevokeSchema.parse(request.body);
+      const { photonApiKey } = body;
+
+      const connection = await prisma.connection.findUnique({
+        where: { photonApiKey },
+      });
+
+      // Return generic error to prevent enumeration
+      if (!connection) {
+        return reply.code(400).send({ error: 'Invalid API key' });
+      }
+
+      if (connection.status === 'REVOKED') {
+        return reply.code(400).send({ error: 'Connection already revoked' });
+      }
+
+      fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Starting connection revocation by API key');
+
+      // Delete webhook from Manus
+      if (connection.webhookId && connection.manusApiKey) {
+        try {
+          await deleteManusWebhook(connection.manusApiKey, connection.webhookId);
+          fastify.log.info({ webhookId: connection.webhookId }, 'Webhook deleted from Manus');
+        } catch (error) {
+          fastify.log.warn({ error }, 'Failed to delete webhook from Manus');
+        }
+      }
+
+      // Clean up all user data in a transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.messageQueue.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+
+        await tx.manusMessage.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+
+        await tx.connection.update({
+          where: { photonApiKey },
+          data: {
+            status: 'REVOKED',
+            revokedAt: new Date(),
+            manusApiKey: null,
+            currentTaskId: null,
+          },
+        });
+      });
+
+      fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Connection revoked by API key');
+
+      // Send iMessage notification
+      try {
+        const { sendIMessage } = await import('../lib/imessage.js');
+        await sendIMessage(
+          connection.phoneNumber,
+          'Your iMessage connection to Manus has been revoked. All your data has been deleted.'
+        );
+      } catch (error) {
+        fastify.log.warn({ error }, 'Failed to send revocation notification');
+      }
+
+      return {
+        success: true,
+        message: 'Connection revoked successfully',
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Failed to revoke connection');
+      return reply.code(500).send({ error: 'Failed to revoke connection' });
+    }
+  });
+
+  // DELETE /connect/:id - Revoke connection and clean up all user data
   fastify.delete('/:connectionId', async (request, reply) => {
     try {
       const { connectionId } = request.params as { connectionId: string };
@@ -335,29 +556,67 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(400).send({ error: 'Invalid connection' });
       }
 
+      fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Starting connection revocation');
+
       // Delete webhook from Manus
       if (connection.webhookId && connection.manusApiKey) {
-        await deleteManusWebhook(connection.manusApiKey, connection.webhookId);
+        try {
+          await deleteManusWebhook(connection.manusApiKey, connection.webhookId);
+          fastify.log.info({ webhookId: connection.webhookId }, 'Webhook deleted from Manus');
+        } catch (error) {
+          fastify.log.warn({ error }, 'Failed to delete webhook from Manus');
+          // Continue with revocation even if webhook deletion fails
+        }
       }
 
-      // Update status to REVOKED
-      await prisma.connection.update({
-        where: { connectionId },
-        data: {
-          status: 'REVOKED',
-          revokedAt: new Date(),
-        },
+      // Clean up all user data in a transaction to maintain consistency
+      await prisma.$transaction(async (tx) => {
+        // Delete all message queue entries for this user
+        const deletedQueueItems = await tx.messageQueue.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+        fastify.log.info({ count: deletedQueueItems.count }, 'Deleted message queue items');
+
+        // Delete all Manus messages for this user
+        const deletedManusMessages = await tx.manusMessage.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+        fastify.log.info({ count: deletedManusMessages.count }, 'Deleted Manus messages');
+
+        // Update connection status to REVOKED
+        await tx.connection.update({
+          where: { connectionId },
+          data: {
+            status: 'REVOKED',
+            revokedAt: new Date(),
+            // Clear sensitive data
+            manusApiKey: null,
+            currentTaskId: null,
+          },
+        });
       });
 
-      fastify.log.info({ connectionId }, 'Connection revoked');
+      fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection revoked and data cleaned up');
+
+      // Send iMessage notification to user
+      try {
+        const { sendIMessage } = await import('../lib/imessage.js');
+        await sendIMessage(
+          connection.phoneNumber,
+          'Your iMessage connection to Manus has been revoked. All your data has been deleted.'
+        );
+      } catch (error) {
+        fastify.log.warn({ error }, 'Failed to send revocation notification');
+        // Don't fail the revocation if notification fails
+      }
 
       return {
         success: true,
-        message: 'Connection revoked successfully',
+        message: 'Connection revoked and all data deleted successfully',
       };
     } catch (error) {
       fastify.log.error(error, 'Failed to revoke connection');
-      return reply.code(400).send({ error: 'Invalid request' });
+      return reply.code(500).send({ error: 'Failed to revoke connection' });
     }
   });
 
