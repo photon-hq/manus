@@ -8,19 +8,28 @@ cd /app/packages/database
 MIGRATION_STATUS=$(npx prisma migrate status 2>&1 || true)
 
 if echo "$MIGRATION_STATUS" | grep -q "failed"; then
-  echo "⚠️  Failed migrations detected. Resetting database..."
+  echo "⚠️  Failed migrations detected. Marking all as rolled back..."
   
-  # Drop all tables and reset migration history
-  echo "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;" | \
-    PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h postgres -U postgres -d manus_imessage || true
+  # Mark all failed migrations as rolled back
+  npx prisma migrate resolve --rolled-back "20260201000000_init" || true
+  npx prisma migrate resolve --rolled-back "20260202000000_add_attachments_and_current_task" || true
   
-  echo "✅ Database reset complete. Running migrations..."
+  echo "✅ Failed migrations marked as rolled back"
+  echo "🔄 Pushing schema directly to database..."
+  
+  # Push the schema directly to reset everything
+  npx prisma db push --force-reset --accept-data-loss
+  
+  echo "✅ Database schema reset complete"
 fi
 
-# Run migrations
-npx prisma migrate deploy
+# Run migrations to record them in migration history
+npx prisma migrate deploy || {
+  echo "⚠️  Migration deploy failed, using db push as fallback..."
+  npx prisma db push --accept-data-loss
+}
 
-echo "✅ Database migrations complete"
+echo "✅ Database ready"
 echo "Starting backend service..."
 cd /app/services/backend
 exec node dist/index.js
