@@ -9,6 +9,7 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.json ./
 COPY packages ./packages
 COPY services/backend ./services/backend
+COPY favicon.png ./
 
 # Install all dependencies
 RUN pnpm install --no-frozen-lockfile

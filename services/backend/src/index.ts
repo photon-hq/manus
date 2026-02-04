@@ -51,19 +51,28 @@ fastify.get('/health', async (request, reply) => {
 
 // Serve favicon at root
 fastify.get('/favicon.png', async (request, reply) => {
-  const fs = await import('fs');
+  const fs = await import('fs/promises');
   const path = await import('path');
   
-  const faviconPath = path.join(process.cwd(), 'favicon.png');
+  // In Docker: /app/favicon.png, Local: ../../favicon.png from services/backend
+  const faviconPath = process.env.NODE_ENV === 'production'
+    ? '/app/favicon.png'
+    : path.join(process.cwd(), '../../favicon.png');
   
-  if (!fs.existsSync(faviconPath)) {
+  try {
+    const favicon = await fs.readFile(faviconPath);
+    return reply
+      .header('Content-Type', 'image/png')
+      .header('Cache-Control', 'public, max-age=31536000')
+      .send(favicon);
+  } catch (error) {
     return reply.code(404).send({ error: 'Favicon not found' });
   }
-  
-  reply
-    .header('Content-Type', 'image/png')
-    .header('Cache-Control', 'public, max-age=31536000')
-    .send(fs.createReadStream(faviconPath));
+});
+
+// Also serve favicon.ico for browser default requests
+fastify.get('/favicon.ico', async (request, reply) => {
+  return reply.redirect('/favicon.png');
 });
 
 // Graceful shutdown
