@@ -26,6 +26,73 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
       // Extract and validate API key
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        // If accessed from browser (no auth header), show helpful info page
+        const acceptHeader = request.headers.accept || '';
+        if (acceptHeader.includes('text/html')) {
+          return reply.type('text/html').send(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Photon iMessage MCP Server</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <link rel="icon" type="image/png" href="/favicon.png">
+                <style>
+                  * { box-sizing: border-box; margin: 0; padding: 0; }
+                  body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                    min-height: 100vh;
+                    background: #ffffff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                  }
+                  .container {
+                    max-width: 600px;
+                    text-align: center;
+                  }
+                  h1 {
+                    font-size: 32px;
+                    font-weight: 600;
+                    color: #000000;
+                    margin-bottom: 16px;
+                    letter-spacing: -0.02em;
+                  }
+                  p {
+                    font-size: 17px;
+                    color: rgba(0, 0, 0, 0.6);
+                    line-height: 1.6;
+                    margin-bottom: 32px;
+                  }
+                  .btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 16px 48px;
+                    background: rgba(0, 0, 0, 0.85);
+                    color: #ffffff;
+                    text-decoration: none;
+                    font-size: 17px;
+                    font-weight: 500;
+                    border-radius: 12px;
+                    transition: all 0.3s;
+                  }
+                  .btn:hover {
+                    background: rgba(0, 0, 0, 0.95);
+                    transform: translateY(-1px);
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <h1>Photon iMessage MCP Server</h1>
+                  <p>This is an MCP (Model Context Protocol) server endpoint. It's designed to be used by Manus AI, not accessed directly in a browser.</p>
+                  <a href="/connect" class="btn">Connect to Manus</a>
+                </div>
+              </body>
+            </html>
+          `);
+        }
         return reply.code(401).send({ error: 'Missing or invalid authorization header' });
       }
 

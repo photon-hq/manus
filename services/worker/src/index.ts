@@ -379,9 +379,17 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
     where: { phoneNumber, status: 'ACTIVE' },
   });
 
-  if (!connection || !connection.manusApiKey) {
+  if (!connection) {
+    console.error(`❌ No active connection found for ${phoneNumber}`);
     throw new Error('No active connection found');
   }
+
+  if (!connection.manusApiKey) {
+    console.error(`❌ No Manus API key found for ${phoneNumber}`);
+    throw new Error('No Manus API key configured');
+  }
+
+  console.log(`✅ Found connection for ${phoneNumber}, creating task...`);
 
   try {
     // Build attachments array
