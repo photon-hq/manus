@@ -40,4 +40,4 @@ rm -rf packages/database/node_modules/.prisma
 echo ""
 echo "✅ Cleanup complete!"
 echo ""
-echo "To start fresh, run: ./scripts/quick-start.sh"
+echo "To start fresh, run: pnpm install && docker-compose up -d"
