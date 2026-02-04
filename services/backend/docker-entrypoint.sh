@@ -6,9 +6,16 @@ cd /app/packages/database
 
 # Check if RESET_DATABASE env var is set to explicitly reset the database
 if [ "$RESET_DATABASE" = "true" ]; then
-  echo "🔄 RESET_DATABASE=true detected. Resetting database..."
-  npx prisma db push --force-reset --accept-data-loss
-  echo "✅ Database reset complete"
+  echo "🔄 RESET_DATABASE=true detected. Clearing all data..."
+  
+  # Delete all data from tables (keeps table structure and migrations)
+  npx prisma db execute --stdin <<SQL
+    TRUNCATE TABLE "message_queue" CASCADE;
+    TRUNCATE TABLE "manus_messages" CASCADE;
+    TRUNCATE TABLE "connections" CASCADE;
+SQL
+  
+  echo "✅ Database data cleared (tables and migrations preserved)"
 else
   # Check if database is empty or has failed migrations
   MIGRATION_STATUS=$(npx prisma migrate status 2>&1 || true)
