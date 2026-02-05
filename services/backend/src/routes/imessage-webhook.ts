@@ -386,11 +386,9 @@ Your iMessage is connected to Manus AI.`;
         return;
       }
 
-      console.log('📨 Message received:', {
-        from: handle,
-        text: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
-        attachments: attachments?.length || 0,
-      });
+      console.log('📨 Message received from:', handle);
+      console.log('📝 Message text:', messageText || '(empty)');
+      console.log('📎 Attachments:', attachments?.length || 0);
 
       // Add to queue for worker to process
       const queue = getQueue(handle);
