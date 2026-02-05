@@ -14,6 +14,11 @@ const fastify = Fastify({
   logger: {
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   },
+  // Increase timeouts for SSE connections
+  connectionTimeout: 0, // Disable connection timeout for SSE
+  keepAliveTimeout: 72000, // 72 seconds (higher than typical load balancer timeout)
+  // Trust proxy headers (required when behind reverse proxy like Traefik)
+  trustProxy: true,
 });
 
 // Skip logging for health checks
@@ -62,6 +67,52 @@ fastify.get('/health', async (request, reply) => {
   } catch (error) {
     return reply.code(503).send({ status: 'unhealthy' });
   }
+});
+
+// Debug endpoint to check proxy headers and SSE readiness
+fastify.get('/debug/proxy', async (request, reply) => {
+  return {
+    headers: request.headers,
+    ip: request.ip,
+    hostname: request.hostname,
+    protocol: request.protocol,
+    url: request.url,
+    method: request.method,
+    nodeEnv: process.env.NODE_ENV,
+    port: PORT,
+  };
+});
+
+// Test SSE endpoint (no auth required) - for debugging proxy issues
+fastify.get('/debug/sse', async (request, reply) => {
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no', // Disable nginx buffering
+  });
+
+  // Send initial message
+  reply.raw.write('data: {"message": "SSE connection established"}\n\n');
+
+  // Send a message every second for 5 seconds
+  let count = 0;
+  const interval = setInterval(() => {
+    count++;
+    reply.raw.write(`data: {"count": ${count}, "timestamp": "${new Date().toISOString()}"}\n\n`);
+    
+    if (count >= 5) {
+      clearInterval(interval);
+      reply.raw.write('data: {"message": "SSE test complete"}\n\n');
+      reply.raw.end();
+    }
+  }, 1000);
+
+  // Handle client disconnect
+  request.raw.on('close', () => {
+    clearInterval(interval);
+    reply.raw.end();
+  });
 });
 
 // Serve favicon at root

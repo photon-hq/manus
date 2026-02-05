@@ -74,6 +74,10 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(403).send({ error: 'Forbidden origin' });
       }
 
+      // Set headers to help with proxy issues (SSE-specific)
+      reply.raw.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+      reply.raw.setHeader('Cache-Control', 'no-cache, no-transform'); // Prevent caching/transformation
+
       fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'SSE connection established');
 
       // Create MCP server instance

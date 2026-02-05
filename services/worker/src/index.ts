@@ -43,6 +43,9 @@ const queues = new Map<string, Queue>();
 const workers = new Map<string, Worker>();
 const debounceTimers = new Map<string, NodeJS.Timeout>();
 
+// Map to track active typing indicators per phone number
+const typingIndicators = new Map<string, NodeJS.Timeout>();
+
 console.log('Worker service starting...');
 
 // Function to get or create queue for a handle (phone number or email)
@@ -433,16 +436,8 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
 
   console.log(`✅ Found connection for ${phoneNumber}, creating task...`);
 
-  // Start typing indicator before sending to Manus
-  try {
-    const sdk = await getIMessageSDK();
-    const chatGuid = `any;-;${phoneNumber}`;
-    await sdk.chats.startTyping(chatGuid);
-    console.log(`🟢 Started typing indicator for ${phoneNumber}`);
-  } catch (error) {
-    console.warn('Failed to start typing indicator:', error);
-    // Non-critical - continue anyway
-  }
+  // Start continuous typing indicator before sending to Manus
+  await startContinuousTyping(phoneNumber);
 
   try {
     // Build attachments array

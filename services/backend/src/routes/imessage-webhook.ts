@@ -59,6 +59,50 @@ export async function startIMessageListener() {
         return;
       }
 
+      // Filter 2: Ignore reactions/tapbacks (they have associatedMessageGuid or associatedMessageType)
+      const associatedMessageGuid = (message as any).associatedMessageGuid as string | undefined;
+      const associatedMessageType = (message as any).associatedMessageType as string | undefined;
+      if (associatedMessageGuid || associatedMessageType) {
+        console.log('⏭️  Ignoring reaction/tapback (associated with another message)');
+        return;
+      }
+
+      // Filter 3: Ignore stickers
+      const attachments = (message as any).attachments as Array<any> | undefined;
+      const hasSticker = attachments?.some((att: any) => att.isSticker === true);
+      if (hasSticker) {
+        console.log('⏭️  Ignoring sticker message');
+        return;
+      }
+
+      // Filter 4: Ignore text-based reactions (e.g., "Loved \"message\"", "Emphasized \"message\"")
+      const messageText = message.text || '';
+      const reactionPatterns = [
+        /^Loved\s+".*"$/i,
+        /^Liked\s+".*"$/i,
+        /^Disliked\s+".*"$/i,
+        /^Laughed at\s+".*"$/i,
+        /^Emphasized\s+".*"$/i,
+        /^Questioned\s+".*"$/i,
+        /^Loved\s+an image$/i,
+        /^Liked\s+an image$/i,
+        /^Disliked\s+an image$/i,
+        /^Laughed at\s+an image$/i,
+        /^Emphasized\s+an image$/i,
+        /^Questioned\s+an image$/i,
+        /^Removed a heart from\s+".*"$/i,
+        /^Removed a like from\s+".*"$/i,
+        /^Removed a dislike from\s+".*"$/i,
+        /^Removed a laugh from\s+".*"$/i,
+        /^Removed an emphasis from\s+".*"$/i,
+        /^Removed a question mark from\s+".*"$/i,
+      ];
+      
+      if (reactionPatterns.some(pattern => pattern.test(messageText))) {
+        console.log('⏭️  Ignoring text-based reaction:', messageText.substring(0, 50));
+        return;
+      }
+
       // Try to get chatGuid from message or from chats array
       let chatGuid = (message as any).chatGuid as string | undefined;
       
@@ -75,7 +119,7 @@ export async function startIMessageListener() {
         return;
       }
       
-      // Filter 2: Ignore group chats (chatGuid contains ;+;)
+      // Filter 5: Ignore group chats (chatGuid contains ;+;)
       if (chatGuid && chatGuid.includes(';+;')) {
         console.log('⏭️  Ignoring group chat message');
         return;
@@ -97,9 +141,6 @@ export async function startIMessageListener() {
         console.warn('⚠️  Phone number missing country code:', handle);
         console.warn('⚠️  This may cause issues with international users. Recommend using international format (+country_code)');
       }
-
-      // Extract message text
-      const messageText = message.text || '';
 
       // Check if this is a connection initiation message
       const isConnectionRequest = /hey\s+manus.*connect.*imessage/i.test(messageText) || 
@@ -373,22 +414,24 @@ Your iMessage is connected to Manus AI.`;
         return;
       }
 
-      // Extract attachments
-      const attachments = message.attachments?.map((att: any) => ({
-        guid: att.guid,
-        filename: att.transferName || 'file',
-        mimeType: att.mimeType || 'application/octet-stream',
-      }));
+      // Extract attachments (filter out stickers)
+      const processedAttachments = message.attachments
+        ?.filter((att: any) => !att.isSticker)
+        ?.map((att: any) => ({
+          guid: att.guid,
+          filename: att.transferName || 'file',
+          mimeType: att.mimeType || 'application/octet-stream',
+        }));
 
       // Skip empty messages without attachments
-      if (!messageText && (!attachments || attachments.length === 0)) {
+      if (!messageText && (!processedAttachments || processedAttachments.length === 0)) {
         console.log('⏭️  Ignoring empty message:', message.guid);
         return;
       }
 
       console.log('📨 Message received from:', handle);
       console.log('📝 Message text:', messageText || '(empty)');
-      console.log('📎 Attachments:', attachments?.length || 0);
+      console.log('📎 Attachments:', processedAttachments?.length || 0);
 
       // Add to queue for worker to process
       const queue = getQueue(handle);
@@ -396,7 +439,7 @@ Your iMessage is connected to Manus AI.`;
         phoneNumber: handle,
         messageText,
         messageGuid: message.guid,
-        attachments,
+        attachments: processedAttachments,
       });
 
       console.log('✅ Message queued for processing');
