@@ -45,9 +45,10 @@ export function isManusMessage(text: string): boolean {
 
 /**
  * Format a message with [Manus] prefix
+ * Note: Prefix removed - now returns text as-is for cleaner UX
  */
 export function formatManusMessage(text: string): string {
-  return `[Manus] ${text}`;
+  return text; // No prefix - rely on database tracking instead
 }
 
 /**

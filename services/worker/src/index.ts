@@ -359,12 +359,27 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20): Promi
 
     await sdk.close();
 
-    return messages.map((msg) => ({
-      from: msg.isFromMe ? 'me' : phoneNumber,
-      to: msg.isFromMe ? phoneNumber : 'me',
-      text: msg.text || '',
-      timestamp: new Date(msg.dateCreated).toISOString(),
-    }));
+    // Get only MANUAL message GUIDs (sent via MCP tool) to filter out
+    // Keep WEBHOOK messages (task responses) in context for SLM classifier
+    const manualMessageGuids = await prisma.manusMessage.findMany({
+      where: { 
+        phoneNumber,
+        messageType: 'MANUAL' // Only exclude manual/MCP messages
+      },
+      select: { messageGuid: true },
+    });
+
+    const guidSet = new Set(manualMessageGuids.map((m) => m.messageGuid));
+
+    // Filter out only MANUAL messages, keep user messages and webhook responses
+    return messages
+      .filter((msg) => !guidSet.has(msg.guid))
+      .map((msg) => ({
+        from: msg.isFromMe ? 'me' : phoneNumber,
+        to: msg.isFromMe ? phoneNumber : 'me',
+        text: msg.text || '',
+        timestamp: new Date(msg.dateCreated).toISOString(),
+      }));
   } catch (error) {
     console.error('Failed to fetch recent messages:', error);
     return [];

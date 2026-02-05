@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma, Status } from '@imessage-mcp/database';
-import { isManusMessage, formatManusMessage } from '@imessage-mcp/shared';
+import { formatManusMessage } from '@imessage-mcp/shared';
 import { z } from 'zod';
 
 const SendMessageSchema = z.object({
@@ -47,9 +47,9 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
 
       const guidSet = new Set(manusMessageGuids.map((m) => m.messageGuid));
 
-      // Filter out Manus messages
+      // Filter out Manus messages by GUID (database is source of truth)
       const filteredMessages = messages.filter(
-        (msg) => !isManusMessage(msg.text) && !guidSet.has(msg.guid || '')
+        (msg) => !guidSet.has(msg.guid || '')
       );
 
       fastify.log.info(
@@ -73,7 +73,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
       const { phoneNumber } = connection;
       const body = SendMessageSchema.parse(request.body);
 
-      // Format message with [Manus] prefix
+      // Format message (no prefix - returns as-is)
       const formattedMessage = formatManusMessage(body.message);
 
       // Send via iMessage infrastructure
