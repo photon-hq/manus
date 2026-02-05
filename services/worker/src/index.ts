@@ -2,10 +2,36 @@ import { Queue, Worker, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
 import { prisma, QueueStatus } from '@imessage-mcp/database';
 import { TaskClassification, sanitizeHandle } from '@imessage-mcp/shared';
+import { SDK } from '@photon-ai/advanced-imessage-kit';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
-const DEBOUNCE_WINDOW = 2000; // 2 seconds
+const DEBOUNCE_WINDOW = 3000; // 3 seconds
+
+// iMessage SDK instance
+let imessageSDK: ReturnType<typeof SDK> | null = null;
+
+// Get or create iMessage SDK instance
+async function getIMessageSDK() {
+  if (!imessageSDK) {
+    const IMESSAGE_SERVER_URL = process.env.IMESSAGE_SERVER_URL;
+    const IMESSAGE_API_KEY = process.env.IMESSAGE_API_KEY;
+
+    if (!IMESSAGE_SERVER_URL || !IMESSAGE_API_KEY) {
+      throw new Error('IMESSAGE_SERVER_URL and IMESSAGE_API_KEY are required');
+    }
+
+    imessageSDK = SDK({
+      serverUrl: IMESSAGE_SERVER_URL,
+      apiKey: IMESSAGE_API_KEY,
+      logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'info',
+    });
+
+    await imessageSDK.connect();
+    console.log('✅ Worker connected to iMessage SDK');
+  }
+  return imessageSDK;
+}
 
 // Redis connection
 const connection = new Redis(REDIS_URL, {
@@ -392,6 +418,17 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
 
   console.log(`✅ Found connection for ${phoneNumber}, creating task...`);
 
+  // Start typing indicator before sending to Manus
+  try {
+    const sdk = await getIMessageSDK();
+    const chatGuid = `any;-;${phoneNumber}`;
+    await sdk.chats.startTyping(chatGuid);
+    console.log(`🟢 Started typing indicator for ${phoneNumber}`);
+  } catch (error) {
+    console.warn('Failed to start typing indicator:', error);
+    // Non-critical - continue anyway
+  }
+
   try {
     // Build attachments array
     const attachments = fileIds.map(fileId => ({
@@ -453,6 +490,17 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
   if (!connection.currentTaskId) {
     console.warn('No current task ID found, creating new task instead');
     return createManusTask(phoneNumber, message, fileIds);
+  }
+
+  // Start typing indicator before sending to Manus
+  try {
+    const sdk = await getIMessageSDK();
+    const chatGuid = `any;-;${phoneNumber}`;
+    await sdk.chats.startTyping(chatGuid);
+    console.log(`🟢 Started typing indicator for ${phoneNumber}`);
+  } catch (error) {
+    console.warn('Failed to start typing indicator:', error);
+    // Non-critical - continue anyway
   }
 
   try {
