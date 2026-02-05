@@ -138,28 +138,39 @@ export function normalizePhoneToInternational(phone: string): string {
 /**
  * Split message by paragraph breaks (\n\n) into separate chunks
  * Filters out empty chunks and trims whitespace
+ * Only splits if there are 2+ paragraphs, otherwise returns single chunk
  * Useful for sending long messages as multiple separate iMessages for better readability
  */
 export function splitMessageByParagraphs(message: string): string[] {
-  return message
+  const chunks = message
     .split('\n\n')
     .map(chunk => chunk.trim())
     .filter(chunk => chunk.length > 0);
+  
+  // Don't split if only 1 paragraph (short message)
+  if (chunks.length < 2) {
+    return [message.trim()];
+  }
+  
+  return chunks;
 }
 
 /**
  * Strip markdown formatting from text since iMessage API doesn't support programmatic formatting
  * Removes: **bold**, *italic*, _underline_, ~strikethrough~
  * Keeps the text content without the markdown syntax
+ * Preserves URLs with underscores (e.g., https://example.com/my_file)
  */
 export function stripMarkdownFormatting(text: string): string {
   return text
     // Remove bold (**text** or __text__)
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/__(.+?)__/g, '$1')
-    // Remove italic (*text* or _text_) - but be careful with underscores in words
+    // Remove italic (*text*)
     .replace(/\*(.+?)\*/g, '$1')
-    .replace(/(?<!\w)_(.+?)_(?!\w)/g, '$1')
+    // Remove underline (_text_) - only if NOT part of a URL
+    // Negative lookbehind for :// (not in URL) and not between word chars
+    .replace(/(?<!:\/\/[^\s]*?)(?<!\w)_([^_\s]+?)_(?!\w)/g, '$1')
     // Remove strikethrough (~text~ or ~~text~~)
     .replace(/~~(.+?)~~/g, '$1')
     .replace(/~(.+?)~/g, '$1');

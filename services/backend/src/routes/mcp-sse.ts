@@ -179,22 +179,22 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
                 const messageGuid = await sendIMessage(connection.phoneNumber, chunk);
                 messageGuids.push(messageGuid);
                 
-                // Record each chunk in database
-                await prisma.manusMessage.create({
-                  data: {
-                    messageGuid,
-                    phoneNumber: connection.phoneNumber,
-                    messageType: 'MANUAL',
-                  },
-                });
-                
                 // Small delay between messages (except after last one)
                 if (i < chunks.length - 1) {
                   await new Promise(resolve => setTimeout(resolve, 500));
                 }
               }
 
-              fastify.log.info({ phoneNumber: connection.phoneNumber, messageGuids }, 'All message chunks sent via SSE');
+              // Record as single database entry (reduces DB spam)
+              await prisma.manusMessage.create({
+                data: {
+                  messageGuid: messageGuids[0], // Primary GUID
+                  phoneNumber: connection.phoneNumber,
+                  messageType: 'MANUAL',
+                },
+              });
+
+              fastify.log.info({ phoneNumber: connection.phoneNumber, messageGuids }, 'All message chunks sent via SSE (tracked as 1 DB record)');
 
               return {
                 content: [

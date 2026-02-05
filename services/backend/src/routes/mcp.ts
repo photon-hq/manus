@@ -96,22 +96,22 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
         const messageGuid = await sendIMessage(phoneNumber, chunk);
         messageGuids.push(messageGuid);
         
-        // Record each chunk in database
-        await prisma.manusMessage.create({
-          data: {
-            messageGuid,
-            phoneNumber,
-            messageType: 'MANUAL',
-          },
-        });
-        
         // Small delay between messages (except after last one)
         if (i < chunks.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
-      fastify.log.info({ phoneNumber, messageGuids }, 'All message chunks sent');
+      // Record as single database entry (reduces DB spam)
+      await prisma.manusMessage.create({
+        data: {
+          messageGuid: messageGuids[0], // Primary GUID
+          phoneNumber,
+          messageType: 'MANUAL',
+        },
+      });
+
+      fastify.log.info({ phoneNumber, messageGuids }, 'All message chunks sent (tracked as 1 DB record)');
 
       return {
         success: true,

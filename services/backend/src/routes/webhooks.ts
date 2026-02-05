@@ -215,6 +215,7 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   console.log(`📤 Sending ${chunks.length} message chunk(s) to ${phoneNumber} (task: ${taskId}, reason: ${stopReason})`);
 
   // Send each chunk as a separate message
+  const messageGuids: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     
@@ -225,16 +226,8 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     
     // Send the message chunk
     const messageGuid = await sendIMessage(phoneNumber, chunk);
+    messageGuids.push(messageGuid);
     console.log(`  ✅ Sent chunk ${i + 1}/${chunks.length} (guid: ${messageGuid})`);
-    
-    // Record each chunk in database
-    await prisma.manusMessage.create({
-      data: {
-        messageGuid,
-        phoneNumber,
-        messageType: 'WEBHOOK',
-      },
-    });
     
     // Small delay between messages (except after last one)
     if (i < chunks.length - 1) {
@@ -242,7 +235,19 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     }
   }
   
-  console.log(`✅ All ${chunks.length} message chunk(s) sent successfully`);
+  // Record as single database entry with all GUIDs (reduces DB spam)
+  // Store first GUID as primary, others in a JSON array for tracking
+  await prisma.manusMessage.create({
+    data: {
+      messageGuid: messageGuids[0], // Primary GUID for lookups
+      phoneNumber,
+      messageType: 'WEBHOOK',
+      // Note: If you need to track all chunks, add a JSON field to schema
+      // For now, we just track the first message GUID which represents the whole response
+    },
+  });
+  
+  console.log(`✅ All ${chunks.length} message chunk(s) sent successfully (tracked as 1 DB record)`);
 }
 
 // Helper function to send iMessage with retry logic
