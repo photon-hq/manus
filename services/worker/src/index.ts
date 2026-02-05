@@ -436,8 +436,16 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
 
   console.log(`✅ Found connection for ${phoneNumber}, creating task...`);
 
-  // Start continuous typing indicator before sending to Manus
-  await startContinuousTyping(phoneNumber);
+  // Start typing indicator before sending to Manus
+  try {
+    const sdk = await getIMessageSDK();
+    const chatGuid = `any;-;${phoneNumber}`;
+    await sdk.chats.startTyping(chatGuid);
+    console.log(`🟢 Started typing indicator for ${phoneNumber}`);
+  } catch (error) {
+    console.warn('Failed to start typing indicator:', error);
+    // Non-critical - continue anyway
+  }
 
   try {
     // Build attachments array
