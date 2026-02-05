@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@imessage-mcp/database';
-import { WebhookEventSchema, formatManusMessage } from '@imessage-mcp/shared';
+import { WebhookEventSchema, formatManusMessage, splitMessageByParagraphs, stripMarkdownFormatting } from '@imessage-mcp/shared';
 
 /**
  * Webhook Handler for Manus AI Events
@@ -207,17 +207,42 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     }
   }
 
-  const messageGuid = await sendIMessage(phoneNumber, message);
-  console.log(`✅ Task completion notification sent to ${phoneNumber} (task: ${taskId}, reason: ${stopReason})`);
+  // Strip markdown formatting (iMessage API doesn't support programmatic formatting)
+  const cleanMessage = stripMarkdownFormatting(message);
+  
+  // Split message by paragraphs for better readability
+  const chunks = splitMessageByParagraphs(cleanMessage);
+  console.log(`📤 Sending ${chunks.length} message chunk(s) to ${phoneNumber} (task: ${taskId}, reason: ${stopReason})`);
 
-  // Record in database
-  await prisma.manusMessage.create({
-    data: {
-      messageGuid,
-      phoneNumber,
-      messageType: 'WEBHOOK',
-    },
-  });
+  // Send each chunk as a separate message
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    
+    // Show typing indicator before each chunk (except first)
+    if (i > 0) {
+      await sendTypingIndicator(phoneNumber, 500);
+    }
+    
+    // Send the message chunk
+    const messageGuid = await sendIMessage(phoneNumber, chunk);
+    console.log(`  ✅ Sent chunk ${i + 1}/${chunks.length} (guid: ${messageGuid})`);
+    
+    // Record each chunk in database
+    await prisma.manusMessage.create({
+      data: {
+        messageGuid,
+        phoneNumber,
+        messageType: 'WEBHOOK',
+      },
+    });
+    
+    // Small delay between messages (except after last one)
+    if (i < chunks.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+  
+  console.log(`✅ All ${chunks.length} message chunk(s) sent successfully`);
 }
 
 // Helper function to send iMessage with retry logic
@@ -245,4 +270,15 @@ async function sendIMessage(phoneNumber: string, message: string, retries = 3): 
   
   // This should never be reached, but TypeScript needs it
   throw new Error('Unexpected error in sendIMessage');
+}
+
+// Helper function to show typing indicator
+async function sendTypingIndicator(phoneNumber: string, durationMs: number): Promise<void> {
+  try {
+    const { sendTypingIndicator: showTyping } = await import('../lib/imessage.js');
+    await showTyping(phoneNumber, durationMs);
+  } catch (error) {
+    console.warn('Failed to send typing indicator:', error);
+    // Non-critical - continue anyway
+  }
 }

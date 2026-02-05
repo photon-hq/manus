@@ -60,6 +60,9 @@ importers:
       bullmq:
         specifier: ^5.1.0
         version: 5.67.2
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       fastify:
         specifier: ^4.25.2
         version: 4.29.1

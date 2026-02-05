@@ -134,3 +134,33 @@ export function normalizePhoneToInternational(phone: string): string {
   const digits = phone.replace(/[^0-9]/g, '');
   return digits.startsWith('+') ? phone : `+${digits}`;
 }
+
+/**
+ * Split message by paragraph breaks (\n\n) into separate chunks
+ * Filters out empty chunks and trims whitespace
+ * Useful for sending long messages as multiple separate iMessages for better readability
+ */
+export function splitMessageByParagraphs(message: string): string[] {
+  return message
+    .split('\n\n')
+    .map(chunk => chunk.trim())
+    .filter(chunk => chunk.length > 0);
+}
+
+/**
+ * Strip markdown formatting from text since iMessage API doesn't support programmatic formatting
+ * Removes: **bold**, *italic*, _underline_, ~strikethrough~
+ * Keeps the text content without the markdown syntax
+ */
+export function stripMarkdownFormatting(text: string): string {
+  return text
+    // Remove bold (**text** or __text__)
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    // Remove italic (*text* or _text_) - but be careful with underscores in words
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/(?<!\w)_(.+?)_(?!\w)/g, '$1')
+    // Remove strikethrough (~text~ or ~~text~~)
+    .replace(/~~(.+?)~~/g, '$1')
+    .replace(/~(.+?)~/g, '$1');
+}

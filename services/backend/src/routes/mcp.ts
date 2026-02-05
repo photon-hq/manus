@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma, Status } from '@imessage-mcp/database';
-import { formatManusMessage } from '@imessage-mcp/shared';
+import { formatManusMessage, splitMessageByParagraphs, stripMarkdownFormatting } from '@imessage-mcp/shared';
 import { z } from 'zod';
 
 const SendMessageSchema = z.object({
@@ -76,23 +76,48 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
       // Format message (no prefix - returns as-is)
       const formattedMessage = formatManusMessage(body.message);
 
-      // Send via iMessage infrastructure
-      const messageGuid = await sendIMessage(phoneNumber, formattedMessage);
+      // Strip markdown and split by paragraphs
+      const cleanMessage = stripMarkdownFormatting(formattedMessage);
+      const chunks = splitMessageByParagraphs(cleanMessage);
 
-      // Record in database
-      await prisma.manusMessage.create({
-        data: {
-          messageGuid,
-          phoneNumber,
-          messageType: 'MANUAL',
-        },
-      });
+      fastify.log.info({ phoneNumber, chunks: chunks.length }, 'Sending message chunks via MCP');
 
-      fastify.log.info({ phoneNumber, messageGuid }, 'Message sent');
+      // Send each chunk as a separate message
+      const messageGuids: string[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        
+        // Show typing indicator before each chunk (except first)
+        if (i > 0) {
+          await sendTypingIndicator(phoneNumber, 500);
+        }
+        
+        // Send the message chunk
+        const messageGuid = await sendIMessage(phoneNumber, chunk);
+        messageGuids.push(messageGuid);
+        
+        // Record each chunk in database
+        await prisma.manusMessage.create({
+          data: {
+            messageGuid,
+            phoneNumber,
+            messageType: 'MANUAL',
+          },
+        });
+        
+        // Small delay between messages (except after last one)
+        if (i < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      fastify.log.info({ phoneNumber, messageGuids }, 'All message chunks sent');
 
       return {
         success: true,
-        messageGuid,
+        messageGuid: messageGuids[0], // Return first GUID for compatibility
+        messageGuids, // Return all GUIDs
+        chunks: chunks.length,
       };
     } catch (error) {
       fastify.log.error(error, 'Failed to send message');
@@ -110,4 +135,13 @@ async function fetchIMessages(phoneNumber: string): Promise<any[]> {
 async function sendIMessage(phoneNumber: string, message: string): Promise<string> {
   const { sendIMessage: sendMessage } = await import('../lib/imessage.js');
   return sendMessage(phoneNumber, message);
+}
+
+async function sendTypingIndicator(phoneNumber: string, durationMs: number): Promise<void> {
+  try {
+    const { sendTypingIndicator: showTyping } = await import('../lib/imessage.js');
+    await showTyping(phoneNumber, durationMs);
+  } catch (error) {
+    console.warn('Failed to send typing indicator:', error);
+  }
 }
