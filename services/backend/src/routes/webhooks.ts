@@ -190,15 +190,6 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
         message += `\n\nView: ${taskUrl}`;
       }
     }
-    
-    // Add attachments if any (with download links)
-    if (attachments && attachments.length > 0) {
-      message += `\n\n📎 Attachments (${attachments.length}):`;
-      attachments.forEach((att: any, idx: number) => {
-        const sizeMB = (att.size_bytes / 1024 / 1024).toFixed(2);
-        message += `\n${idx + 1}. ${att.file_name} (${sizeMB} MB)\n   ${att.url}`;
-      });
-    }
   } else {
     // Other stop reasons (error, cancelled, etc.)
     message = formatManusMessage(`⚠️ Task Stopped: "${taskTitle}"\n\nReason: ${stopReason}`);
@@ -232,6 +223,48 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     // Small delay between messages (except after last one)
     if (i < chunks.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+  
+  // Handle attachments - send actual files via iMessage
+  if (attachments && attachments.length > 0 && stopReason === 'finish') {
+    console.log(`📎 Processing ${attachments.length} attachment(s) for ${phoneNumber}`);
+    
+    try {
+      // Try to send attachments as actual files
+      const { sendIMessageWithAttachments } = await import('../lib/imessage.js');
+      
+      // Show typing indicator before sending attachments
+      await sendTypingIndicator(phoneNumber, 1000);
+      
+      // Send attachments (no text message, just files)
+      const attachmentGuids = await sendIMessageWithAttachments(
+        phoneNumber,
+        '', // No text message, just attachments
+        attachments.map((att: any) => ({
+          url: att.url,
+          filename: att.file_name,
+          size_bytes: att.size_bytes,
+        }))
+      );
+      
+      messageGuids.push(...attachmentGuids);
+      console.log(`✅ Sent ${attachmentGuids.length} attachment(s) successfully`);
+    } catch (error) {
+      // Fallback: If attachment sending fails, send download links as text
+      console.error('❌ Failed to send attachments as files, falling back to links:', error);
+      
+      let fallbackMessage = `\n\n📎 Attachments (${attachments.length}):`;
+      attachments.forEach((att: any, idx: number) => {
+        const sizeMB = (att.size_bytes / 1024 / 1024).toFixed(2);
+        fallbackMessage += `\n${idx + 1}. ${att.file_name} (${sizeMB} MB)\n   ${att.url}`;
+      });
+      
+      // Send fallback message with links
+      await sendTypingIndicator(phoneNumber, 500);
+      const fallbackGuid = await sendIMessage(phoneNumber, fallbackMessage);
+      messageGuids.push(fallbackGuid);
+      console.log(`✅ Sent attachment links as fallback`);
     }
   }
   

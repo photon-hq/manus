@@ -181,6 +181,108 @@ export async function sendTypingIndicator(handle: string, durationMs: number): P
 }
 
 /**
+ * Send an iMessage with attachments
+ * Downloads files from URLs and sends them as iMessage attachments
+ * 
+ * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
+ * @param message - Message text to send
+ * @param attachments - Array of attachment URLs and filenames
+ * @returns Array of message GUIDs (one for text, one per attachment)
+ */
+export async function sendIMessageWithAttachments(
+  handle: string,
+  message: string,
+  attachments?: Array<{ url: string; filename: string; size_bytes?: number }>
+): Promise<string[]> {
+  const client = await getIMessageSDK();
+  const chatGuid = `any;-;${handle}`;
+  const messageGuids: string[] = [];
+  
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  const os = await import('os');
+  
+  // File size limit for iMessage (100MB)
+  const MAX_FILE_SIZE = 100 * 1024 * 1024;
+  
+  try {
+    // Send text message first if provided
+    if (message) {
+      const result = await client.messages.sendMessage({
+        chatGuid,
+        message,
+      });
+      messageGuids.push(result.guid);
+    }
+    
+    // Process attachments if provided
+    if (attachments && attachments.length > 0) {
+      for (const attachment of attachments) {
+        try {
+          // Check file size before downloading
+          if (attachment.size_bytes && attachment.size_bytes > MAX_FILE_SIZE) {
+            console.warn(`⚠️ Attachment ${attachment.filename} exceeds size limit (${(attachment.size_bytes / 1024 / 1024).toFixed(2)} MB), skipping`);
+            continue;
+          }
+          
+          console.log(`📥 Downloading attachment: ${attachment.filename} from ${attachment.url}`);
+          
+          // Download file from URL
+          const response = await fetch(attachment.url);
+          if (!response.ok) {
+            throw new Error(`Failed to download: ${response.statusText}`);
+          }
+          
+          const buffer = Buffer.from(await response.arrayBuffer());
+          
+          // Double-check size after download
+          if (buffer.length > MAX_FILE_SIZE) {
+            console.warn(`⚠️ Downloaded file ${attachment.filename} exceeds size limit, skipping`);
+            continue;
+          }
+          
+          // Create temporary file
+          const tempDir = os.tmpdir();
+          const tempFilePath = path.join(tempDir, `manus-${Date.now()}-${attachment.filename}`);
+          
+          await fs.writeFile(tempFilePath, buffer);
+          console.log(`💾 Saved to temp file: ${tempFilePath}`);
+          
+          try {
+            // Send attachment via iMessage SDK
+            console.log(`📤 Sending attachment via iMessage: ${attachment.filename}`);
+            const result = await client.attachments.sendAttachment({
+              chatGuid,
+              filePath: tempFilePath,
+              fileName: attachment.filename,
+            });
+            
+            messageGuids.push(result.guid);
+            console.log(`✅ Sent attachment: ${attachment.filename}`);
+          } finally {
+            // Clean up temp file
+            try {
+              await fs.unlink(tempFilePath);
+              console.log(`🧹 Cleaned up temp file: ${tempFilePath}`);
+            } catch (cleanupError) {
+              console.warn(`Failed to clean up temp file ${tempFilePath}:`, cleanupError);
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Failed to send attachment ${attachment.filename}:`, error);
+          // Continue with other attachments
+        }
+      }
+    }
+    
+    return messageGuids;
+  } catch (error) {
+    console.error('Failed to send message with attachments:', error);
+    throw error;
+  }
+}
+
+/**
  * Handle graceful shutdown
  */
 process.on('SIGTERM', async () => {

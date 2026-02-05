@@ -11,6 +11,11 @@ import { z } from 'zod';
 
 const SendMessageSchema = z.object({
   message: z.string(),
+  attachments: z.array(z.object({
+    url: z.string(),
+    filename: z.string(),
+    size_bytes: z.number().optional(),
+  })).optional(),
 });
 
 // Track active connections
@@ -99,13 +104,35 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
             },
             {
               name: 'send',
-              description: 'Send a message to the user via iMessage. The message will be prefixed with [Manus] to indicate it came from the AI assistant.',
+              description: 'Send a message to the user via iMessage. Optionally include file attachments.',
               inputSchema: {
                 type: 'object',
                 properties: {
                   message: {
                     type: 'string',
                     description: 'The message text to send to the user',
+                  },
+                  attachments: {
+                    type: 'array',
+                    description: 'Optional array of file attachments to send',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        url: {
+                          type: 'string',
+                          description: 'URL to download the file from',
+                        },
+                        filename: {
+                          type: 'string',
+                          description: 'Name of the file',
+                        },
+                        size_bytes: {
+                          type: 'number',
+                          description: 'Size of the file in bytes (optional)',
+                        },
+                      },
+                      required: ['url', 'filename'],
+                    },
                   },
                 },
                 required: ['message'],
@@ -163,7 +190,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
               const cleanMessage = stripMarkdownFormatting(formattedMessage);
               const chunks = splitMessageByParagraphs(cleanMessage);
 
-              fastify.log.info({ phoneNumber: connection.phoneNumber, chunks: chunks.length }, 'Sending message chunks via MCP-SSE');
+              fastify.log.info({ phoneNumber: connection.phoneNumber, chunks: chunks.length, attachments: body.attachments?.length || 0 }, 'Sending message chunks via MCP-SSE');
 
               // Send each chunk as a separate message
               const messageGuids: string[] = [];
@@ -184,6 +211,26 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
                   await new Promise(resolve => setTimeout(resolve, 500));
                 }
               }
+              
+              // Handle attachments if provided
+              let attachmentsSent = 0;
+              if (body.attachments && body.attachments.length > 0) {
+                try {
+                  fastify.log.info({ phoneNumber: connection.phoneNumber, attachmentCount: body.attachments.length }, 'Sending attachments via MCP-SSE');
+                  
+                  const attachmentGuids = await sendIMessageWithAttachments(
+                    connection.phoneNumber,
+                    body.attachments
+                  );
+                  
+                  messageGuids.push(...attachmentGuids);
+                  attachmentsSent = attachmentGuids.length;
+                  fastify.log.info({ phoneNumber: connection.phoneNumber, attachmentGuids }, 'Attachments sent successfully');
+                } catch (error) {
+                  fastify.log.error(error, 'Failed to send attachments, continuing without them');
+                  // Continue - don't fail the whole request if attachments fail
+                }
+              }
 
               // Record as single database entry (reduces DB spam)
               await prisma.manusMessage.create({
@@ -200,7 +247,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
                 content: [
                   {
                     type: 'text',
-                    text: `Message sent successfully in ${chunks.length} chunk(s). GUIDs: ${messageGuids.join(', ')}`,
+                    text: `Message sent successfully in ${chunks.length} chunk(s)${attachmentsSent > 0 ? ` with ${attachmentsSent} attachment(s)` : ''}. GUIDs: ${messageGuids.join(', ')}`,
                   },
                 ],
               };
@@ -357,6 +404,14 @@ async function sendTypingIndicator(phoneNumber: string, durationMs: number): Pro
   } catch (error) {
     console.warn('Failed to send typing indicator:', error);
   }
+}
+
+async function sendIMessageWithAttachments(
+  phoneNumber: string,
+  attachments: Array<{ url: string; filename: string; size_bytes?: number }>
+): Promise<string[]> {
+  const { sendIMessageWithAttachments: sendWithAttachments } = await import('../lib/imessage.js');
+  return sendWithAttachments(phoneNumber, '', attachments);
 }
 
 // Graceful shutdown

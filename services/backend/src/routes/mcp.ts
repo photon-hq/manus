@@ -5,6 +5,11 @@ import { z } from 'zod';
 
 const SendMessageSchema = z.object({
   message: z.string(),
+  attachments: z.array(z.object({
+    url: z.string(),
+    filename: z.string(),
+    size_bytes: z.number().optional(),
+  })).optional(),
 });
 
 export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
@@ -80,7 +85,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
       const cleanMessage = stripMarkdownFormatting(formattedMessage);
       const chunks = splitMessageByParagraphs(cleanMessage);
 
-      fastify.log.info({ phoneNumber, chunks: chunks.length }, 'Sending message chunks via MCP');
+      fastify.log.info({ phoneNumber, chunks: chunks.length, attachments: body.attachments?.length || 0 }, 'Sending message chunks via MCP');
 
       // Send each chunk as a separate message
       const messageGuids: string[] = [];
@@ -101,6 +106,24 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
+      
+      // Handle attachments if provided
+      if (body.attachments && body.attachments.length > 0) {
+        try {
+          fastify.log.info({ phoneNumber, attachmentCount: body.attachments.length }, 'Sending attachments via MCP');
+          
+          const attachmentGuids = await sendIMessageWithAttachments(
+            phoneNumber,
+            body.attachments
+          );
+          
+          messageGuids.push(...attachmentGuids);
+          fastify.log.info({ phoneNumber, attachmentGuids }, 'Attachments sent successfully');
+        } catch (error) {
+          fastify.log.error(error, 'Failed to send attachments, continuing without them');
+          // Continue - don't fail the whole request if attachments fail
+        }
+      }
 
       // Record as single database entry (reduces DB spam)
       await prisma.manusMessage.create({
@@ -118,6 +141,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify) => {
         messageGuid: messageGuids[0], // Return first GUID for compatibility
         messageGuids, // Return all GUIDs
         chunks: chunks.length,
+        attachmentsSent: body.attachments?.length || 0,
       };
     } catch (error) {
       fastify.log.error(error, 'Failed to send message');
@@ -144,4 +168,12 @@ async function sendTypingIndicator(phoneNumber: string, durationMs: number): Pro
   } catch (error) {
     console.warn('Failed to send typing indicator:', error);
   }
+}
+
+async function sendIMessageWithAttachments(
+  phoneNumber: string,
+  attachments: Array<{ url: string; filename: string; size_bytes?: number }>
+): Promise<string[]> {
+  const { sendIMessageWithAttachments: sendWithAttachments } = await import('../lib/imessage.js');
+  return sendWithAttachments(phoneNumber, '', attachments);
 }
