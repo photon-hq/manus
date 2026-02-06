@@ -468,22 +468,28 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
     // 3. Keep user messages and webhook responses
     const taskStartTime = connection.currentTaskStartedAt!.getTime();
     
-    const filteredMessages = messages
-      .filter((msg) => {
-        const messageTime = new Date(msg.dateCreated).getTime();
-        // Exclude: messages before task start, MANUAL messages, and the current message being processed
-        return messageTime >= taskStartTime && 
-               !guidSet.has(msg.guid) && 
-               msg.guid !== excludeMessageGuid;
-      })
-      .map((msg) => ({
-        from: msg.isFromMe ? 'me' : phoneNumber,
-        to: msg.isFromMe ? phoneNumber : 'me',
-        text: msg.text || '',
-        timestamp: new Date(msg.dateCreated).toISOString(),
-      }));
+    const filteredRawMessages = messages.filter((msg) => {
+      const messageTime = new Date(msg.dateCreated).getTime();
+      // Exclude: messages before task start, MANUAL messages, and the current message being processed
+      return messageTime >= taskStartTime && 
+             !guidSet.has(msg.guid) && 
+             msg.guid !== excludeMessageGuid;
+    });
 
-    console.log(`Fetched ${filteredMessages.length} messages for current task context (started at ${connection.currentTaskStartedAt!.toISOString()})`);
+    console.log(`Fetched ${messages.length} total messages, ${filteredRawMessages.length} after filtering for current task context (started at ${connection.currentTaskStartedAt!.toISOString()})`);
+    console.log(`Excluding message GUID: ${excludeMessageGuid || 'none'}`);
+    console.log(`Filtered messages:`, filteredRawMessages.map(m => ({ 
+      guid: m.guid?.substring(0, 8), 
+      isFromMe: m.isFromMe,
+      text: m.text?.substring(0, 30) 
+    })));
+
+    const filteredMessages = filteredRawMessages.map((msg) => ({
+      from: msg.isFromMe ? 'me' : phoneNumber,
+      to: msg.isFromMe ? phoneNumber : 'me',
+      text: msg.text || '',
+      timestamp: new Date(msg.dateCreated).toISOString(),
+    }));
     return filteredMessages;
   } catch (error) {
     console.error('Failed to fetch recent messages:', error);

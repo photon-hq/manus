@@ -58,7 +58,10 @@ fastify.post('/classify', async (request, reply) => {
       .map((msg) => `${msg.from}: ${msg.text}`)
       .join('\n');
     
-    fastify.log.info({ contextStr }, 'Context for classification');
+    fastify.log.info({ 
+      contextStr,
+      contextMessages: last_task_context.map(m => ({ from: m.from, text: m.text.substring(0, 100) }))
+    }, 'Context for classification');
 
     // Call OpenRouter with OpenAI GPT-3.5 Turbo (reliable, fast, cheap)
     const response = await openrouter.chat.completions.create({
