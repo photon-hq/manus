@@ -246,15 +246,27 @@ async function processMessage(phoneNumber: string, data: any) {
     // Handle attachments if present
     let fileIds: string[] = [];
     if (attachments && attachments.length > 0) {
-      fileIds = await processAttachments(attachments);
+      fileIds = await processAttachments(phoneNumber, attachments);
+    }
+
+    // If message is empty but has attachments, use a default prompt
+    let effectiveMessage = messageText;
+    if (!effectiveMessage && fileIds.length > 0) {
+      effectiveMessage = `[User sent ${fileIds.length} file(s)]`;
+    }
+
+    // Skip processing if both message and attachments are empty
+    if (!effectiveMessage && fileIds.length === 0) {
+      console.warn(`Skipping empty message for ${phoneNumber}`);
+      return;
     }
 
     if (classification.type === TaskClassification.NEW_TASK) {
       // Create new Manus task
-      await createManusTask(phoneNumber, messageText, fileIds);
+      await createManusTask(phoneNumber, effectiveMessage, fileIds);
     } else {
       // Follow-up to existing task
-      await appendToTask(phoneNumber, messageText, fileIds);
+      await appendToTask(phoneNumber, effectiveMessage, fileIds);
     }
 
     // Mark as completed
@@ -283,11 +295,21 @@ async function processMessage(phoneNumber: string, data: any) {
 
 // Process attachments: download from iMessage and upload to Manus
 async function processAttachments(
+  phoneNumber: string,
   attachments: Array<{ guid: string; filename: string; mimeType: string }>
 ): Promise<string[]> {
   const fileIds: string[] = [];
 
   try {
+    // Get connection to get Manus API key
+    const connection = await prisma.connection.findFirst({
+      where: { phoneNumber, status: 'ACTIVE' },
+    });
+
+    if (!connection?.manusApiKey) {
+      throw new Error('No Manus API key found for user');
+    }
+
     const { SDK } = await import('@photon-ai/advanced-imessage-kit');
     const sdk = SDK({
       serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
@@ -304,8 +326,8 @@ async function processAttachments(
         // Download attachment from iMessage
         const result = await sdk.attachments.downloadAttachment(attachment.guid);
 
-        // Upload to Manus
-        const fileId = await uploadFileToManus(Buffer.from(result), attachment.filename);
+        // Upload to Manus using user's API key
+        const fileId = await uploadFileToManus(Buffer.from(result), attachment.filename, connection.manusApiKey);
         fileIds.push(fileId);
 
         console.log(`✅ Uploaded ${attachment.filename} to Manus (ID: ${fileId})`);
@@ -324,15 +346,14 @@ async function processAttachments(
 }
 
 // Upload file to Manus
-async function uploadFileToManus(fileBuffer: Buffer, filename: string): Promise<string> {
+async function uploadFileToManus(fileBuffer: Buffer, filename: string, manusApiKey: string): Promise<string> {
   const MANUS_API_URL = process.env.MANUS_API_URL || 'https://api.manus.im';
-  const MANUS_API_KEY = process.env.MANUS_API_KEY;
 
   // Step 1: Create file record
   const createResponse = await fetch(`${MANUS_API_URL}/v1/files`, {
     method: 'POST',
     headers: {
-      'API_KEY': MANUS_API_KEY!,
+      'API_KEY': manusApiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ filename }),
@@ -366,8 +387,7 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20): Promi
     // Get connection to check if there's an active task
     const connection = await prisma.connection.findFirst({
       where: { phoneNumber, status: 'ACTIVE' },
-      select: { currentTaskId: true, currentTaskStartedAt: true },
-    });
+    }) as any;
 
     // If no active task or no start time, return empty context (indicates NEW_TASK)
     if (!connection?.currentTaskId || !connection?.currentTaskStartedAt) {
@@ -409,7 +429,7 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20): Promi
     // 1. Only messages after current task started
     // 2. Exclude MANUAL messages
     // 3. Keep user messages and webhook responses
-    const taskStartTime = connection.currentTaskStartedAt.getTime();
+    const taskStartTime = connection.currentTaskStartedAt!.getTime();
     
     const filteredMessages = messages
       .filter((msg) => {
@@ -423,7 +443,7 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20): Promi
         timestamp: new Date(msg.dateCreated).toISOString(),
       }));
 
-    console.log(`Fetched ${filteredMessages.length} messages for current task context (started at ${connection.currentTaskStartedAt.toISOString()})`);
+    console.log(`Fetched ${filteredMessages.length} messages for current task context (started at ${connection.currentTaskStartedAt!.toISOString()})`);
     return filteredMessages;
   } catch (error) {
     console.error('Failed to fetch recent messages:', error);
@@ -517,7 +537,7 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
       data: { 
         currentTaskId: data.task_id,
         currentTaskStartedAt: taskStartTime,
-      },
+      } as any,
     });
     
     console.log(`✅ Stored task start time: ${taskStartTime.toISOString()}`);
@@ -736,7 +756,7 @@ async function listenForEvents() {
             data: { 
               currentTaskId: null,
               currentTaskStartedAt: null,
-            },
+            } as any,
           });
           console.log(`✅ Cleared task context for ${phoneNumber}`);
         } catch (error) {
