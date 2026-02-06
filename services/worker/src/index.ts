@@ -235,14 +235,6 @@ async function processMessage(phoneNumber: string, data: any) {
   const { messageId, messageText, attachments } = data;
 
   try {
-    // Get last task context (last 20 messages)
-    const recentMessages = await getRecentMessages(phoneNumber, 20);
-
-    // Classify message using SLM
-    const classification = await classifyMessage(messageText, recentMessages);
-
-    console.log(`Classification for ${phoneNumber}:`, classification);
-
     // Handle attachments if present
     let fileIds: string[] = [];
     if (attachments && attachments.length > 0) {
@@ -261,12 +253,52 @@ async function processMessage(phoneNumber: string, data: any) {
       return;
     }
 
-    if (classification.type === TaskClassification.NEW_TASK) {
-      // Create new Manus task
-      await createManusTask(phoneNumber, effectiveMessage, fileIds);
+    // Special handling for file-only messages (no text)
+    // If user sends only files:
+    // - No active task → Create new task
+    // - Active task exists → Append to current task
+    if (!messageText && fileIds.length > 0) {
+      const connection = await prisma.connection.findFirst({
+        where: { phoneNumber, status: 'ACTIVE' },
+      });
+
+      if (connection?.currentTaskId) {
+        // Active task exists - append files to it
+        console.log(`📎 File-only message with active task - appending to ${connection.currentTaskId}`);
+        await appendToTask(phoneNumber, effectiveMessage, fileIds);
+      } else {
+        // No active task - create new task
+        console.log(`📎 File-only message with no active task - creating new task`);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds);
+      }
     } else {
-      // Follow-up to existing task
-      await appendToTask(phoneNumber, effectiveMessage, fileIds);
+      // Regular message with text - use SLM classifier
+      // Get last task context (last 20 messages)
+      const recentMessages = await getRecentMessages(phoneNumber, 20);
+
+      // Classify message using SLM
+      const classification = await classifyMessage(messageText, recentMessages);
+
+      console.log(`Classification for ${phoneNumber}:`, classification);
+
+      if (classification.type === TaskClassification.NEW_TASK) {
+        // Clear previous task context before creating new task
+        // This ensures follow-ups go to the new task, not the old one
+        await prisma.connection.update({
+          where: { phoneNumber },
+          data: { 
+            currentTaskId: null,
+            currentTaskStartedAt: null,
+          } as any,
+        });
+        console.log(`✅ Cleared previous task context for ${phoneNumber} (NEW_TASK detected)`);
+        
+        // Create new Manus task
+        await createManusTask(phoneNumber, effectiveMessage, fileIds);
+      } else {
+        // Follow-up to existing task
+        await appendToTask(phoneNumber, effectiveMessage, fileIds);
+      }
     }
 
     // Mark as completed
@@ -760,9 +792,9 @@ async function listenForEvents() {
             console.warn('Failed to stop typing indicator:', error);
           }
           
-          // Keep task context for 30 seconds to allow follow-up messages
-          // This prevents immediate follow-ups from being classified as NEW_TASK
-          console.log(`⏱️  Keeping task context for 30s to allow follow-ups (${phoneNumber})`);
+          // Keep task context for 10 minutes to allow follow-up messages
+          // This prevents follow-ups from being classified as NEW_TASK
+          console.log(`⏱️  Keeping task context for 10 minutes to allow follow-ups (${phoneNumber})`);
           setTimeout(async () => {
             try {
               // Only clear if the task ID hasn't changed (no new task started)
@@ -785,7 +817,7 @@ async function listenForEvents() {
             } catch (error) {
               console.error('Failed to clear task context after grace period:', error);
             }
-          }, 30000); // 30 seconds grace period
+          }, 600000); // 10 minutes grace period
         } catch (error) {
           console.error('Failed to handle task-stopped event:', error);
         }

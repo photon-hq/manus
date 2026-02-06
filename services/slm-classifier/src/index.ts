@@ -48,16 +48,21 @@ fastify.post('/classify', async (request, reply) => {
     const body = ClassificationRequestSchema.parse(request.body);
     const { latest_message, last_task_context } = body;
 
-    fastify.log.info({ message: latest_message }, 'Classifying message');
+    fastify.log.info({ 
+      message: latest_message,
+      contextLength: last_task_context.length 
+    }, 'Classifying message');
 
     // Build context string
     const contextStr = last_task_context
       .map((msg) => `${msg.from}: ${msg.text}`)
       .join('\n');
+    
+    fastify.log.info({ contextStr }, 'Context for classification');
 
-    // Call OpenRouter with Qwen 2.5 (fast and reliable)
+    // Call OpenRouter with OpenAI GPT-3.5 Turbo (reliable, fast, cheap)
     const response = await openrouter.chat.completions.create({
-      model: 'qwen/qwen-2.5-7b-instruct:free',
+      model: 'openai/gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
@@ -66,8 +71,11 @@ fastify.post('/classify', async (request, reply) => {
 1. **NEW_TASK**: A completely new request or task that is unrelated to the previous conversation
 2. **FOLLOW_UP**: A continuation, clarification, or follow-up question related to the ongoing task
 
+IMPORTANT: If there is NO previous context (empty), it MUST be NEW_TASK.
+If there IS previous context, carefully determine if the new message relates to it.
+
 Context from previous conversation:
-${contextStr || 'No previous context'}
+${contextStr || 'No previous context - this is the first message'}
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -76,10 +84,12 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 Examples:
+- First message with no context → NEW_TASK
 - "Can you also check the pricing?" after discussing a product → FOLLOW_UP
 - "What's the weather today?" after discussing a product → NEW_TASK
-- "Thanks!" after receiving results → FOLLOW_UP
-- "Research AI trends" as first message → NEW_TASK`,
+- "Thanks!" after receiving a response → FOLLOW_UP
+- "What can you do?" after a greeting exchange → FOLLOW_UP
+- "Tell me about AI" after "Hey" / "Hello" exchange → FOLLOW_UP`,
         },
         {
           role: 'user',
