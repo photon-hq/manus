@@ -3,13 +3,20 @@ import Redis from 'ioredis';
 import { prisma, QueueStatus } from '@imessage-mcp/database';
 import { TaskClassification, sanitizeHandle } from '@imessage-mcp/shared';
 import { SDK } from '@photon-ai/advanced-imessage-kit';
+import { TypingIndicatorManager } from './typing-manager.js';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
 const DEBOUNCE_WINDOW = 3000; // 3 seconds
 
+// Redis key expiration for task mapping (24 hours)
+const TASK_MAPPING_TTL = 24 * 60 * 60; // seconds
+
 // iMessage SDK instance
 let imessageSDK: ReturnType<typeof SDK> | null = null;
+
+// Typing indicator manager
+let typingManager: TypingIndicatorManager | null = null;
 
 // Get or create iMessage SDK instance
 async function getIMessageSDK() {
@@ -29,12 +36,24 @@ async function getIMessageSDK() {
 
     await imessageSDK.connect();
     console.log('✅ Worker connected to iMessage SDK');
+    
+    // Initialize typing manager
+    typingManager = new TypingIndicatorManager(imessageSDK);
+    console.log('✅ Typing indicator manager initialized');
   }
   return imessageSDK;
 }
 
+// Get typing indicator manager
+function getTypingManager(): TypingIndicatorManager {
+  if (!typingManager) {
+    throw new Error('Typing manager not initialized. Call getIMessageSDK() first.');
+  }
+  return typingManager;
+}
+
 // Redis connection
-const connection = new Redis(REDIS_URL, {
+const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
 });
 
@@ -54,7 +73,7 @@ function getQueue(handle: string): Queue {
     // Sanitize handle for queue name (works for both phone numbers and emails)
     const sanitizedHandle = sanitizeHandle(handle);
     const queue = new Queue(`messages-${sanitizedHandle}`, {
-      connection,
+      connection: redis,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -97,7 +116,7 @@ function startWorker(handle: string) {
       }
     },
     {
-      connection,
+      connection: redis,
       concurrency: 1, // Sequential processing per user
     }
   );
@@ -436,17 +455,6 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
 
   console.log(`✅ Found connection for ${phoneNumber}, creating task...`);
 
-  // Start typing indicator before sending to Manus
-  try {
-    const sdk = await getIMessageSDK();
-    const chatGuid = `any;-;${phoneNumber}`;
-    await sdk.chats.startTyping(chatGuid);
-    console.log(`🟢 Started typing indicator for ${phoneNumber}`);
-  } catch (error) {
-    console.warn('Failed to start typing indicator:', error);
-    // Non-critical - continue anyway
-  }
-
   try {
     // Build attachments array
     const attachments = fileIds.map(fileId => ({
@@ -479,11 +487,25 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
     const data = await response.json() as { task_id: string };
     console.log('✅ Created Manus task:', data.task_id);
 
-    // Store the task ID for follow-ups
+    // Store the task ID for follow-ups in database
     await prisma.connection.update({
       where: { phoneNumber },
       data: { currentTaskId: data.task_id },
     });
+
+    // Store task-to-phone mapping in Redis for webhook lookup
+    const taskMappingKey = `task:mapping:${data.task_id}`;
+    await redis.set(taskMappingKey, phoneNumber, 'EX', TASK_MAPPING_TTL);
+    console.log(`✅ Stored task mapping in Redis: ${data.task_id} → ${phoneNumber}`);
+
+    // Start persistent typing indicator via manager
+    try {
+      const manager = getTypingManager();
+      await manager.startTyping(phoneNumber, data.task_id);
+    } catch (error) {
+      console.warn('Failed to start typing indicator:', error);
+      // Non-critical - continue anyway
+    }
 
     return data.task_id;
   } catch (error) {
@@ -510,14 +532,14 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     return createManusTask(phoneNumber, message, fileIds);
   }
 
-  // Start typing indicator before sending to Manus
+  // Ensure typing indicator is active (start if not already)
   try {
-    const sdk = await getIMessageSDK();
-    const chatGuid = `any;-;${phoneNumber}`;
-    await sdk.chats.startTyping(chatGuid);
-    console.log(`🟢 Started typing indicator for ${phoneNumber}`);
+    const manager = getTypingManager();
+    if (!manager.isTyping(phoneNumber)) {
+      await manager.startTyping(phoneNumber, connection.currentTaskId);
+    }
   } catch (error) {
-    console.warn('Failed to start typing indicator:', error);
+    console.warn('Failed to ensure typing indicator:', error);
     // Non-critical - continue anyway
   }
 
@@ -565,6 +587,11 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
 const shutdown = async () => {
   console.log('Shutting down worker service...');
   
+  // Stop all typing indicators
+  if (typingManager) {
+    await typingManager.stopAll();
+  }
+  
   // Close all workers
   for (const [phoneNumber, worker] of workers.entries()) {
     await worker.close();
@@ -578,7 +605,7 @@ const shutdown = async () => {
   }
 
   // Close Redis connection
-  await connection.quit();
+  await redis.quit();
   await prisma.$disconnect();
   
   console.log('Worker service shut down gracefully');
@@ -633,32 +660,48 @@ async function checkForNewConnections() {
   }
 }
 
-// Listen for connection activation and message events via Redis pub/sub
+// Listen for connection activation, message events, and task-stopped events via Redis pub/sub
 async function listenForEvents() {
   try {
     const Redis = (await import('ioredis')).default;
     const subscriber = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
     
-    subscriber.subscribe('connection-activated', 'message-queued', (err) => {
+    subscriber.subscribe('connection-activated', 'message-queued', 'task-stopped', (err) => {
       if (err) {
         console.error('Failed to subscribe to Redis channels:', err);
       } else {
-        console.log('📡 Listening for connection and message events...');
+        console.log('📡 Listening for connection, message, and task events...');
       }
     });
 
-    subscriber.on('message', (channel, phoneNumber) => {
+    subscriber.on('message', async (channel, message) => {
       if (channel === 'connection-activated') {
+        const phoneNumber = message;
         console.log(`🔔 Connection activated: ${phoneNumber}`);
         if (!workers.has(phoneNumber)) {
           console.log(`Starting worker immediately for ${phoneNumber}`);
           getQueue(phoneNumber); // Start worker immediately
         }
       } else if (channel === 'message-queued') {
+        const phoneNumber = message;
         console.log(`📬 Message queued for: ${phoneNumber}`);
         if (!workers.has(phoneNumber)) {
           console.log(`Starting worker for ${phoneNumber}`);
           getQueue(phoneNumber); // Ensure worker exists
+        }
+      } else if (channel === 'task-stopped') {
+        try {
+          const data = JSON.parse(message);
+          const { phoneNumber, taskId } = data;
+          console.log(`🛑 Task stopped event received: ${phoneNumber} (task: ${taskId})`);
+          
+          // Stop typing indicator
+          const manager = getTypingManager();
+          if (manager.isTyping(phoneNumber)) {
+            await manager.stopTyping(phoneNumber);
+          }
+        } catch (error) {
+          console.error('Failed to handle task-stopped event:', error);
         }
       }
     });

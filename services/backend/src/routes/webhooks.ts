@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@imessage-mcp/database';
 import { WebhookEventSchema, formatManusMessage, splitMessageByParagraphs, stripMarkdownFormatting } from '@imessage-mcp/shared';
+import Redis from 'ioredis';
 
 /**
  * Webhook Handler for Manus AI Events
@@ -17,6 +18,12 @@ import { WebhookEventSchema, formatManusMessage, splitMessageByParagraphs, strip
  * - V1: Sends download links in text (current implementation)
  * - V2: TODO - Add option to download and send actual files via iMessage
  */
+
+// Redis connection for task mapping lookup
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const redis = new Redis(REDIS_URL, {
+  maxRetriesPerRequest: null,
+});
 
 // Throttling state
 const progressTimestamps = new Map<string, number>();
@@ -51,7 +58,20 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
 
-      // If not found by currentTaskId, try to find via webhookId in the URL or other means
+      // If not found by currentTaskId, try Redis task mapping (fallback)
+      if (!connection) {
+        const taskMappingKey = `task:mapping:${taskId}`;
+        const phoneNumber = await redis.get(taskMappingKey);
+        
+        if (phoneNumber) {
+          fastify.log.info({ taskId, phoneNumber }, 'Found task mapping in Redis');
+          connection = await prisma.connection.findFirst({
+            where: { phoneNumber, status: 'ACTIVE' },
+          });
+        }
+      }
+
+      // If still not found, try to find via webhookId in the URL or other means
       // For now, if we can't find the connection, try to match based on webhook signature/headers
       if (!connection) {
         // Check if there's a signature header we can use to identify the user
@@ -117,8 +137,14 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
 
   if (!taskId || !progressMessage) return;
 
-  // TODO: Add filtering logic here later to decide what to show
-  // For now, show all progress updates with basic throttling
+  // Hybrid approach: Only send text messages for major milestones (plan_update)
+  // Typing indicator is handled by worker service and will remain active
+  
+  // Filter: Only show plan_update progress types as text messages
+  if (progressType !== 'plan_update') {
+    console.log(`⏭️  Skipping progress notification (type: ${progressType}, task: ${taskId})`);
+    return;
+  }
 
   // Throttle: max 1 update per minute per task (prevent spam)
   // Use task-specific key so multiple concurrent tasks don't interfere
@@ -128,6 +154,7 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
 
   if (now - lastSent < 60000) {
     // Skip if less than 1 minute since last progress update for this task
+    console.log(`⏭️  Throttled progress notification for ${phoneNumber} (task: ${taskId})`);
     return;
   }
 
@@ -135,7 +162,7 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   const message = formatManusMessage(`🔄 ${progressMessage}`);
   
   const messageGuid = await sendIMessage(phoneNumber, message);
-  console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId})`);
+  console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId}, type: ${progressType})`);
 
   // Record in database
   await prisma.manusMessage.create({
@@ -158,6 +185,14 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   const resultMessage = event.task_detail?.message;
   const attachments = event.task_detail?.attachments;
 
+  // Stop typing indicator via Redis pub/sub to worker
+  try {
+    await redis.publish('task-stopped', JSON.stringify({ phoneNumber, taskId }));
+    console.log(`📢 Published task-stopped event for ${phoneNumber} (task: ${taskId})`);
+  } catch (error) {
+    console.warn('Failed to publish task-stopped event:', error);
+  }
+
   // Clean up task tracking
   if (taskId) {
     taskStartTimes.delete(taskId);
@@ -169,6 +204,10 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
         data: { currentTaskId: null },
       });
     }
+    
+    // Clean up Redis task mapping
+    const taskMappingKey = `task:mapping:${taskId}`;
+    await redis.del(taskMappingKey);
   }
 
   // TODO: Add filtering logic here later to customize what to show
