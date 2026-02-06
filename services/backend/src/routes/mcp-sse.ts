@@ -112,7 +112,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
             },
             {
               name: 'send',
-              description: 'Send a message to the user via iMessage. Optionally include file attachments.',
+              description: `Send a message to the authenticated user (${connection.phoneNumber}) via iMessage. You can only send messages to this user - the system automatically sends to their registered phone number/email. Do not ask the user what number to send to. Optionally include file attachments.`,
               inputSchema: {
                 type: 'object',
                 properties: {
@@ -190,6 +190,10 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
 
             case 'send': {
               const body = SendMessageSchema.parse(args);
+              
+              // Security: Validate that we're only sending to the authenticated user's phone number
+              // This tool can ONLY send to the connection's phoneNumber - no other recipients allowed
+              const targetPhoneNumber = connection.phoneNumber;
 
               // Format message (no prefix - returns as-is)
               const formattedMessage = formatManusMessage(body.message);
@@ -198,20 +202,20 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
               const cleanMessage = stripMarkdownFormatting(formattedMessage);
               const chunks = splitMessageByParagraphs(cleanMessage);
 
-              fastify.log.info({ phoneNumber: connection.phoneNumber, chunks: chunks.length, attachments: body.attachments?.length || 0 }, 'Sending message chunks via MCP-SSE');
+              fastify.log.info({ phoneNumber: targetPhoneNumber, chunks: chunks.length, attachments: body.attachments?.length || 0 }, 'Sending message chunks via MCP-SSE');
 
-              // Send each chunk as a separate message
+              // Send each chunk as a separate message (only to authenticated user)
               const messageGuids: string[] = [];
               for (let i = 0; i < chunks.length; i++) {
                 const chunk = chunks[i];
                 
                 // Show typing indicator before each chunk (except first)
                 if (i > 0) {
-                  await sendTypingIndicator(connection.phoneNumber, 500);
+                  await sendTypingIndicator(targetPhoneNumber, 500);
                 }
                 
-                // Send the message chunk
-                const messageGuid = await sendIMessage(connection.phoneNumber, chunk);
+                // Send the message chunk to authenticated user only
+                const messageGuid = await sendIMessage(targetPhoneNumber, chunk);
                 messageGuids.push(messageGuid);
                 
                 // Small delay between messages (except after last one)
@@ -220,20 +224,20 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
                 }
               }
               
-              // Handle attachments if provided
+              // Handle attachments if provided (send to authenticated user only)
               let attachmentsSent = 0;
               if (body.attachments && body.attachments.length > 0) {
                 try {
-                  fastify.log.info({ phoneNumber: connection.phoneNumber, attachmentCount: body.attachments.length }, 'Sending attachments via MCP-SSE');
+                  fastify.log.info({ phoneNumber: targetPhoneNumber, attachmentCount: body.attachments.length }, 'Sending attachments via MCP-SSE');
                   
                   const attachmentGuids = await sendIMessageWithAttachments(
-                    connection.phoneNumber,
+                    targetPhoneNumber,
                     body.attachments
                   );
                   
                   messageGuids.push(...attachmentGuids);
                   attachmentsSent = attachmentGuids.length;
-                  fastify.log.info({ phoneNumber: connection.phoneNumber, attachmentGuids }, 'Attachments sent successfully');
+                  fastify.log.info({ phoneNumber: targetPhoneNumber, attachmentGuids }, 'Attachments sent successfully');
                 } catch (error) {
                   fastify.log.error(error, 'Failed to send attachments, continuing without them');
                   // Continue - don't fail the whole request if attachments fail
@@ -244,12 +248,12 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
               await prisma.manusMessage.create({
                 data: {
                   messageGuid: messageGuids[0], // Primary GUID
-                  phoneNumber: connection.phoneNumber,
+                  phoneNumber: targetPhoneNumber,
                   messageType: 'MANUAL',
                 },
               });
 
-              fastify.log.info({ phoneNumber: connection.phoneNumber, messageGuids }, 'All message chunks sent via SSE (tracked as 1 DB record)');
+              fastify.log.info({ phoneNumber: targetPhoneNumber, messageGuids }, 'All message chunks sent via SSE (tracked as 1 DB record)');
 
               return {
                 content: [
