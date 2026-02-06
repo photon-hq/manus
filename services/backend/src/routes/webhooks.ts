@@ -197,11 +197,14 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   if (taskId) {
     taskStartTimes.delete(taskId);
     
-    // Clear currentTaskId from connection when task finishes successfully
+    // Clear currentTaskId and task start time from connection when task finishes successfully
     if (stopReason === 'finish') {
       await prisma.connection.updateMany({
         where: { currentTaskId: taskId },
-        data: { currentTaskId: null },
+        data: { 
+          currentTaskId: null,
+          currentTaskStartedAt: null,
+        },
       });
     }
     

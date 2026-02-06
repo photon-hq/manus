@@ -360,9 +360,21 @@ async function uploadFileToManus(fileBuffer: Buffer, filename: string): Promise<
   return fileRecord.id;
 }
 
-// Get recent messages for context
+// Get recent messages for context (only from current task)
 async function getRecentMessages(phoneNumber: string, limit: number = 20): Promise<any[]> {
   try {
+    // Get connection to check if there's an active task
+    const connection = await prisma.connection.findFirst({
+      where: { phoneNumber, status: 'ACTIVE' },
+      select: { currentTaskId: true, currentTaskStartedAt: true },
+    });
+
+    // If no active task or no start time, return empty context (indicates NEW_TASK)
+    if (!connection?.currentTaskId || !connection?.currentTaskStartedAt) {
+      console.log(`No active task context for ${phoneNumber}, returning empty context`);
+      return [];
+    }
+
     const { SDK } = await import('@photon-ai/advanced-imessage-kit');
     const sdk = SDK({
       serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
@@ -393,15 +405,26 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20): Promi
 
     const guidSet = new Set(manualMessageGuids.map((m) => m.messageGuid));
 
-    // Filter out only MANUAL messages, keep user messages and webhook responses
-    return messages
-      .filter((msg) => !guidSet.has(msg.guid))
+    // Filter messages:
+    // 1. Only messages after current task started
+    // 2. Exclude MANUAL messages
+    // 3. Keep user messages and webhook responses
+    const taskStartTime = connection.currentTaskStartedAt.getTime();
+    
+    const filteredMessages = messages
+      .filter((msg) => {
+        const messageTime = new Date(msg.dateCreated).getTime();
+        return messageTime >= taskStartTime && !guidSet.has(msg.guid);
+      })
       .map((msg) => ({
         from: msg.isFromMe ? 'me' : phoneNumber,
         to: msg.isFromMe ? phoneNumber : 'me',
         text: msg.text || '',
         timestamp: new Date(msg.dateCreated).toISOString(),
       }));
+
+    console.log(`Fetched ${filteredMessages.length} messages for current task context (started at ${connection.currentTaskStartedAt.toISOString()})`);
+    return filteredMessages;
   } catch (error) {
     console.error('Failed to fetch recent messages:', error);
     return [];
@@ -487,11 +510,17 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
     const data = await response.json() as { task_id: string };
     console.log('✅ Created Manus task:', data.task_id);
 
-    // Store the task ID for follow-ups in database
+    // Store the task ID and start time for follow-ups in database
+    const taskStartTime = new Date();
     await prisma.connection.update({
       where: { phoneNumber },
-      data: { currentTaskId: data.task_id },
+      data: { 
+        currentTaskId: data.task_id,
+        currentTaskStartedAt: taskStartTime,
+      },
     });
+    
+    console.log(`✅ Stored task start time: ${taskStartTime.toISOString()}`);
 
     // Store task-to-phone mapping in Redis for webhook lookup
     const taskMappingKey = `task:mapping:${data.task_id}`;
@@ -700,6 +729,16 @@ async function listenForEvents() {
           if (manager.isTyping(phoneNumber)) {
             await manager.stopTyping(phoneNumber);
           }
+          
+          // Clear current task context so next message is classified as NEW_TASK
+          await prisma.connection.update({
+            where: { phoneNumber },
+            data: { 
+              currentTaskId: null,
+              currentTaskStartedAt: null,
+            },
+          });
+          console.log(`✅ Cleared task context for ${phoneNumber}`);
         } catch (error) {
           console.error('Failed to handle task-stopped event:', error);
         }

@@ -18,6 +18,7 @@ model Connection {
   photonApiKey  String?   @unique
   webhookId     String?
   currentTaskId String?   // Track the active Manus task for follow-ups
+  currentTaskStartedAt DateTime? // Track when the current task started for context filtering
   status        Status    @default(PENDING)
   createdAt     DateTime  @default(now())
   expiresAt     DateTime?
