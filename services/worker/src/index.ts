@@ -276,6 +276,10 @@ async function processMessage(phoneNumber: string, data: any) {
       // Get last task context (last 20 messages)
       const recentMessages = await getRecentMessages(phoneNumber, 20);
 
+      // Log context being sent to SLM
+      console.log(`📝 Context for SLM (${recentMessages.length} messages):`, 
+        recentMessages.map(m => `${m.from}: ${m.text.substring(0, 50)}`).join(' | '));
+
       // Classify message using SLM
       const classification = await classifyMessage(messageText, recentMessages);
 
