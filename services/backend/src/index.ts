@@ -119,7 +119,7 @@ fastify.get('/debug/sse', async (request, reply) => {
 fastify.get('/debug/sse-long', async (request, reply) => {
   reply.raw.writeHead(200, {
     'Content-Type': 'text/event-stream',
-    'Cache-Control', 'no-cache, no-store',
+    'Cache-Control': 'no-cache, no-store',
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no',
   });
