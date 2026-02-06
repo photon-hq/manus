@@ -71,11 +71,11 @@ fastify.post('/classify', async (request, reply) => {
 1. **NEW_TASK**: A completely new request or task that is unrelated to the previous conversation
 2. **FOLLOW_UP**: A continuation, clarification, or follow-up question related to the ongoing task
 
-IMPORTANT: If there is NO previous context (empty), it MUST be NEW_TASK.
-If there IS previous context, carefully determine if the new message relates to it.
+CRITICAL RULE: If the context is empty (no previous messages), you MUST return NEW_TASK.
+Only return FOLLOW_UP if there is actual conversation history.
 
 Context from previous conversation:
-${contextStr || 'No previous context - this is the first message'}
+${contextStr || 'EMPTY - No previous context'}
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -84,7 +84,8 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 Examples:
-- First message with no context → NEW_TASK
+- Empty context + any message → NEW_TASK (ALWAYS)
+- "hey" with empty context → NEW_TASK
 - "Can you also check the pricing?" after discussing a product → FOLLOW_UP
 - "What's the weather today?" after discussing a product → NEW_TASK
 - "Thanks!" after receiving a response → FOLLOW_UP
