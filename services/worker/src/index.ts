@@ -455,6 +455,14 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
 
     await sdk.close();
 
+    // Log ALL messages to debug why user messages are missing
+    console.log(`📋 All ${messages.length} messages from iMessage:`, messages.slice(0, 5).map(m => ({
+      guid: m.guid?.substring(0, 8),
+      isFromMe: m.isFromMe,
+      text: m.text?.substring(0, 30),
+      dateCreated: new Date(m.dateCreated).toISOString(),
+    })));
+
     // Get only MANUAL message GUIDs (sent via MCP tool) to filter out
     // Keep WEBHOOK messages (task responses) in context for SLM classifier
     const manualMessageGuids = await prisma.manusMessage.findMany({
@@ -473,12 +481,18 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
     // 3. Keep user messages and webhook responses
     const taskStartTime = connection.currentTaskStartedAt!.getTime();
     
+    console.log(`⏰ Task started at: ${connection.currentTaskStartedAt!.toISOString()} (${taskStartTime})`);
+    
     const filteredRawMessages = messages.filter((msg) => {
       const messageTime = new Date(msg.dateCreated).getTime();
+      const passesTimeFilter = messageTime >= taskStartTime;
+      const notManual = !guidSet.has(msg.guid);
+      const notCurrent = msg.guid !== excludeMessageGuid;
+      
+      console.log(`  Message ${msg.guid?.substring(0, 8)}: time=${passesTimeFilter}, notManual=${notManual}, notCurrent=${notCurrent}, isFromMe=${msg.isFromMe}`);
+      
       // Exclude: messages before task start, MANUAL messages, and the current message being processed
-      return messageTime >= taskStartTime && 
-             !guidSet.has(msg.guid) && 
-             msg.guid !== excludeMessageGuid;
+      return passesTimeFilter && notManual && notCurrent;
     });
 
     console.log(`Fetched ${messages.length} total messages, ${filteredRawMessages.length} after filtering for current task context (started at ${connection.currentTaskStartedAt!.toISOString()})`);
