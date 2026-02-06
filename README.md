@@ -1,6 +1,6 @@
 # Manus Backend - iMessage Integration
 
-Backend system for integrating iMessage with Manus AI using SSE-based MCP protocol.
+Backend system for integrating iMessage with Manus AI using HTTP-based MCP protocol.
 
 ## Overview
 
@@ -8,8 +8,8 @@ TypeScript monorepo with 3 microservices that bridge iMessage and Manus AI.
 
 ## Services
 
-- **Backend** (Port 3000) - API server, SSE MCP endpoint, connection flow, webhooks
-- **Worker** - BullMQ queue, message processing, debouncing
+- **Backend** (Port 3000) - API server, HTTP MCP endpoint, connection flow, webhooks
+- **Worker** - BullMQ queue, message processing, debouncing, task classification
 - **SLM Classifier** (Port 3001) - Task classification (NEW_TASK vs FOLLOW_UP)
 - **Shared Packages** - Types, utilities, Prisma ORM
 
@@ -112,24 +112,45 @@ PUBLIC_URL=https://manus.photon.codes
 ## Architecture
 
 ```
-User → iMessage SDK → Backend (SSE MCP + Events) → Worker → Classifier
-                           ↓                              ↓
-                        Manus AI ←────────────────────────┘
+User → iMessage SDK → Backend (HTTP MCP + Webhooks) → Worker → Classifier
+                           ↓                                ↓
+                        Manus AI ←──────────────────────────┘
 ```
 
-**SSE MCP Features:**
-- Self-hosted (no npm package)
+**HTTP MCP Features:**
+- Self-hosted streamableHttp transport
 - Bearer token auth, CORS whitelist
-- Tools: `fetch` (get messages), `send` (send message)
+- Tools: `fetch_messages` (get messages), `send_message` (send message)
 
-**Flow:** User texts → Queue → Debounce (2s) → Classify → Route to Manus → Webhook → Reply
+**Flow:** 
+1. User texts → Queue → Debounce (2s) → Classify (SLM) → Create/Append Task
+2. Manus AI processes → Webhooks (task_created, task_progress, task_stopped) → Reply to user
+
+**Key Features:**
+- Smart task classification (NEW_TASK vs FOLLOW_UP) with 10-minute context window
+- Real-time progress updates via webhooks (throttled to 1 per 10 seconds)
+- File attachments sent as actual iMessage files (with fallback to download links)
+- Typing indicators during task processing
+- Message debouncing and deduplication
 
 ## API Endpoints
 
-**Connection:** `GET /connect`, `POST /connect`, `PUT /connect/:id`, `DELETE /connect/:id`  
-**MCP:** `GET /mcp` (SSE stream), `POST /mcp` (messages), `GET /mcp/status`  
-**Webhooks:** `POST /webhook`  
-**Health:** `GET /health`
+**Connection:** 
+- `GET /` - Landing page with "Connect to Manus" button
+- `GET /:connectionId` - Token input page
+- `PUT /:connectionId` - Activate connection with Manus API key
+- `GET /revoke` - Revoke connection page
+- `POST /revoke` - Revoke connection
+
+**MCP:** 
+- `POST /mcp/http` - HTTP MCP endpoint (streamableHttp transport)
+- `GET /mcp` - Legacy SSE endpoint (deprecated, use HTTP)
+
+**Webhooks:** 
+- `POST /api/webhooks/webhook` - Receive webhooks from Manus AI
+
+**Health:** 
+- `GET /health` - Health check endpoint
 
 ## Security
 
@@ -146,14 +167,15 @@ docker compose logs -f backend
 docker compose exec backend pnpm db:migrate
 ```
 
-**Nginx SSE config:**
+**Nginx config for MCP HTTP endpoint:**
 ```nginx
-location /mcp {
+location /mcp/http {
     proxy_pass http://backend:3000;
     proxy_http_version 1.1;
-    proxy_set_header Connection '';
-    proxy_buffering off;
-    proxy_cache off;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 
@@ -164,18 +186,23 @@ location /mcp {
 ```bash
 # Run services
 pnpm dev  # All services
-pnpm --filter backend dev  # Individual
+pnpm --filter backend dev  # Individual service
 
 # Database
-pnpm db:generate
-pnpm db:migrate
-pnpm db:studio
-make reset-db
+pnpm db:generate  # Generate Prisma client
+pnpm db:migrate   # Run migrations
+pnpm db:studio    # Open Prisma Studio
+make reset-db     # Reset database
 
 # Testing
-./scripts/test-connection-flow.sh
-curl http://localhost:3000/health
-curl -N -H "Authorization: Bearer photon_sk_xxx" http://localhost:3000/mcp
+./scripts/test-connection-flow.sh  # Test full connection flow
+curl http://localhost:3000/health  # Health check
+
+# Test MCP HTTP endpoint
+curl -X POST http://localhost:3000/mcp/http \
+  -H "Authorization: Bearer ph_live_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/list"}'
 ```
 
 ## Structure
@@ -195,16 +222,27 @@ manus/
 ```bash
 # Check logs
 docker compose logs -f backend
+docker compose logs -f worker
+docker compose logs -f slm-classifier
 
-# Test SSE
-curl -N -H "Authorization: Bearer ph_live_AbC123XyZ789PqR45678" http://localhost:3000/mcp
+# Test MCP HTTP endpoint
+curl -X POST http://localhost:3000/mcp/http \
+  -H "Authorization: Bearer ph_live_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/list"}'
 
-# Reset
+# Reset everything
 docker compose down -v && docker compose up -d
 make reset-db
 ```
 
-**CORS issues:** Check `services/backend/src/index.ts` for allowed origins.
+**Common Issues:**
+
+- **CORS issues:** Check `services/backend/src/index.ts` for allowed origins
+- **Webhook not received:** Verify `PUBLIC_URL` is set correctly and accessible from Manus
+- **Classification errors:** Check SLM classifier logs and OpenRouter API key
+- **Messages not sending:** Verify iMessage SDK connection and Photon credentials
+- **Task context issues:** Check Redis connection and worker logs for task mapping
 
 ---
 
