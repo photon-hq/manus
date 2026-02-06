@@ -4,6 +4,7 @@ import { prisma } from '@imessage-mcp/database';
 import { connectRoutes } from './routes/connect';
 import { mcpRoutes } from './routes/mcp';
 import { mcpSSERoutes } from './routes/mcp-sse';
+import { mcpHTTPRoutes } from './routes/mcp-http';
 import { webhookRoutes } from './routes/webhooks';
 import { imessageWebhookRoutes } from './routes/imessage-webhook';
 
@@ -56,6 +57,7 @@ fastify.get('/', async (request, reply) => {
 fastify.register(connectRoutes, { prefix: '/connect' });
 fastify.register(mcpRoutes, { prefix: '/mcp' });
 fastify.register(mcpSSERoutes, { prefix: '/mcp' });
+fastify.register(mcpHTTPRoutes, { prefix: '/mcp/http' });
 fastify.register(webhookRoutes, { prefix: '' }); // Root level
 fastify.register(imessageWebhookRoutes, { prefix: '' }); // Root level for health
 
