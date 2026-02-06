@@ -218,6 +218,7 @@ async function scheduleProcessing(phoneNumber: string) {
       messageId: msg.id,
       messageText: msg.messageText,
       messageGuid: msg.messageGuid,
+      messageTimestamp: msg.createdAt, // Pass as Date object
       attachments: msg.attachments,
     });
 
@@ -233,7 +234,7 @@ async function scheduleProcessing(phoneNumber: string) {
 
 // Process a single message
 async function processMessage(phoneNumber: string, data: any) {
-  const { messageId, messageText, attachments, messageGuid } = data;
+  const { messageId, messageText, attachments, messageGuid, messageTimestamp } = data;
 
   try {
     // Handle attachments if present
@@ -270,7 +271,7 @@ async function processMessage(phoneNumber: string, data: any) {
       } else {
         // No active task - create new task
         console.log(`📎 File-only message with no active task - creating new task`);
-        await createManusTask(phoneNumber, effectiveMessage, fileIds);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp);
       }
     } else {
       // Regular message with text - use SLM classifier
@@ -298,8 +299,8 @@ async function processMessage(phoneNumber: string, data: any) {
         });
         console.log(`✅ Cleared previous task context for ${phoneNumber} (NEW_TASK detected)`);
         
-        // Create new Manus task
-        await createManusTask(phoneNumber, effectiveMessage, fileIds);
+        // Create new Manus task (pass message timestamp as task start time)
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp);
       } else {
         // Follow-up to existing task
         await appendToTask(phoneNumber, effectiveMessage, fileIds);
@@ -543,7 +544,7 @@ async function classifyMessage(message: string, context: any[]): Promise<any> {
 }
 
 // Create new Manus task
-async function createManusTask(phoneNumber: string, message: string, fileIds: string[] = []) {
+async function createManusTask(phoneNumber: string, message: string, fileIds: string[] = [], messageTimestamp?: Date | string) {
   console.log(`Creating new Manus task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
   // Get connection to get Manus API key
@@ -596,7 +597,11 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
     console.log('✅ Created Manus task:', data.task_id);
 
     // Store the task ID and start time for follow-ups in database
-    const taskStartTime = new Date();
+    // Use the user's message timestamp as task start time (not when Manus creates the task)
+    // This ensures the user's triggering message is included in the context
+    const taskStartTime = messageTimestamp 
+      ? (messageTimestamp instanceof Date ? messageTimestamp : new Date(messageTimestamp))
+      : new Date();
     await prisma.connection.update({
       where: { phoneNumber },
       data: { 
@@ -605,7 +610,7 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
       } as any,
     });
     
-    console.log(`✅ Stored task start time: ${taskStartTime.toISOString()}`);
+    console.log(`✅ Stored task start time: ${taskStartTime.toISOString()} (user message time, not task creation time)`);
 
     // Store task-to-phone mapping in Redis for webhook lookup
     const taskMappingKey = `task:mapping:${data.task_id}`;
