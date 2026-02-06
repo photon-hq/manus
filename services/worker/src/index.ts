@@ -217,6 +217,7 @@ async function scheduleProcessing(phoneNumber: string) {
     await queue.add('process-message', {
       messageId: msg.id,
       messageText: msg.messageText,
+      messageGuid: msg.messageGuid,
       attachments: msg.attachments,
     });
 
@@ -232,7 +233,7 @@ async function scheduleProcessing(phoneNumber: string) {
 
 // Process a single message
 async function processMessage(phoneNumber: string, data: any) {
-  const { messageId, messageText, attachments } = data;
+  const { messageId, messageText, attachments, messageGuid } = data;
 
   try {
     // Handle attachments if present
@@ -273,8 +274,8 @@ async function processMessage(phoneNumber: string, data: any) {
       }
     } else {
       // Regular message with text - use SLM classifier
-      // Get last task context (last 20 messages)
-      const recentMessages = await getRecentMessages(phoneNumber, 20);
+      // Get last task context (last 20 messages), excluding the current message
+      const recentMessages = await getRecentMessages(phoneNumber, 20, messageGuid);
 
       // Log context being sent to SLM
       console.log(`📝 Context for SLM (${recentMessages.length} messages):`, 
@@ -418,7 +419,7 @@ async function uploadFileToManus(fileBuffer: Buffer, filename: string, manusApiK
 }
 
 // Get recent messages for context (only from current task)
-async function getRecentMessages(phoneNumber: string, limit: number = 20): Promise<any[]> {
+async function getRecentMessages(phoneNumber: string, limit: number = 20, excludeMessageGuid?: string): Promise<any[]> {
   try {
     // Get connection to check if there's an active task
     const connection = await prisma.connection.findFirst({
@@ -470,7 +471,10 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20): Promi
     const filteredMessages = messages
       .filter((msg) => {
         const messageTime = new Date(msg.dateCreated).getTime();
-        return messageTime >= taskStartTime && !guidSet.has(msg.guid);
+        // Exclude: messages before task start, MANUAL messages, and the current message being processed
+        return messageTime >= taskStartTime && 
+               !guidSet.has(msg.guid) && 
+               msg.guid !== excludeMessageGuid;
       })
       .map((msg) => ({
         from: msg.isFromMe ? 'me' : phoneNumber,
