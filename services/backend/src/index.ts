@@ -16,7 +16,7 @@ const fastify = Fastify({
   },
   // Increase timeouts for SSE connections
   connectionTimeout: 0, // Disable connection timeout for SSE
-  keepAliveTimeout: 72000, // 72 seconds (higher than typical load balancer timeout)
+  keepAliveTimeout: parseInt(process.env.KEEPALIVE_TIMEOUT_SECONDS || '120') * 1000, // Default 120 seconds
   // Trust proxy headers (required when behind reverse proxy like Traefik)
   trustProxy: true,
 });
@@ -107,6 +107,40 @@ fastify.get('/debug/sse', async (request, reply) => {
       reply.raw.end();
     }
   }, 1000);
+
+  // Handle client disconnect
+  request.raw.on('close', () => {
+    clearInterval(interval);
+    reply.raw.end();
+  });
+});
+
+// Test long-lived SSE connection (mimics MCP behavior)
+fastify.get('/debug/sse-long', async (request, reply) => {
+  reply.raw.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control', 'no-cache, no-store',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  // Send initial endpoint event (like MCP does)
+  const sessionId = Math.random().toString(36).substring(7);
+  reply.raw.write('event: endpoint\n');
+  reply.raw.write(`data: /debug/sse-long?sessionId=${sessionId}\n\n`);
+
+  // Keep connection alive for 2 minutes, sending heartbeat every 10 seconds
+  let count = 0;
+  const interval = setInterval(() => {
+    count++;
+    reply.raw.write(`data: {"heartbeat": ${count}, "timestamp": "${new Date().toISOString()}"}\n\n`);
+    
+    if (count >= 12) { // 2 minutes (12 * 10 seconds)
+      clearInterval(interval);
+      reply.raw.write('data: {"message": "Long SSE test complete"}\n\n');
+      reply.raw.end();
+    }
+  }, 10000); // Every 10 seconds
 
   // Handle client disconnect
   request.raw.on('close', () => {
