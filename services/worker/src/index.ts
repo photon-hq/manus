@@ -549,6 +549,8 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
 
     // Start persistent typing indicator via manager
     try {
+      // Ensure SDK is initialized
+      await getIMessageSDK();
       const manager = getTypingManager();
       await manager.startTyping(phoneNumber, data.task_id);
     } catch (error) {
@@ -583,6 +585,8 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
 
   // Ensure typing indicator is active (start if not already)
   try {
+    // Ensure SDK is initialized
+    await getIMessageSDK();
     const manager = getTypingManager();
     if (!manager.isTyping(phoneNumber)) {
       await manager.startTyping(phoneNumber, connection.currentTaskId);
@@ -745,9 +749,15 @@ async function listenForEvents() {
           console.log(`🛑 Task stopped event received: ${phoneNumber} (task: ${taskId})`);
           
           // Stop typing indicator
-          const manager = getTypingManager();
-          if (manager.isTyping(phoneNumber)) {
-            await manager.stopTyping(phoneNumber);
+          try {
+            // Ensure SDK is initialized
+            await getIMessageSDK();
+            const manager = getTypingManager();
+            if (manager.isTyping(phoneNumber)) {
+              await manager.stopTyping(phoneNumber);
+            }
+          } catch (error) {
+            console.warn('Failed to stop typing indicator:', error);
           }
           
           // Clear current task context so next message is classified as NEW_TASK
@@ -769,7 +779,19 @@ async function listenForEvents() {
   }
 }
 
+// Initialize iMessage SDK and typing manager on startup
+async function initializeSDK() {
+  try {
+    await getIMessageSDK();
+    console.log('✅ iMessage SDK and typing manager initialized');
+  } catch (error) {
+    console.error('Failed to initialize iMessage SDK:', error);
+    // Continue anyway - SDK will be initialized on first use
+  }
+}
+
 // Initialize on startup
+initializeSDK();
 initializeExistingQueues();
 
 // Listen for instant activation and message notifications

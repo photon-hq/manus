@@ -137,9 +137,27 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
 
   if (!taskId || !progressMessage) return;
 
-  // Hybrid approach: Only send text messages for major milestones (plan_update)
-  // Typing indicator is handled by worker service and will remain active
+  // Filter out internal/technical progress messages that aren't user-friendly
+  // Task plan steps are written as imperatives (commands) - filter these out
+  // User-friendly messages are written in past/present tense - keep these
+  const taskPlanPatterns = [
+    // Imperative verbs (commands) - these are task plan steps
+    /^(View|Read|Execute|Call|Search|Generate|Create|Write|Update|Delete|Send|Fetch|Download|Upload|Process|Parse|Extract|Transform|Validate|Check|Verify|Test|Deploy|Build|Compile|Run|Start|Stop|Restart|Install|Configure|Setup|Initialize|Load|Save|Store|Retrieve|Query|Filter|Sort|Map|Reduce|Analyze|Calculate|Compute|Render|Display|Show|Hide|Toggle|Enable|Disable|Add|Remove|Edit|Modify|Change|Replace|Insert|Append|Prepend|Clear|Reset|Refresh|Reload|Navigate|Redirect|Open|Close|Cancel|Confirm|Submit|Apply|Revert|Undo|Redo|Copy|Cut|Paste|Move|Drag|Drop|Select|Deselect|Highlight|Focus|Blur|Scroll|Zoom|Pan|Rotate|Scale|Resize|Crop|Trim|Split|Merge|Join|Combine|Separate|Divide|Multiply|Subtract|Increment|Decrement|Increase|Decrease|Maximize|Minimize|Expand|Collapse|Fold|Unfold|Wrap|Unwrap|Encode|Decode|Encrypt|Decrypt|Compress|Decompress|Archive|Unarchive|Zip|Unzip|Pack|Unpack|Bundle|Unbundle|Minify|Beautify|Format|Lint|Debug|Profile|Monitor|Log|Track|Trace|Record|Replay|Capture|Release|Publish|Unpublish|Subscribe|Unsubscribe|Register|Unregister|Login|Logout|Authenticate|Authorize|Grant|Revoke|Approve|Reject|Accept|Decline|Allow|Deny|Block|Unblock|Ban|Unban|Mute|Unmute|Pin|Unpin|Star|Unstar|Like|Unlike|Follow|Unfollow|Share|Unshare|Bookmark|Unbookmark|Flag|Unflag|Report|Unreport|Mark|Unmark|Tag|Untag|Label|Unlabel|Categorize|Uncategorize|Group|Ungroup|Organize|Reorganize|Arrange|Rearrange|Align|Distribute|Position|Place|Locate|Find|Discover|Explore|Browse|Navigate|Traverse|Iterate|Loop|Repeat|Retry|Resume|Pause|Continue|Skip|Next|Previous|First|Last|Forward|Backward|Up|Down|Left|Right|Top|Bottom|Begin|End|Finish|Complete|Done|Deliver|Provide)\s/i,
+    
+    // Specific internal phrases
+    /^Provide response or await user instructions/i,
+    /^Wait for user/i,
+    /^Await.*input/i,
+  ];
+
+  const isTaskPlanStep = taskPlanPatterns.some(pattern => pattern.test(progressMessage));
   
+  if (isTaskPlanStep) {
+    console.log(`⏭️  Skipping task plan step (not user-friendly): ${progressMessage.substring(0, 60)}...`);
+    return;
+  }
+
+  // Only send user-friendly progress updates (like "Received the image; analyzing...")
   // Filter: Only show plan_update progress types as text messages
   if (progressType !== 'plan_update') {
     console.log(`⏭️  Skipping progress notification (type: ${progressType}, task: ${taskId})`);
@@ -158,7 +176,7 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
     return;
   }
 
-  // Send just the progress message without extra formatting
+  // Send the user-friendly progress message
   const message = formatManusMessage(`🔄 ${progressMessage}`);
   
   const messageGuid = await sendIMessage(phoneNumber, message);
@@ -204,7 +222,7 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
         data: { 
           currentTaskId: null,
           currentTaskStartedAt: null,
-        },
+        } as any,
       });
     }
     
