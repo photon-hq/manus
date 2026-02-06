@@ -79,9 +79,9 @@ export const mcpHTTPRoutes: FastifyPluginAsync = async (fastify) => {
         'fetch',
         {
           description: 'Fetch conversation history from iMessage. Returns the last 100 messages between the user and Photon, filtered to exclude Manus-generated messages.',
-          inputSchema: z.object({}),
+          inputSchema: z.object({}) as any,
         },
-        async () => {
+        async (_args: any) => {
           // Fetch messages from iMessage infrastructure
           const messages = await fetchIMessages(connection.phoneNumber);
 
@@ -106,7 +106,7 @@ export const mcpHTTPRoutes: FastifyPluginAsync = async (fastify) => {
           return {
             content: [
               {
-                type: 'text',
+                type: 'text' as const,
                 text: JSON.stringify(filteredMessages, null, 2),
               },
             ],
@@ -119,10 +119,10 @@ export const mcpHTTPRoutes: FastifyPluginAsync = async (fastify) => {
         'send',
         {
           description: 'Send a message to the user via iMessage. Optionally include file attachments.',
-          inputSchema: SendMessageSchema,
+          inputSchema: SendMessageSchema as any,
         },
-        async (args) => {
-          const body = args as z.infer<typeof SendMessageSchema>;
+        async (args: any) => {
+          const body = args as { message: string; attachments?: Array<{ url: string; filename: string; size_bytes?: number }> };
 
           // Format message (no prefix - returns as-is)
           const formattedMessage = formatManusMessage(body.message);
@@ -187,7 +187,7 @@ export const mcpHTTPRoutes: FastifyPluginAsync = async (fastify) => {
           return {
             content: [
               {
-                type: 'text',
+                type: 'text' as const,
                 text: `Message sent successfully in ${chunks.length} chunk(s)${attachmentsSent > 0 ? ` with ${attachmentsSent} attachment(s)` : ''}. GUIDs: ${messageGuids.join(', ')}`,
               },
             ],
