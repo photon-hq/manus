@@ -21,8 +21,9 @@ const SendMessageSchema = z.object({
 // Track active connections
 const activeConnections = new Map<string, { server: Server; transport: SSEServerTransport; phoneNumber: string }>();
 
-// Connection timeout (1 hour)
-const CONNECTION_TIMEOUT_MS = 60 * 60 * 1000;
+// Connection timeout (configurable, default 4 hours)
+const CONNECTION_TIMEOUT_HOURS = parseInt(process.env.CONNECTION_TIMEOUT_HOURS || '4');
+const CONNECTION_TIMEOUT_MS = CONNECTION_TIMEOUT_HOURS * 60 * 60 * 1000;
 
 export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
   // GET /mcp - Establish SSE connection
@@ -75,8 +76,11 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Set headers to help with proxy issues (SSE-specific)
+      // Recommended headers for streaming behind CloudFlare
+      reply.raw.setHeader('Content-Type', 'text/event-stream');
+      reply.raw.setHeader('Cache-Control', 'no-cache, no-store');
+      reply.raw.setHeader('Connection', 'keep-alive');
       reply.raw.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
-      reply.raw.setHeader('Cache-Control', 'no-cache, no-transform'); // Prevent caching/transformation
 
       fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'SSE connection established');
 
