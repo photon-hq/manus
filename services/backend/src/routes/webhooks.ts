@@ -133,9 +133,19 @@ async function handleTaskCreated(phoneNumber: string, event: any) {
 async function handleTaskProgress(phoneNumber: string, event: any) {
   const taskId = event.progress_detail?.task_id;
   const progressMessage = event.progress_detail?.message;
+  const progressDescription = event.progress_detail?.description;
   const progressType = event.progress_detail?.progress_type;
 
+  // Log full progress_detail to see all available fields
+  console.log('📊 Full progress_detail:', JSON.stringify(event.progress_detail, null, 2));
+  console.log(`   Message: "${progressMessage}"`);
+  console.log(`   Description: "${progressDescription || 'N/A'}"`);
+  console.log(`   Type: "${progressType}"`);
+
   if (!taskId || !progressMessage) return;
+
+  // Use description if available, otherwise fall back to message
+  const displayText = progressDescription || progressMessage;
 
   // Filter out internal/technical progress messages that aren't user-friendly
   // Task plan steps are written as imperatives (commands) - filter these out
@@ -150,15 +160,14 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
     /^Await.*input/i,
   ];
 
-  const isTaskPlanStep = taskPlanPatterns.some(pattern => pattern.test(progressMessage));
+  const isTaskPlanStep = taskPlanPatterns.some(pattern => pattern.test(displayText));
   
   if (isTaskPlanStep) {
-    console.log(`⏭️  Skipping task plan step (not user-friendly): ${progressMessage.substring(0, 60)}...`);
+    console.log(`⏭️  Skipping task plan step (not user-friendly): ${displayText.substring(0, 60)}...`);
     return;
   }
 
-  // Only send user-friendly progress updates (like "Received the image; analyzing...")
-  // Filter: Only show plan_update progress types as text messages
+  // Only send plan_update progress types as text messages
   if (progressType !== 'plan_update') {
     console.log(`⏭️  Skipping progress notification (type: ${progressType}, task: ${taskId})`);
     return;
@@ -176,8 +185,8 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
     return;
   }
 
-  // Send the user-friendly progress message
-  const message = formatManusMessage(`🔄 ${progressMessage}`);
+  // Send the user-friendly progress message (using description if available)
+  const message = formatManusMessage(`🔄 ${displayText}`);
   
   const messageGuid = await sendIMessage(phoneNumber, message);
   console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId}, type: ${progressType})`);
@@ -215,16 +224,9 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   if (taskId) {
     taskStartTimes.delete(taskId);
     
-    // Clear currentTaskId and task start time from connection when task finishes successfully
-    if (stopReason === 'finish') {
-      await prisma.connection.updateMany({
-        where: { currentTaskId: taskId },
-        data: { 
-          currentTaskId: null,
-          currentTaskStartedAt: null,
-        } as any,
-      });
-    }
+    // DON'T clear currentTaskId immediately - keep it for 30 seconds to allow follow-ups
+    // The worker will handle clearing it after the grace period
+    // This allows users to send follow-up messages right after a task completes
     
     // Clean up Redis task mapping
     const taskMappingKey = `task:mapping:${taskId}`;

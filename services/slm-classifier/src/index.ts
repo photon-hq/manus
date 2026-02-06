@@ -55,9 +55,9 @@ fastify.post('/classify', async (request, reply) => {
       .map((msg) => `${msg.from}: ${msg.text}`)
       .join('\n');
 
-    // Call OpenRouter with Gemini Flash (fast and free)
+    // Call OpenRouter with Qwen 2.5 (fast and reliable)
     const response = await openrouter.chat.completions.create({
-      model: 'google/gemini-2.0-flash-exp:free',
+      model: 'qwen/qwen-2.5-7b-instruct:free',
       messages: [
         {
           role: 'system',

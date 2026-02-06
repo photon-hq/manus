@@ -760,15 +760,32 @@ async function listenForEvents() {
             console.warn('Failed to stop typing indicator:', error);
           }
           
-          // Clear current task context so next message is classified as NEW_TASK
-          await prisma.connection.update({
-            where: { phoneNumber },
-            data: { 
-              currentTaskId: null,
-              currentTaskStartedAt: null,
-            } as any,
-          });
-          console.log(`✅ Cleared task context for ${phoneNumber}`);
+          // Keep task context for 30 seconds to allow follow-up messages
+          // This prevents immediate follow-ups from being classified as NEW_TASK
+          console.log(`⏱️  Keeping task context for 30s to allow follow-ups (${phoneNumber})`);
+          setTimeout(async () => {
+            try {
+              // Only clear if the task ID hasn't changed (no new task started)
+              const connection = await prisma.connection.findFirst({
+                where: { phoneNumber, currentTaskId: taskId },
+              });
+              
+              if (connection) {
+                await prisma.connection.update({
+                  where: { phoneNumber },
+                  data: { 
+                    currentTaskId: null,
+                    currentTaskStartedAt: null,
+                  } as any,
+                });
+                console.log(`✅ Cleared task context after grace period (${phoneNumber})`);
+              } else {
+                console.log(`⏭️  Task context already changed, skipping clear (${phoneNumber})`);
+              }
+            } catch (error) {
+              console.error('Failed to clear task context after grace period:', error);
+            }
+          }, 30000); // 30 seconds grace period
         } catch (error) {
           console.error('Failed to handle task-stopped event:', error);
         }

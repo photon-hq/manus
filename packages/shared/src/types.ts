@@ -76,6 +76,8 @@ export const WebhookEventSchema = z.object({
     task_id: z.string(),
     progress_type: z.string(),
     message: z.string(),
+    description: z.string().optional(), // Task step description (more detailed than message)
+    timestamp: z.number().optional(),
   }).optional(),
 });
 
