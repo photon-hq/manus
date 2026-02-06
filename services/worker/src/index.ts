@@ -477,22 +477,24 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
     const guidSet = new Set(manualMessageGuids.map((m) => m.messageGuid));
 
     // Filter messages:
-    // 1. Only messages after current task started
+    // 1. Only messages after current task started (with 5 second buffer for timing differences)
     // 2. Exclude MANUAL messages
     // 3. Keep user messages and webhook responses
     const taskStartTime = connection.currentTaskStartedAt!.getTime();
+    const bufferMs = 5000; // 5 second buffer to account for timing differences between our DB and iMessage
     
     console.log(`⏰ Task started at: ${connection.currentTaskStartedAt!.toISOString()} (${taskStartTime})`);
     
     const filteredRawMessages = messages.filter((msg) => {
       const messageTime = new Date(msg.dateCreated).getTime();
-      const passesTimeFilter = messageTime >= taskStartTime;
+      // Allow messages up to 5 seconds before task start (timing buffer)
+      const passesTimeFilter = messageTime >= (taskStartTime - bufferMs);
       const notManual = !guidSet.has(msg.guid);
       const notCurrent = msg.guid !== excludeMessageGuid;
       
       console.log(`  Message ${msg.guid?.substring(0, 8)}: time=${passesTimeFilter}, notManual=${notManual}, notCurrent=${notCurrent}, isFromMe=${msg.isFromMe}`);
       
-      // Exclude: messages before task start, MANUAL messages, and the current message being processed
+      // Exclude: messages before task start (with buffer), MANUAL messages, and the current message being processed
       return passesTimeFilter && notManual && notCurrent;
     });
 
