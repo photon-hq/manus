@@ -442,6 +442,11 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
     await sdk.connect();
 
     const chatGuid = `any;-;${phoneNumber}`;
+    
+    // Small delay to ensure the incoming message has been saved to iMessage database
+    // iMessage may take a moment to persist messages
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     const messages = await sdk.messages.getMessages({
       chatGuid,
       limit,
