@@ -9,14 +9,7 @@
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "composite": true,
-    "incremental": true
+    "resolveJsonModule": true
   },
   "exclude": ["node_modules", "dist", "build"]
 }
