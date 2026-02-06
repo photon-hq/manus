@@ -435,9 +435,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       const mcpConfig = {
         mcpServers: {
           'photon-imessage': {
-            type: 'sse',
-            url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/mcp`,
+            type: 'streamableHttp',
+            url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/mcp/http`,
             headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json, text/event-stream',
               Authorization: `Bearer ${photonApiKey}`,
             },
           },

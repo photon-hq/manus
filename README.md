@@ -31,9 +31,13 @@ After completing setup, you'll receive the MCP configuration JSON directly via i
 {
   "mcpServers": {
     "photon-imessage": {
-      "type": "sse",
-      "url": "https://manus.photon.codes/mcp",
-      "headers": { "Authorization": "Bearer ph_live_AbC123XyZ789PqR45678" }
+      "type": "streamableHttp",
+      "url": "https://manus.photon.codes/mcp/http",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": "Bearer ph_live_AbC123XyZ789PqR45678"
+      }
     }
   }
 }
