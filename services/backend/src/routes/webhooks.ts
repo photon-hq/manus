@@ -120,9 +120,21 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
 async function handleTaskCreated(phoneNumber: string, event: any) {
   const taskId = event.task_detail?.task_id;
   
+  // Log full event
+  console.log('\n' + '='.repeat(70));
+  console.log('📋 TASK CREATED WEBHOOK RECEIVED');
+  console.log('='.repeat(70));
+  console.log('Full event object:');
+  console.log(JSON.stringify(event, null, 2));
+  console.log('\nExtracted fields:');
+  console.log(`  • task_id: ${taskId}`);
+  console.log(`  • task_title: ${event.task_detail?.task_title}`);
+  console.log(`  • task_url: ${event.task_detail?.task_url}`);
+  console.log('='.repeat(70) + '\n');
+  
   // Don't send notification for task creation - it's usually followed immediately by task completion
   // Users will just get the final result, which is cleaner
-  console.log(`📋 Task created for ${phoneNumber} (task: ${taskId})`);
+  console.log(`📋 Task created for ${phoneNumber} (task: ${taskId}) - not sending notification`);
 
   // Track task start time
   if (taskId) {
@@ -137,56 +149,43 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   const progressType = event.progress_detail?.progress_type;
 
   // Log full progress_detail to see all available fields
-  console.log('📊 Full progress_detail:', JSON.stringify(event.progress_detail, null, 2));
-  console.log(`   Message: "${progressMessage}"`);
-  console.log(`   Description: "${progressDescription || 'N/A'}"`);
-  console.log(`   Type: "${progressType}"`);
+  console.log('\n' + '='.repeat(70));
+  console.log('📊 TASK PROGRESS WEBHOOK RECEIVED');
+  console.log('='.repeat(70));
+  console.log('Full event object:');
+  console.log(JSON.stringify(event, null, 2));
+  console.log('\nExtracted fields:');
+  console.log(`  • task_id: ${taskId}`);
+  console.log(`  • progress_type: ${progressType}`);
+  console.log(`  • message: "${progressMessage}"`);
+  console.log(`  • description: ${progressDescription ? `"${progressDescription}"` : 'N/A'}`);
+  console.log('='.repeat(70) + '\n');
 
-  if (!taskId || !progressMessage) return;
+  if (!taskId || !progressMessage) {
+    console.log('⚠️  Missing required fields (task_id or message), skipping');
+    return;
+  }
 
   // Use description if available, otherwise fall back to message
   const displayText = progressDescription || progressMessage;
 
-  // Filter out internal/technical progress messages that aren't user-friendly
-  // Task plan steps are written as imperatives (commands) - filter these out
-  // User-friendly messages are written in past/present tense - keep these
-  const taskPlanPatterns = [
-    // Imperative verbs (commands) - these are task plan steps
-    /^(View|Read|Execute|Call|Search|Generate|Create|Write|Update|Delete|Send|Fetch|Download|Upload|Process|Parse|Extract|Transform|Validate|Check|Verify|Test|Deploy|Build|Compile|Run|Start|Stop|Restart|Install|Configure|Setup|Initialize|Load|Save|Store|Retrieve|Query|Filter|Sort|Map|Reduce|Analyze|Calculate|Compute|Render|Display|Show|Hide|Toggle|Enable|Disable|Add|Remove|Edit|Modify|Change|Replace|Insert|Append|Prepend|Clear|Reset|Refresh|Reload|Navigate|Redirect|Open|Close|Cancel|Confirm|Submit|Apply|Revert|Undo|Redo|Copy|Cut|Paste|Move|Drag|Drop|Select|Deselect|Highlight|Focus|Blur|Scroll|Zoom|Pan|Rotate|Scale|Resize|Crop|Trim|Split|Merge|Join|Combine|Separate|Divide|Multiply|Subtract|Increment|Decrement|Increase|Decrease|Maximize|Minimize|Expand|Collapse|Fold|Unfold|Wrap|Unwrap|Encode|Decode|Encrypt|Decrypt|Compress|Decompress|Archive|Unarchive|Zip|Unzip|Pack|Unpack|Bundle|Unbundle|Minify|Beautify|Format|Lint|Debug|Profile|Monitor|Log|Track|Trace|Record|Replay|Capture|Release|Publish|Unpublish|Subscribe|Unsubscribe|Register|Unregister|Login|Logout|Authenticate|Authorize|Grant|Revoke|Approve|Reject|Accept|Decline|Allow|Deny|Block|Unblock|Ban|Unban|Mute|Unmute|Pin|Unpin|Star|Unstar|Like|Unlike|Follow|Unfollow|Share|Unshare|Bookmark|Unbookmark|Flag|Unflag|Report|Unreport|Mark|Unmark|Tag|Untag|Label|Unlabel|Categorize|Uncategorize|Group|Ungroup|Organize|Reorganize|Arrange|Rearrange|Align|Distribute|Position|Place|Locate|Find|Discover|Explore|Browse|Navigate|Traverse|Iterate|Loop|Repeat|Retry|Resume|Pause|Continue|Skip|Next|Previous|First|Last|Forward|Backward|Up|Down|Left|Right|Top|Bottom|Begin|End|Finish|Complete|Done|Deliver|Provide)\s/i,
-    
-    // Specific internal phrases
-    /^Provide response or await user instructions/i,
-    /^Wait for user/i,
-    /^Await.*input/i,
-  ];
+  // NO FILTERING - send all progress updates to user
+  console.log(`📤 Sending progress update: "${displayText}"`);
 
-  const isTaskPlanStep = taskPlanPatterns.some(pattern => pattern.test(displayText));
-  
-  if (isTaskPlanStep) {
-    console.log(`⏭️  Skipping task plan step (not user-friendly): ${displayText.substring(0, 60)}...`);
-    return;
-  }
-
-  // Only send plan_update progress types as text messages
-  if (progressType !== 'plan_update') {
-    console.log(`⏭️  Skipping progress notification (type: ${progressType}, task: ${taskId})`);
-    return;
-  }
-
-  // Throttle: max 1 update per minute per task (prevent spam)
+  // Throttle: max 1 update per 10 seconds per task (prevent spam while staying responsive)
   // Use task-specific key so multiple concurrent tasks don't interfere
   const throttleKey = `${phoneNumber}:${taskId}`;
   const lastSent = progressTimestamps.get(throttleKey) || 0;
   const now = Date.now();
 
-  if (now - lastSent < 60000) {
-    // Skip if less than 1 minute since last progress update for this task
+  if (now - lastSent < 10000) {
+    // Skip if less than 10 seconds since last progress update for this task
     console.log(`⏭️  Throttled progress notification for ${phoneNumber} (task: ${taskId})`);
     return;
   }
 
-  // Send the user-friendly progress message (using description if available)
-  const message = formatManusMessage(`🔄 ${displayText}`);
+  // Send the progress message (no emoji - just the message text)
+  const message = formatManusMessage(displayText);
   
   const messageGuid = await sendIMessage(phoneNumber, message);
   console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId}, type: ${progressType})`);
@@ -211,6 +210,21 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   const taskUrl = event.task_detail?.task_url;
   const resultMessage = event.task_detail?.message;
   const attachments = event.task_detail?.attachments;
+
+  // Log full event
+  console.log('\n' + '='.repeat(70));
+  console.log('🛑 TASK STOPPED WEBHOOK RECEIVED');
+  console.log('='.repeat(70));
+  console.log('Full event object:');
+  console.log(JSON.stringify(event, null, 2));
+  console.log('\nExtracted fields:');
+  console.log(`  • task_id: ${taskId}`);
+  console.log(`  • task_title: ${taskTitle}`);
+  console.log(`  • task_url: ${taskUrl}`);
+  console.log(`  • stop_reason: ${stopReason}`);
+  console.log(`  • message: "${resultMessage?.substring(0, 100)}..."`);
+  console.log(`  • attachments: ${attachments?.length || 0} file(s)`);
+  console.log('='.repeat(70) + '\n');
 
   // Stop typing indicator via Redis pub/sub to worker
   try {
