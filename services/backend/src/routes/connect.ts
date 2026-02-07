@@ -609,19 +609,19 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-logo.dark-logo {
-              display: inline-block;
+              display: inline-block !important;
             }
             
             .footer-logo.light-logo {
-              display: none;
+              display: none !important;
             }
             
             body.dark-mode .footer-logo.dark-logo {
-              display: none;
+              display: none !important;
             }
             
             body.dark-mode .footer-logo.light-logo {
-              display: inline-block;
+              display: inline-block !important;
             }
             
             .footer-link {
