@@ -29,6 +29,20 @@ const redis = new Redis(REDIS_URL, {
 const progressTimestamps = new Map<string, number>();
 const taskStartTimes = new Map<string, number>();
 
+// Webhook deduplication - track processed event IDs (expire after 10 minutes)
+const processedWebhooks = new Map<string, number>();
+const WEBHOOK_EXPIRY_MS = 600000; // 10 minutes
+
+// Clean up expired webhook IDs every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [eventId, timestamp] of processedWebhooks.entries()) {
+    if (now - timestamp > WEBHOOK_EXPIRY_MS) {
+      processedWebhooks.delete(eventId);
+    }
+  }
+}, 300000); // 5 minutes
+
 export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/webhooks/manus - Receive webhooks from Manus
   fastify.post('/webhook', async (request, reply) => {
@@ -41,6 +55,20 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
       
       // Validate webhook event
       const event = WebhookEventSchema.parse(request.body);
+      
+      // Idempotency check - prevent duplicate webhook processing
+      const eventId = event.event_id;
+      if (eventId && processedWebhooks.has(eventId)) {
+        const processedAt = processedWebhooks.get(eventId);
+        const ageSeconds = Math.floor((Date.now() - processedAt!) / 1000);
+        console.log(`⏭️  Duplicate webhook detected (event_id: ${eventId}, processed ${ageSeconds}s ago) - skipping`);
+        return { success: true, message: 'Already processed' };
+      }
+      
+      // Mark as processed immediately (before async work) to prevent race conditions
+      if (eventId) {
+        processedWebhooks.set(eventId, Date.now());
+      }
       
       // Extract task ID from the event to find the connection
       const taskId = event.task_detail?.task_id || event.progress_detail?.task_id;
@@ -94,22 +122,32 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ event: event.event_type, phoneNumber }, 'Webhook received');
 
-      // Handle different event types
-      switch (event.event_type) {
-        case 'task_created':
-          await handleTaskCreated(phoneNumber, event);
-          break;
+      // Respond immediately to webhook (acknowledge receipt)
+      // Process the webhook asynchronously to avoid timeout/retry issues
+      reply.send({ success: true });
 
-        case 'task_progress':
-          await handleTaskProgress(phoneNumber, event);
-          break;
+      // Handle different event types asynchronously (don't block webhook response)
+      (async () => {
+        try {
+          switch (event.event_type) {
+            case 'task_created':
+              await handleTaskCreated(phoneNumber, event);
+              break;
 
-        case 'task_stopped':
-          await handleTaskStopped(phoneNumber, event);
-          break;
-      }
+            case 'task_progress':
+              await handleTaskProgress(phoneNumber, event);
+              break;
 
-      return { success: true };
+            case 'task_stopped':
+              await handleTaskStopped(phoneNumber, event);
+              break;
+          }
+        } catch (error) {
+          fastify.log.error(error, 'Async webhook processing failed');
+        }
+      })();
+
+      // Note: reply.send() was already called above
     } catch (error) {
       fastify.log.error(error, 'Webhook processing failed');
       return reply.code(500).send({ error: 'Webhook processing failed' });
