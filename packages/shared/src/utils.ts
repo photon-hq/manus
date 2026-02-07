@@ -157,12 +157,14 @@ export function splitMessageByParagraphs(message: string): string[] {
 
 /**
  * Strip markdown formatting from text since iMessage API doesn't support programmatic formatting
- * Removes: **bold**, *italic*, _underline_, ~strikethrough~
+ * Removes: **bold**, *italic*, _underline_, ~strikethrough~, ## headings, - bullets, numbered lists
  * Keeps the text content without the markdown syntax
  * Preserves URLs with underscores (e.g., https://example.com/my_file)
  */
 export function stripMarkdownFormatting(text: string): string {
   return text
+    // Remove headings (## Heading -> Heading, ### Heading -> Heading, etc.)
+    .replace(/^#{1,6}\s+(.+)$/gm, '$1')
     // Remove bold (**text** or __text__)
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/__(.+?)__/g, '$1')
@@ -173,5 +175,9 @@ export function stripMarkdownFormatting(text: string): string {
     .replace(/(?<!:\/\/[^\s]*?)(?<!\w)_([^_\s]+?)_(?!\w)/g, '$1')
     // Remove strikethrough (~text~ or ~~text~~)
     .replace(/~~(.+?)~~/g, '$1')
-    .replace(/~(.+?)~/g, '$1');
+    .replace(/~(.+?)~/g, '$1')
+    // Remove bullet points (- item or * item at start of line)
+    .replace(/^[\-\*]\s+/gm, '')
+    // Remove numbered lists (1. item, 2. item, etc.)
+    .replace(/^\d+\.\s+/gm, '');
 }
