@@ -356,7 +356,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Content -->
           <div class="content">
             <h1>Manus iMessage Connector</h1>
-            <p class="subtitle">Now, bring Manus to your iMessage.</p>
+            <p class="subtitle">Bringing Manus to your iMessage.</p>
             <a href="${smsLink}" class="connect-btn">Connect to Manus</a>
           </div>
           
