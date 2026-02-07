@@ -141,24 +141,31 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               right: 0;
               text-align: center;
               padding: 0 20px;
-              color: rgba(0, 0, 0, 0.3);
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+            }
+            .footer-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex-wrap: wrap;
+              justify-content: center;
+            }
+            .footer-text {
+              color: rgba(0, 0, 0, 0.4);
               font-size: 14px;
               font-weight: 400;
               transition: color 0.3s ease;
             }
-            body.dark-mode .footer { color: rgba(255, 255, 255, 0.3); }
+            body.dark-mode .footer-text { color: rgba(255, 255, 255, 0.4); }
             .footer a {
-              color: rgba(0, 0, 0, 0.5);
               text-decoration: none;
-              font-weight: 500;
-              transition: color 0.2s;
-              letter-spacing: -0.01em;
+              transition: opacity 0.2s;
+              display: inline-block;
             }
-            body.dark-mode .footer a { color: rgba(255, 255, 255, 0.5); }
-            .footer a:hover {
-              color: rgba(0, 0, 0, 0.8);
-            }
-            body.dark-mode .footer a:hover { color: rgba(255, 255, 255, 0.8); }
+            .footer a:hover { opacity: 0.7; }
             .footer-logo {
               height: 16px;
               width: auto;
@@ -166,16 +173,30 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               vertical-align: middle;
             }
             .footer-logo.dark-logo {
-              display: inline-block;
+              display: inline-block !important;
             }
             .footer-logo.light-logo {
-              display: none;
+              display: none !important;
             }
             body.dark-mode .footer-logo.dark-logo {
-              display: none;
+              display: none !important;
             }
             body.dark-mode .footer-logo.light-logo {
-              display: inline-block;
+              display: inline-block !important;
+            }
+            .footer-link {
+              color: rgba(0, 0, 0, 0.6);
+              font-weight: 500;
+              letter-spacing: -0.01em;
+            }
+            body.dark-mode .footer-link {
+              color: rgba(255, 255, 255, 0.6);
+            }
+            .footer-link:hover {
+              color: rgba(0, 0, 0, 0.9);
+            }
+            body.dark-mode .footer-link:hover {
+              color: rgba(255, 255, 255, 0.9);
             }
             @media (max-width: 768px) {
               .footer-logo {
@@ -1539,37 +1560,80 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               right: 0;
               text-align: center;
               padding: 0 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
             }
             
-            .footer {
-              color: rgba(0, 0, 0, 0.3);
+            .footer-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex-wrap: wrap;
+              justify-content: center;
+            }
+            
+            .footer-text {
+              color: rgba(0, 0, 0, 0.4);
               font-size: 14px;
               font-weight: 400;
               transition: color 0.3s ease;
             }
             
-            body.dark-mode .footer {
-              color: rgba(255, 255, 255, 0.3);
-            }
-            
-            .footer a {
-              color: rgba(0, 0, 0, 0.4);
-              text-decoration: none;
-              font-weight: 500;
-              transition: color 0.2s;
-              letter-spacing: -0.01em;
-            }
-            
-            body.dark-mode .footer a {
+            body.dark-mode .footer-text {
               color: rgba(255, 255, 255, 0.4);
             }
             
-            .footer a:hover {
-              color: rgba(0, 0, 0, 0.7);
+            .footer a {
+              text-decoration: none;
+              transition: opacity 0.2s;
+              display: inline-block;
             }
             
-            body.dark-mode .footer a:hover {
-              color: rgba(255, 255, 255, 0.7);
+            .footer a:hover {
+              opacity: 0.7;
+            }
+            
+            .footer-logo {
+              height: 16px;
+              width: auto;
+              transition: opacity 0.2s;
+              vertical-align: middle;
+            }
+            
+            .footer-logo.dark-logo {
+              display: inline-block !important;
+            }
+            
+            .footer-logo.light-logo {
+              display: none !important;
+            }
+            
+            body.dark-mode .footer-logo.dark-logo {
+              display: none !important;
+            }
+            
+            body.dark-mode .footer-logo.light-logo {
+              display: inline-block !important;
+            }
+            
+            .footer-link {
+              color: rgba(0, 0, 0, 0.6);
+              font-weight: 500;
+              letter-spacing: -0.01em;
+            }
+            
+            body.dark-mode .footer-link {
+              color: rgba(255, 255, 255, 0.6);
+            }
+            
+            .footer-link:hover {
+              color: rgba(0, 0, 0, 0.9);
+            }
+            
+            body.dark-mode .footer-link:hover {
+              color: rgba(255, 255, 255, 0.9);
             }
             
             /* Responsive Design */
