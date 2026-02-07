@@ -51,35 +51,24 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             body.dark-mode { background: #1a1a1a; }
             
-            .theme-toggle {
-              position: fixed;
-              top: 24px;
-              right: 24px;
-              width: 44px;
-              height: 24px;
-              background: #e5e7eb;
-              border-radius: 12px;
-              border: none;
-              cursor: pointer;
-              transition: background-color 0.2s;
-              z-index: 1000;
-              padding: 0;
-            }
-            .theme-toggle:hover { background: #d1d5db; }
-            body.dark-mode .theme-toggle { background: #3f3f46; }
-            body.dark-mode .theme-toggle:hover { background: #52525b; }
-            .theme-toggle-thumb {
-              position: absolute;
-              top: 2px;
-              left: 2px;
-              width: 20px;
-              height: 20px;
-              background: white;
-              border-radius: 10px;
-              transition: transform 0.2s;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            }
-            body.dark-mode .theme-toggle-thumb { transform: translateX(20px); }
+            .theme-selector { position: fixed; top: 24px; right: 24px; z-index: 1000; }
+            .theme-button { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border: 1.5px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; color: #374151; transition: all 0.2s; }
+            .theme-button:hover { border-color: #2563eb; }
+            body.dark-mode .theme-button { background: #27272a; border-color: #52525b; color: #e4e4e7; }
+            body.dark-mode .theme-button:hover { border-color: #3b82f6; }
+            .theme-button svg { width: 12px; height: 12px; fill: currentColor; transition: transform 0.2s; }
+            .theme-button.open svg { transform: rotate(180deg); }
+            .theme-dropdown { position: absolute; top: calc(100% + 8px); right: 0; min-width: 200px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); display: none; overflow: hidden; }
+            .theme-dropdown.show { display: block; }
+            body.dark-mode .theme-dropdown { background: #27272a; border-color: #3f3f46; }
+            .theme-option { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; cursor: pointer; font-size: 14px; color: #374151; transition: background 0.15s; }
+            .theme-option:hover { background: #f3f4f6; }
+            body.dark-mode .theme-option { color: #e4e4e7; }
+            body.dark-mode .theme-option:hover { background: #3f3f46; }
+            .theme-option.active { font-weight: 500; }
+            .theme-option svg { width: 16px; height: 16px; fill: #2563eb; opacity: 0; }
+            .theme-option.active svg { opacity: 1; }
+            body.dark-mode .theme-option svg { fill: #3b82f6; }
             
             .container { max-width: 480px; width: 100%; text-align: center; }
             h1 { font-size: 32px; font-weight: 600; color: #000000; margin-bottom: 12px; transition: color 0.3s ease; }
@@ -171,15 +160,23 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             body.dark-mode .footer a:hover { color: rgba(255, 255, 255, 0.8); }
             @media (max-width: 480px) {
-              .theme-toggle { top: 16px; right: 16px; }
+              .theme-selector { top: 16px; right: 16px; }
             }
           </style>
         </head>
         <body>
-          <!-- Dark mode toggle -->
-          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-            <div class="theme-toggle-thumb"></div>
-          </button>
+          <!-- Theme selector -->
+          <div class="theme-selector">
+            <button class="theme-button" onclick="toggleThemeDropdown()" aria-label="Select theme">
+              <span id="theme-label">Light</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+            </button>
+            <div class="theme-dropdown" id="theme-dropdown">
+              <div class="theme-option" onclick="setTheme('system')" data-theme="system"><span>Use system setting</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
+              <div class="theme-option" onclick="setTheme('light')" data-theme="light"><span>Light</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
+              <div class="theme-option" onclick="setTheme('dark')" data-theme="dark"><span>Dark</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
+            </div>
+          </div>
           
           <div class="container">
             <h1>Revoke Connection</h1>
@@ -210,17 +207,30 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
-            // Check for saved theme preference or default to light mode
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            if (currentTheme === 'dark') {
-              document.body.classList.add('dark-mode');
+            function getSystemTheme() { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+            function applyTheme(theme) { if (theme === 'system') theme = getSystemTheme(); document.body.classList.toggle('dark-mode', theme === 'dark'); }
+            function updateThemeLabel() {
+              const savedTheme = localStorage.getItem('theme') || 'system';
+              document.getElementById('theme-label').textContent = savedTheme === 'system' ? 'Use system setting' : savedTheme.charAt(0).toUpperCase() + savedTheme.slice(1);
+              document.querySelectorAll('.theme-option').forEach(opt => opt.classList.toggle('active', opt.dataset.theme === savedTheme));
             }
-            
-            function toggleTheme() {
-              document.body.classList.toggle('dark-mode');
-              const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-              localStorage.setItem('theme', theme);
+            function setTheme(theme) { localStorage.setItem('theme', theme); applyTheme(theme); updateThemeLabel(); toggleThemeDropdown(); }
+            function toggleThemeDropdown() {
+              document.getElementById('theme-dropdown').classList.toggle('show');
+              document.querySelector('.theme-button').classList.toggle('open');
             }
+            document.addEventListener('click', (e) => {
+              const selector = document.querySelector('.theme-selector');
+              if (selector && !selector.contains(e.target)) {
+                document.getElementById('theme-dropdown').classList.remove('show');
+                document.querySelector('.theme-button').classList.remove('open');
+              }
+            });
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+              if ((localStorage.getItem('theme') || 'system') === 'system') applyTheme('system');
+            });
+            applyTheme(localStorage.getItem('theme') || 'system');
+            updateThemeLabel();
             
             document.getElementById('revokeForm').addEventListener('submit', async (e) => {
               e.preventDefault();
@@ -312,48 +322,116 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               background: #1a1a1a;
             }
             
-            /* Dark mode toggle - shadcn style */
-            .theme-toggle {
+            /* Theme selector dropdown */
+            .theme-selector {
               position: fixed;
               top: 24px;
               right: 24px;
-              width: 44px;
-              height: 24px;
-              background: #e5e7eb;
-              border-radius: 12px;
-              border: none;
-              cursor: pointer;
-              transition: background-color 0.2s;
               z-index: 1000;
-              padding: 0;
             }
             
-            .theme-toggle:hover {
-              background: #d1d5db;
+            .theme-button {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              padding: 8px 16px;
+              background: white;
+              border: 1.5px solid #d1d5db;
+              border-radius: 8px;
+              cursor: pointer;
+              font-size: 14px;
+              font-weight: 500;
+              color: #374151;
+              transition: all 0.2s;
             }
             
-            body.dark-mode .theme-toggle {
+            .theme-button:hover {
+              border-color: #2563eb;
+            }
+            
+            body.dark-mode .theme-button {
+              background: #27272a;
+              border-color: #52525b;
+              color: #e4e4e7;
+            }
+            
+            body.dark-mode .theme-button:hover {
+              border-color: #3b82f6;
+            }
+            
+            .theme-button svg {
+              width: 12px;
+              height: 12px;
+              fill: currentColor;
+              transition: transform 0.2s;
+            }
+            
+            .theme-button.open svg {
+              transform: rotate(180deg);
+            }
+            
+            .theme-dropdown {
+              position: absolute;
+              top: calc(100% + 8px);
+              right: 0;
+              min-width: 200px;
+              background: white;
+              border: 1px solid #e5e7eb;
+              border-radius: 8px;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+              display: none;
+              overflow: hidden;
+            }
+            
+            .theme-dropdown.show {
+              display: block;
+            }
+            
+            body.dark-mode .theme-dropdown {
+              background: #27272a;
+              border-color: #3f3f46;
+            }
+            
+            .theme-option {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 10px 16px;
+              cursor: pointer;
+              font-size: 14px;
+              color: #374151;
+              transition: background 0.15s;
+            }
+            
+            .theme-option:hover {
+              background: #f3f4f6;
+            }
+            
+            body.dark-mode .theme-option {
+              color: #e4e4e7;
+            }
+            
+            body.dark-mode .theme-option:hover {
               background: #3f3f46;
             }
             
-            body.dark-mode .theme-toggle:hover {
-              background: #52525b;
+            .theme-option.active {
+              font-weight: 500;
             }
             
-            .theme-toggle-thumb {
-              position: absolute;
-              top: 2px;
-              left: 2px;
-              width: 20px;
-              height: 20px;
-              background: white;
-              border-radius: 10px;
-              transition: transform 0.2s;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            .theme-option svg {
+              width: 16px;
+              height: 16px;
+              fill: #2563eb;
+              opacity: 0;
             }
             
-            body.dark-mode .theme-toggle-thumb {
-              transform: translateX(20px);
+            .theme-option.active svg {
+              opacity: 1;
+            }
+            
+            body.dark-mode .theme-option svg {
+              fill: #3b82f6;
             }
             
             /* Content container */
@@ -531,7 +609,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 bottom: 16px;
               }
               
-              .theme-toggle {
+              .theme-selector {
                 top: 16px;
                 right: 16px;
               }
@@ -539,10 +617,35 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </style>
         </head>
         <body>
-          <!-- Dark mode toggle -->
-          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-            <div class="theme-toggle-thumb"></div>
-          </button>
+          <!-- Theme selector -->
+          <div class="theme-selector">
+            <button class="theme-button" onclick="toggleThemeDropdown()" aria-label="Select theme">
+              <span id="theme-label">Light</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+              </svg>
+            </button>
+            <div class="theme-dropdown" id="theme-dropdown">
+              <div class="theme-option" onclick="setTheme('system')" data-theme="system">
+                <span>Use system setting</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <div class="theme-option" onclick="setTheme('light')" data-theme="light">
+                <span>Light</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <div class="theme-option" onclick="setTheme('dark')" data-theme="dark">
+                <span>Dark</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+            </div>
+          </div>
           
           <!-- Content -->
           <div class="content">
@@ -558,17 +661,80 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
-            // Check for saved theme preference or default to light mode
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            if (currentTheme === 'dark') {
-              document.body.classList.add('dark-mode');
+            // Theme management
+            function getSystemTheme() {
+              return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             }
             
-            function toggleTheme() {
-              document.body.classList.toggle('dark-mode');
-              const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-              localStorage.setItem('theme', theme);
+            function applyTheme(theme) {
+              if (theme === 'system') {
+                theme = getSystemTheme();
+              }
+              
+              if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+              } else {
+                document.body.classList.remove('dark-mode');
+              }
             }
+            
+            function updateThemeLabel() {
+              const savedTheme = localStorage.getItem('theme') || 'system';
+              const label = document.getElementById('theme-label');
+              const options = document.querySelectorAll('.theme-option');
+              
+              // Update label
+              if (savedTheme === 'system') {
+                label.textContent = 'Use system setting';
+              } else {
+                label.textContent = savedTheme.charAt(0).toUpperCase() + savedTheme.slice(1);
+              }
+              
+              // Update active state
+              options.forEach(option => {
+                if (option.dataset.theme === savedTheme) {
+                  option.classList.add('active');
+                } else {
+                  option.classList.remove('active');
+                }
+              });
+            }
+            
+            function setTheme(theme) {
+              localStorage.setItem('theme', theme);
+              applyTheme(theme);
+              updateThemeLabel();
+              toggleThemeDropdown();
+            }
+            
+            function toggleThemeDropdown() {
+              const dropdown = document.getElementById('theme-dropdown');
+              const button = document.querySelector('.theme-button');
+              dropdown.classList.toggle('show');
+              button.classList.toggle('open');
+            }
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+              const selector = document.querySelector('.theme-selector');
+              if (selector && !selector.contains(e.target)) {
+                document.getElementById('theme-dropdown').classList.remove('show');
+                document.querySelector('.theme-button').classList.remove('open');
+              }
+            });
+            
+            // Listen for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+              const savedTheme = localStorage.getItem('theme') || 'system';
+              if (savedTheme === 'system') {
+                applyTheme('system');
+              }
+            });
+            
+            // Initialize theme
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            applyTheme(savedTheme);
+            updateThemeLabel();
           </script>
         </body>
       </html>
@@ -947,49 +1113,25 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               background: #1a1a1a;
             }
             
-            /* Dark mode toggle - shadcn style */
-            .theme-toggle {
-              position: fixed;
-              top: 24px;
-              right: 24px;
-              width: 44px;
-              height: 24px;
-              background: #e5e7eb;
-              border-radius: 12px;
-              border: none;
-              cursor: pointer;
-              transition: background-color 0.2s;
-              z-index: 1000;
-              padding: 0;
-            }
-            
-            .theme-toggle:hover {
-              background: #d1d5db;
-            }
-            
-            body.dark-mode .theme-toggle {
-              background: #3f3f46;
-            }
-            
-            body.dark-mode .theme-toggle:hover {
-              background: #52525b;
-            }
-            
-            .theme-toggle-thumb {
-              position: absolute;
-              top: 2px;
-              left: 2px;
-              width: 20px;
-              height: 20px;
-              background: white;
-              border-radius: 10px;
-              transition: transform 0.2s;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            }
-            
-            body.dark-mode .theme-toggle-thumb {
-              transform: translateX(20px);
-            }
+            /* Theme selector dropdown */
+            .theme-selector { position: fixed; top: 24px; right: 24px; z-index: 1000; }
+            .theme-button { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border: 1.5px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; color: #374151; transition: all 0.2s; }
+            .theme-button:hover { border-color: #2563eb; }
+            body.dark-mode .theme-button { background: #27272a; border-color: #52525b; color: #e4e4e7; }
+            body.dark-mode .theme-button:hover { border-color: #3b82f6; }
+            .theme-button svg { width: 12px; height: 12px; fill: currentColor; transition: transform 0.2s; }
+            .theme-button.open svg { transform: rotate(180deg); }
+            .theme-dropdown { position: absolute; top: calc(100% + 8px); right: 0; min-width: 200px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); display: none; overflow: hidden; }
+            .theme-dropdown.show { display: block; }
+            body.dark-mode .theme-dropdown { background: #27272a; border-color: #3f3f46; }
+            .theme-option { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; cursor: pointer; font-size: 14px; color: #374151; transition: background 0.15s; }
+            .theme-option:hover { background: #f3f4f6; }
+            body.dark-mode .theme-option { color: #e4e4e7; }
+            body.dark-mode .theme-option:hover { background: #3f3f46; }
+            .theme-option.active { font-weight: 500; }
+            .theme-option svg { width: 16px; height: 16px; fill: #2563eb; opacity: 0; }
+            .theme-option.active svg { opacity: 1; }
+            body.dark-mode .theme-option svg { fill: #3b82f6; }
             
             .container {
               max-width: 520px;
@@ -1472,7 +1614,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 margin-bottom: 24px;
               }
               
-              .theme-toggle {
+              .theme-selector {
                 top: 16px;
                 right: 16px;
               }
@@ -1504,10 +1646,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </style>
         </head>
         <body>
-          <!-- Dark mode toggle -->
-          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-            <div class="theme-toggle-thumb"></div>
-          </button>
+          <!-- Theme selector -->
+          <div class="theme-selector">
+            <button class="theme-button" onclick="toggleThemeDropdown()" aria-label="Select theme">
+              <span id="theme-label">Light</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+            </button>
+            <div class="theme-dropdown" id="theme-dropdown">
+              <div class="theme-option" onclick="setTheme('system')" data-theme="system"><span>Use system setting</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
+              <div class="theme-option" onclick="setTheme('light')" data-theme="light"><span>Light</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
+              <div class="theme-option" onclick="setTheme('dark')" data-theme="dark"><span>Dark</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
+            </div>
+          </div>
           
           <div class="container">
             <!-- Form Section -->
@@ -1559,17 +1709,30 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
-            // Check for saved theme preference or default to light mode
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            if (currentTheme === 'dark') {
-              document.body.classList.add('dark-mode');
+            function getSystemTheme() { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+            function applyTheme(theme) { if (theme === 'system') theme = getSystemTheme(); document.body.classList.toggle('dark-mode', theme === 'dark'); }
+            function updateThemeLabel() {
+              const savedTheme = localStorage.getItem('theme') || 'system';
+              document.getElementById('theme-label').textContent = savedTheme === 'system' ? 'Use system setting' : savedTheme.charAt(0).toUpperCase() + savedTheme.slice(1);
+              document.querySelectorAll('.theme-option').forEach(opt => opt.classList.toggle('active', opt.dataset.theme === savedTheme));
             }
-            
-            function toggleTheme() {
-              document.body.classList.toggle('dark-mode');
-              const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-              localStorage.setItem('theme', theme);
+            function setTheme(theme) { localStorage.setItem('theme', theme); applyTheme(theme); updateThemeLabel(); toggleThemeDropdown(); }
+            function toggleThemeDropdown() {
+              document.getElementById('theme-dropdown').classList.toggle('show');
+              document.querySelector('.theme-button').classList.toggle('open');
             }
+            document.addEventListener('click', (e) => {
+              const selector = document.querySelector('.theme-selector');
+              if (selector && !selector.contains(e.target)) {
+                document.getElementById('theme-dropdown').classList.remove('show');
+                document.querySelector('.theme-button').classList.remove('open');
+              }
+            });
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+              if ((localStorage.getItem('theme') || 'system') === 'system') applyTheme('system');
+            });
+            applyTheme(localStorage.getItem('theme') || 'system');
+            updateThemeLabel();
             
             let mcpConfigData = null;
             
