@@ -167,7 +167,14 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   }
 
   // Use description if available, otherwise fall back to message
-  const displayText = progressDescription || progressMessage;
+  let displayText = progressDescription || progressMessage;
+  
+  // Format subtask message: lowercase first letter and add "..." at the end
+  // Example: "Research on semantic turn detection" → "research on semantic turn detection..."
+  displayText = displayText.charAt(0).toLowerCase() + displayText.slice(1);
+  if (!displayText.endsWith('...') && !displayText.endsWith('.')) {
+    displayText = displayText + '...';
+  }
 
   // NO FILTERING - send all progress updates to user
   console.log(`📤 Sending progress update: "${displayText}"`);
@@ -201,6 +208,15 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
 
   // Update timestamp for this specific task
   progressTimestamps.set(throttleKey, now);
+  
+  // Ensure typing indicator continues after sending progress message
+  // The worker's persistent typing indicator should remain active
+  try {
+    await redis.publish('ensure-typing', JSON.stringify({ phoneNumber, taskId }));
+    console.log(`🔄 Requested typing indicator refresh for ${phoneNumber} (task: ${taskId})`);
+  } catch (error) {
+    console.warn('Failed to request typing indicator refresh:', error);
+  }
 }
 
 async function handleTaskStopped(phoneNumber: string, event: any) {

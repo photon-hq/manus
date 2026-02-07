@@ -791,11 +791,11 @@ async function listenForEvents() {
     const Redis = (await import('ioredis')).default;
     const subscriber = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
     
-    subscriber.subscribe('connection-activated', 'message-queued', 'task-stopped', (err) => {
+    subscriber.subscribe('connection-activated', 'message-queued', 'task-stopped', 'ensure-typing', (err) => {
       if (err) {
         console.error('Failed to subscribe to Redis channels:', err);
       } else {
-        console.log('📡 Listening for connection, message, and task events...');
+        console.log('📡 Listening for connection, message, task, and typing events...');
       }
     });
 
@@ -813,6 +813,28 @@ async function listenForEvents() {
         if (!workers.has(phoneNumber)) {
           console.log(`Starting worker for ${phoneNumber}`);
           getQueue(phoneNumber); // Ensure worker exists
+        }
+      } else if (channel === 'ensure-typing') {
+        try {
+          const data = JSON.parse(message);
+          const { phoneNumber, taskId } = data;
+          console.log(`🔄 Ensure typing event received: ${phoneNumber} (task: ${taskId})`);
+          
+          // Ensure typing indicator is active
+          try {
+            await getIMessageSDK();
+            const manager = getTypingManager();
+            if (!manager.isTyping(phoneNumber)) {
+              console.log(`🟢 Restarting typing indicator for ${phoneNumber} (task: ${taskId})`);
+              await manager.startTyping(phoneNumber, taskId);
+            } else {
+              console.log(`✅ Typing indicator already active for ${phoneNumber}`);
+            }
+          } catch (error) {
+            console.warn('Failed to ensure typing indicator:', error);
+          }
+        } catch (error) {
+          console.error('Failed to handle ensure-typing event:', error);
         }
       } else if (channel === 'task-stopped') {
         try {
