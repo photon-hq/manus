@@ -53,25 +53,33 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .theme-toggle {
               position: fixed;
-              top: 30px;
-              right: 30px;
-              width: 50px;
-              height: 50px;
-              border-radius: 50%;
-              background: rgba(0, 0, 0, 0.1);
-              border: 1px solid rgba(0, 0, 0, 0.1);
+              top: 24px;
+              right: 24px;
+              width: 44px;
+              height: 24px;
+              background: #e5e7eb;
+              border-radius: 12px;
+              border: none;
               cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.3s ease;
+              transition: background-color 0.2s;
               z-index: 1000;
+              padding: 0;
             }
-            .theme-toggle:hover { background: rgba(0, 0, 0, 0.15); transform: scale(1.05); }
-            body.dark-mode .theme-toggle { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
-            body.dark-mode .theme-toggle:hover { background: rgba(255, 255, 255, 0.15); }
-            .theme-toggle svg { width: 24px; height: 24px; fill: #000000; transition: fill 0.3s ease; }
-            body.dark-mode .theme-toggle svg { fill: #ffffff; }
+            .theme-toggle:hover { background: #d1d5db; }
+            body.dark-mode .theme-toggle { background: #3f3f46; }
+            body.dark-mode .theme-toggle:hover { background: #52525b; }
+            .theme-toggle-thumb {
+              position: absolute;
+              top: 2px;
+              left: 2px;
+              width: 20px;
+              height: 20px;
+              background: white;
+              border-radius: 10px;
+              transition: transform 0.2s;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+            body.dark-mode .theme-toggle-thumb { transform: translateX(20px); }
             
             .container { max-width: 480px; width: 100%; text-align: center; }
             h1 { font-size: 32px; font-weight: 600; color: #000000; margin-bottom: 12px; transition: color 0.3s ease; }
@@ -163,17 +171,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             body.dark-mode .footer a:hover { color: rgba(255, 255, 255, 0.8); }
             @media (max-width: 480px) {
-              .theme-toggle { top: 20px; right: 20px; width: 44px; height: 44px; }
-              .theme-toggle svg { width: 20px; height: 20px; }
+              .theme-toggle { top: 16px; right: 16px; }
             }
           </style>
         </head>
         <body>
           <!-- Dark mode toggle -->
           <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M12 18c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-10c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zM13 2h-2v3h2V2zm0 17h-2v3h2v-3zM5 11H2v2h3v-2zm17 0h-3v2h3v-2zM6.3 4.9L4.9 6.3l2.1 2.1 1.4-1.4-2.1-2.1zm12.7 12.7l-1.4 1.4 2.1 2.1 1.4-1.4-2.1-2.1zm2.1-12.7l-2.1 2.1 1.4 1.4 2.1-2.1-1.4-1.4zM6.3 19.1l2.1-2.1-1.4-1.4-2.1 2.1 1.4 1.4z"/>
-            </svg>
+            <div class="theme-toggle-thumb"></div>
           </button>
           
           <div class="container">
@@ -307,47 +312,48 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               background: #1a1a1a;
             }
             
-            /* Dark mode toggle */
+            /* Dark mode toggle - shadcn style */
             .theme-toggle {
               position: fixed;
-              top: 30px;
-              right: 30px;
-              width: 50px;
-              height: 50px;
-              border-radius: 50%;
-              background: rgba(0, 0, 0, 0.1);
-              border: 1px solid rgba(0, 0, 0, 0.1);
+              top: 24px;
+              right: 24px;
+              width: 44px;
+              height: 24px;
+              background: #e5e7eb;
+              border-radius: 12px;
+              border: none;
               cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.3s ease;
+              transition: background-color 0.2s;
               z-index: 1000;
+              padding: 0;
             }
             
             .theme-toggle:hover {
-              background: rgba(0, 0, 0, 0.15);
-              transform: scale(1.05);
+              background: #d1d5db;
             }
             
             body.dark-mode .theme-toggle {
-              background: rgba(255, 255, 255, 0.1);
-              border-color: rgba(255, 255, 255, 0.2);
+              background: #3f3f46;
             }
             
             body.dark-mode .theme-toggle:hover {
-              background: rgba(255, 255, 255, 0.15);
+              background: #52525b;
             }
             
-            .theme-toggle svg {
-              width: 24px;
-              height: 24px;
-              fill: #000000;
-              transition: fill 0.3s ease;
+            .theme-toggle-thumb {
+              position: absolute;
+              top: 2px;
+              left: 2px;
+              width: 20px;
+              height: 20px;
+              background: white;
+              border-radius: 10px;
+              transition: transform 0.2s;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             }
             
-            body.dark-mode .theme-toggle svg {
-              fill: #ffffff;
+            body.dark-mode .theme-toggle-thumb {
+              transform: translateX(20px);
             }
             
             /* Content container */
@@ -526,15 +532,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .theme-toggle {
-                top: 20px;
-                right: 20px;
-                width: 44px;
-                height: 44px;
-              }
-              
-              .theme-toggle svg {
-                width: 20px;
-                height: 20px;
+                top: 16px;
+                right: 16px;
               }
             }
           </style>
@@ -542,9 +541,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <body>
           <!-- Dark mode toggle -->
           <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M12 18c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-10c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zM13 2h-2v3h2V2zm0 17h-2v3h2v-3zM5 11H2v2h3v-2zm17 0h-3v2h3v-2zM6.3 4.9L4.9 6.3l2.1 2.1 1.4-1.4-2.1-2.1zm12.7 12.7l-1.4 1.4 2.1 2.1 1.4-1.4-2.1-2.1zm2.1-12.7l-2.1 2.1 1.4 1.4 2.1-2.1-1.4-1.4zM6.3 19.1l2.1-2.1-1.4-1.4-2.1 2.1 1.4 1.4z"/>
-            </svg>
+            <div class="theme-toggle-thumb"></div>
           </button>
           
           <!-- Content -->
@@ -950,47 +947,48 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               background: #1a1a1a;
             }
             
-            /* Dark mode toggle */
+            /* Dark mode toggle - shadcn style */
             .theme-toggle {
               position: fixed;
-              top: 30px;
-              right: 30px;
-              width: 50px;
-              height: 50px;
-              border-radius: 50%;
-              background: rgba(0, 0, 0, 0.1);
-              border: 1px solid rgba(0, 0, 0, 0.1);
+              top: 24px;
+              right: 24px;
+              width: 44px;
+              height: 24px;
+              background: #e5e7eb;
+              border-radius: 12px;
+              border: none;
               cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.3s ease;
+              transition: background-color 0.2s;
               z-index: 1000;
+              padding: 0;
             }
             
             .theme-toggle:hover {
-              background: rgba(0, 0, 0, 0.15);
-              transform: scale(1.05);
+              background: #d1d5db;
             }
             
             body.dark-mode .theme-toggle {
-              background: rgba(255, 255, 255, 0.1);
-              border-color: rgba(255, 255, 255, 0.2);
+              background: #3f3f46;
             }
             
             body.dark-mode .theme-toggle:hover {
-              background: rgba(255, 255, 255, 0.15);
+              background: #52525b;
             }
             
-            .theme-toggle svg {
-              width: 24px;
-              height: 24px;
-              fill: #000000;
-              transition: fill 0.3s ease;
+            .theme-toggle-thumb {
+              position: absolute;
+              top: 2px;
+              left: 2px;
+              width: 20px;
+              height: 20px;
+              background: white;
+              border-radius: 10px;
+              transition: transform 0.2s;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             }
             
-            body.dark-mode .theme-toggle svg {
-              fill: #ffffff;
+            body.dark-mode .theme-toggle-thumb {
+              transform: translateX(20px);
             }
             
             .container {
@@ -1475,15 +1473,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .theme-toggle {
-                top: 20px;
-                right: 20px;
-                width: 44px;
-                height: 44px;
-              }
-              
-              .theme-toggle svg {
-                width: 20px;
-                height: 20px;
+                top: 16px;
+                right: 16px;
               }
             }
             
@@ -1515,9 +1506,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <body>
           <!-- Dark mode toggle -->
           <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M12 18c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-10c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zM13 2h-2v3h2V2zm0 17h-2v3h2v-3zM5 11H2v2h3v-2zm17 0h-3v2h3v-2zM6.3 4.9L4.9 6.3l2.1 2.1 1.4-1.4-2.1-2.1zm12.7 12.7l-1.4 1.4 2.1 2.1 1.4-1.4-2.1-2.1zm2.1-12.7l-2.1 2.1 1.4 1.4 2.1-2.1-1.4-1.4zM6.3 19.1l2.1-2.1-1.4-1.4-2.1 2.1 1.4 1.4z"/>
-            </svg>
+            <div class="theme-toggle-thumb"></div>
           </button>
           
           <div class="container">
