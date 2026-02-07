@@ -152,7 +152,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            powered by <a href="https://photon.codes" target="_blank">photon.codes</a>
+            built by <a href="https://photon.codes" target="_blank">photon.codes</a><br>
+            join community at <a href="https://discord.com/invite/WU4g2QSkg" target="_blank">Discord</a>
           </div>
           
           <script>
@@ -260,7 +261,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-size: 64px;
               font-weight: 600;
               color: rgb(52, 50, 45);
-              margin-bottom: 16px;
+              margin-bottom: 8px;
               line-height: 1.05;
               letter-spacing: -0.03em;
               max-width: 900px;
@@ -394,7 +395,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            powered by <a href="https://photon.codes" target="_blank">photon.codes</a>
+            built by <a href="https://photon.codes" target="_blank">photon.codes</a><br>
+            join community at <a href="https://discord.com/invite/WU4g2QSkg" target="_blank">Discord</a>
           </div>
         </body>
       </html>
@@ -784,7 +786,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-size: 48px;
               font-weight: 600;
               color: rgb(52, 50, 45);
-              margin-bottom: 16px;
+              margin-bottom: 8px;
               line-height: 1.05;
               letter-spacing: -0.03em;
             }
@@ -1213,7 +1215,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            powered by <a href="https://photon.codes" target="_blank">photon.codes</a>
+            built by <a href="https://photon.codes" target="_blank">photon.codes</a><br>
+            join community at <a href="https://discord.com/invite/WU4g2QSkg" target="_blank">Discord</a>
           </div>
           
           <script>
