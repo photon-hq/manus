@@ -47,10 +47,37 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               justify-content: center;
               padding: 20px;
               position: relative;
+              transition: background 0.3s ease;
             }
+            body.dark-mode { background: #1a1a1a; }
+            
+            .theme-toggle {
+              position: fixed;
+              top: 30px;
+              right: 30px;
+              width: 50px;
+              height: 50px;
+              border-radius: 50%;
+              background: rgba(0, 0, 0, 0.1);
+              border: 1px solid rgba(0, 0, 0, 0.1);
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.3s ease;
+              z-index: 1000;
+            }
+            .theme-toggle:hover { background: rgba(0, 0, 0, 0.15); transform: scale(1.05); }
+            body.dark-mode .theme-toggle { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+            body.dark-mode .theme-toggle:hover { background: rgba(255, 255, 255, 0.15); }
+            .theme-toggle svg { width: 24px; height: 24px; fill: #000000; transition: fill 0.3s ease; }
+            body.dark-mode .theme-toggle svg { fill: #ffffff; }
+            
             .container { max-width: 480px; width: 100%; text-align: center; }
-            h1 { font-size: 32px; font-weight: 600; color: #000000; margin-bottom: 12px; }
-            .subtitle { font-size: 17px; color: rgba(0, 0, 0, 0.6); margin-bottom: 32px; line-height: 1.5; }
+            h1 { font-size: 32px; font-weight: 600; color: #000000; margin-bottom: 12px; transition: color 0.3s ease; }
+            body.dark-mode h1 { color: #ffffff; }
+            .subtitle { font-size: 17px; color: rgba(0, 0, 0, 0.6); margin-bottom: 32px; line-height: 1.5; transition: color 0.3s ease; }
+            body.dark-mode .subtitle { color: rgba(255, 255, 255, 0.6); }
             .warning { 
               background: rgba(255, 59, 48, 0.1); 
               border: 1px solid rgba(255, 59, 48, 0.3);
@@ -68,8 +95,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               border-radius: 12px;
               background: rgba(0, 0, 0, 0.02);
               margin-bottom: 16px;
+              color: #000000;
+              transition: all 0.3s ease;
             }
+            body.dark-mode input { background: #2a2a2a; border-color: rgba(255, 255, 255, 0.2); color: #ffffff; }
             input:focus { outline: none; border-color: rgba(0, 0, 0, 0.3); background: #ffffff; }
+            body.dark-mode input:focus { border-color: rgba(255, 255, 255, 0.4); background: #2a2a2a; }
+            input::placeholder { color: rgba(0, 0, 0, 0.3); }
+            body.dark-mode input::placeholder { color: rgba(255, 255, 255, 0.3); }
             .btn {
               width: 100%;
               padding: 16px 48px;
@@ -114,7 +147,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(0, 0, 0, 0.3);
               font-size: 14px;
               font-weight: 400;
+              transition: color 0.3s ease;
             }
+            body.dark-mode .footer { color: rgba(255, 255, 255, 0.3); }
             .footer a {
               color: rgba(0, 0, 0, 0.5);
               text-decoration: none;
@@ -122,12 +157,25 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               transition: color 0.2s;
               letter-spacing: -0.01em;
             }
+            body.dark-mode .footer a { color: rgba(255, 255, 255, 0.5); }
             .footer a:hover {
               color: rgba(0, 0, 0, 0.8);
+            }
+            body.dark-mode .footer a:hover { color: rgba(255, 255, 255, 0.8); }
+            @media (max-width: 480px) {
+              .theme-toggle { top: 20px; right: 20px; width: 44px; height: 44px; }
+              .theme-toggle svg { width: 20px; height: 20px; }
             }
           </style>
         </head>
         <body>
+          <!-- Dark mode toggle -->
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M12 18c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-10c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zM13 2h-2v3h2V2zm0 17h-2v3h2v-3zM5 11H2v2h3v-2zm17 0h-3v2h3v-2zM6.3 4.9L4.9 6.3l2.1 2.1 1.4-1.4-2.1-2.1zm12.7 12.7l-1.4 1.4 2.1 2.1 1.4-1.4-2.1-2.1zm2.1-12.7l-2.1 2.1 1.4 1.4 2.1-2.1-1.4-1.4zM6.3 19.1l2.1-2.1-1.4-1.4-2.1 2.1 1.4 1.4z"/>
+            </svg>
+          </button>
+          
           <div class="container">
             <h1>Revoke Connection</h1>
             <p class="subtitle">Disconnect your iMessage from Manus and delete all your data</p>
@@ -157,6 +205,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
+            // Check for saved theme preference or default to light mode
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            if (currentTheme === 'dark') {
+              document.body.classList.add('dark-mode');
+            }
+            
+            function toggleTheme() {
+              document.body.classList.toggle('dark-mode');
+              const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+              localStorage.setItem('theme', theme);
+            }
+            
             document.getElementById('revokeForm').addEventListener('submit', async (e) => {
               e.preventDefault();
               const btn = document.getElementById('revokeBtn');
@@ -240,6 +300,54 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               min-height: 100vh;
               background: #f5f5f5;
               position: relative;
+              transition: background 0.3s ease, color 0.3s ease;
+            }
+            
+            body.dark-mode {
+              background: #1a1a1a;
+            }
+            
+            /* Dark mode toggle */
+            .theme-toggle {
+              position: fixed;
+              top: 30px;
+              right: 30px;
+              width: 50px;
+              height: 50px;
+              border-radius: 50%;
+              background: rgba(0, 0, 0, 0.1);
+              border: 1px solid rgba(0, 0, 0, 0.1);
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.3s ease;
+              z-index: 1000;
+            }
+            
+            .theme-toggle:hover {
+              background: rgba(0, 0, 0, 0.15);
+              transform: scale(1.05);
+            }
+            
+            body.dark-mode .theme-toggle {
+              background: rgba(255, 255, 255, 0.1);
+              border-color: rgba(255, 255, 255, 0.2);
+            }
+            
+            body.dark-mode .theme-toggle:hover {
+              background: rgba(255, 255, 255, 0.15);
+            }
+            
+            .theme-toggle svg {
+              width: 24px;
+              height: 24px;
+              fill: #000000;
+              transition: fill 0.3s ease;
+            }
+            
+            body.dark-mode .theme-toggle svg {
+              fill: #ffffff;
             }
             
             /* Content container */
@@ -265,6 +373,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               line-height: 1.05;
               letter-spacing: -0.03em;
               max-width: 900px;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode h1 {
+              color: rgb(230, 228, 225);
             }
             
             /* Subtitle */
@@ -276,6 +389,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               line-height: 1.6;
               max-width: 700px;
               font-weight: 400;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .subtitle {
+              color: #999999;
             }
             
             /* Connect button */
@@ -306,6 +424,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               transform: scale(0.98);
             }
             
+            body.dark-mode .connect-btn {
+              background: #ffffff;
+              color: #000000;
+              box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
+            }
+            
+            body.dark-mode .connect-btn:hover {
+              background: #e6e6e6;
+              box-shadow: 0 6px 24px rgba(255, 255, 255, 0.2);
+            }
+            
             /* Footer */
             .footer {
               position: fixed;
@@ -320,6 +449,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(0, 0, 0, 0.4);
               font-size: 14px;
               font-weight: 400;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .footer {
+              color: rgba(255, 255, 255, 0.4);
             }
             
             .footer a {
@@ -330,8 +464,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               letter-spacing: -0.01em;
             }
             
+            body.dark-mode .footer a {
+              color: rgba(255, 255, 255, 0.6);
+            }
+            
             .footer a:hover {
               color: rgba(0, 0, 0, 0.9);
+            }
+            
+            body.dark-mode .footer a:hover {
+              color: rgba(255, 255, 255, 0.9);
             }
             
             /* Responsive Design */
@@ -382,10 +524,29 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               .footer {
                 bottom: 16px;
               }
+              
+              .theme-toggle {
+                top: 20px;
+                right: 20px;
+                width: 44px;
+                height: 44px;
+              }
+              
+              .theme-toggle svg {
+                width: 20px;
+                height: 20px;
+              }
             }
           </style>
         </head>
         <body>
+          <!-- Dark mode toggle -->
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M12 18c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-10c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zM13 2h-2v3h2V2zm0 17h-2v3h2v-3zM5 11H2v2h3v-2zm17 0h-3v2h3v-2zM6.3 4.9L4.9 6.3l2.1 2.1 1.4-1.4-2.1-2.1zm12.7 12.7l-1.4 1.4 2.1 2.1 1.4-1.4-2.1-2.1zm2.1-12.7l-2.1 2.1 1.4 1.4 2.1-2.1-1.4-1.4zM6.3 19.1l2.1-2.1-1.4-1.4-2.1 2.1 1.4 1.4z"/>
+            </svg>
+          </button>
+          
           <!-- Content -->
           <div class="content">
             <h1>Manus iMessage Connector</h1>
@@ -398,6 +559,20 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             built by <a href="https://photon.codes" target="_blank">photon.codes</a><br>
             join community at <a href="https://dub.sh/photon-discord" target="_blank">Discord</a>
           </div>
+          
+          <script>
+            // Check for saved theme preference or default to light mode
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            if (currentTheme === 'dark') {
+              document.body.classList.add('dark-mode');
+            }
+            
+            function toggleTheme() {
+              document.body.classList.toggle('dark-mode');
+              const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+              localStorage.setItem('theme', theme);
+            }
+          </script>
         </body>
       </html>
     `);
@@ -768,6 +943,54 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               align-items: center;
               justify-content: center;
               padding: 20px;
+              transition: background 0.3s ease;
+            }
+            
+            body.dark-mode {
+              background: #1a1a1a;
+            }
+            
+            /* Dark mode toggle */
+            .theme-toggle {
+              position: fixed;
+              top: 30px;
+              right: 30px;
+              width: 50px;
+              height: 50px;
+              border-radius: 50%;
+              background: rgba(0, 0, 0, 0.1);
+              border: 1px solid rgba(0, 0, 0, 0.1);
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.3s ease;
+              z-index: 1000;
+            }
+            
+            .theme-toggle:hover {
+              background: rgba(0, 0, 0, 0.15);
+              transform: scale(1.05);
+            }
+            
+            body.dark-mode .theme-toggle {
+              background: rgba(255, 255, 255, 0.1);
+              border-color: rgba(255, 255, 255, 0.2);
+            }
+            
+            body.dark-mode .theme-toggle:hover {
+              background: rgba(255, 255, 255, 0.15);
+            }
+            
+            .theme-toggle svg {
+              width: 24px;
+              height: 24px;
+              fill: #000000;
+              transition: fill 0.3s ease;
+            }
+            
+            body.dark-mode .theme-toggle svg {
+              fill: #ffffff;
             }
             
             .container {
@@ -789,6 +1012,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-bottom: 8px;
               line-height: 1.05;
               letter-spacing: -0.03em;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode h1 {
+              color: rgb(230, 228, 225);
             }
             
             .subtitle {
@@ -796,6 +1024,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: #666666;
               margin-bottom: 32px;
               line-height: 1.6;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .subtitle {
+              color: #999999;
             }
             
             .get-key-link {
@@ -807,8 +1040,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               transition: color 0.2s;
             }
             
+            body.dark-mode .get-key-link {
+              color: #999999;
+            }
+            
             .get-key-link:hover {
               color: rgb(52, 50, 45);
+            }
+            
+            body.dark-mode .get-key-link:hover {
+              color: rgb(230, 228, 225);
             }
             
             .input-wrapper {
@@ -824,6 +1065,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               background: #ffffff;
               transition: all 0.2s;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              color: #000000;
+            }
+            
+            body.dark-mode input {
+              background: #2a2a2a;
+              border-color: rgba(255, 255, 255, 0.2);
+              color: #ffffff;
             }
             
             input:focus {
@@ -831,8 +1079,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               border-color: rgba(0, 0, 0, 0.4);
             }
             
+            body.dark-mode input:focus {
+              border-color: rgba(255, 255, 255, 0.4);
+            }
+            
             input::placeholder {
               color: rgba(0, 0, 0, 0.3);
+            }
+            
+            body.dark-mode input::placeholder {
+              color: rgba(255, 255, 255, 0.3);
             }
             
             .submit-btn {
@@ -850,10 +1106,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
             
+            body.dark-mode .submit-btn {
+              background: #ffffff;
+              color: #000000;
+              box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
+            }
+            
             .submit-btn:hover:not(:disabled) {
               background: #1a1a1a;
               transform: scale(1.02);
               box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+            }
+            
+            body.dark-mode .submit-btn:hover:not(:disabled) {
+              background: #e6e6e6;
+              box-shadow: 0 6px 24px rgba(255, 255, 255, 0.2);
             }
             
             .submit-btn:active:not(:disabled) {
@@ -891,6 +1158,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: #000000;
               margin-bottom: 12px;
               letter-spacing: -0.02em;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .success-title {
+              color: #ffffff;
             }
             
             .success-subtitle {
@@ -898,6 +1170,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(0, 0, 0, 0.6);
               margin-bottom: 32px;
               line-height: 1.5;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .success-subtitle {
+              color: rgba(255, 255, 255, 0.6);
             }
             
             .config-container {
@@ -908,6 +1185,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-bottom: 20px;
               position: relative;
               text-align: left;
+              transition: all 0.3s ease;
+            }
+            
+            body.dark-mode .config-container {
+              background: rgba(255, 255, 255, 0.05);
+              border-color: rgba(255, 255, 255, 0.1);
             }
             
             .config-container pre {
@@ -916,6 +1199,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               line-height: 1.6;
               color: rgba(0, 0, 0, 0.8);
               font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .config-container pre {
+              color: rgba(255, 255, 255, 0.8);
             }
             
             .copy-btn {
@@ -933,13 +1221,27 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               transition: all 0.2s;
             }
             
+            body.dark-mode .copy-btn {
+              background: #ffffff;
+              color: #000000;
+            }
+            
             .copy-btn:hover {
               background: #1a1a1a;
               transform: scale(1.02);
             }
             
+            body.dark-mode .copy-btn:hover {
+              background: #e6e6e6;
+            }
+            
             .copy-btn.copied {
               background: #34c759;
+            }
+            
+            body.dark-mode .copy-btn.copied {
+              background: #34c759;
+              color: #ffffff;
             }
             
             .action-btn {
@@ -959,10 +1261,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
             
+            body.dark-mode .action-btn {
+              background: #ffffff;
+              color: #000000;
+              box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
+            }
+            
             .action-btn:hover {
               background: #1a1a1a;
               transform: scale(1.02);
               box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+            }
+            
+            body.dark-mode .action-btn:hover {
+              background: #e6e6e6;
+              box-shadow: 0 6px 24px rgba(255, 255, 255, 0.2);
             }
             
             .action-btn:active {
@@ -973,6 +1286,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-top: 24px;
               font-size: 15px;
               color: rgba(0, 0, 0, 0.5);
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .note {
+              color: rgba(255, 255, 255, 0.5);
             }
             
             /* Footer */
@@ -989,6 +1307,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(0, 0, 0, 0.3);
               font-size: 14px;
               font-weight: 400;
+              transition: color 0.3s ease;
+            }
+            
+            body.dark-mode .footer {
+              color: rgba(255, 255, 255, 0.3);
             }
             
             .footer a {
@@ -999,8 +1322,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               letter-spacing: -0.01em;
             }
             
+            body.dark-mode .footer a {
+              color: rgba(255, 255, 255, 0.4);
+            }
+            
             .footer a:hover {
               color: rgba(0, 0, 0, 0.7);
+            }
+            
+            body.dark-mode .footer a:hover {
+              color: rgba(255, 255, 255, 0.7);
             }
             
             /* Responsive Design */
@@ -1142,6 +1473,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 font-size: 15px;
                 margin-bottom: 24px;
               }
+              
+              .theme-toggle {
+                top: 20px;
+                right: 20px;
+                width: 44px;
+                height: 44px;
+              }
+              
+              .theme-toggle svg {
+                width: 20px;
+                height: 20px;
+              }
             }
             
             @media (max-width: 360px) {
@@ -1170,6 +1513,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </style>
         </head>
         <body>
+          <!-- Dark mode toggle -->
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M12 18c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm0-10c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zM13 2h-2v3h2V2zm0 17h-2v3h2v-3zM5 11H2v2h3v-2zm17 0h-3v2h3v-2zM6.3 4.9L4.9 6.3l2.1 2.1 1.4-1.4-2.1-2.1zm12.7 12.7l-1.4 1.4 2.1 2.1 1.4-1.4-2.1-2.1zm2.1-12.7l-2.1 2.1 1.4 1.4 2.1-2.1-1.4-1.4zM6.3 19.1l2.1-2.1-1.4-1.4-2.1 2.1 1.4 1.4z"/>
+            </svg>
+          </button>
+          
           <div class="container">
             <!-- Form Section -->
             <div id="form-section">
@@ -1220,6 +1570,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
+            // Check for saved theme preference or default to light mode
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            if (currentTheme === 'dark') {
+              document.body.classList.add('dark-mode');
+            }
+            
+            function toggleTheme() {
+              document.body.classList.toggle('dark-mode');
+              const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+              localStorage.setItem('theme', theme);
+            }
+            
             let mcpConfigData = null;
             
             // Validate Manus API key format
