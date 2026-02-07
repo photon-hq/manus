@@ -210,7 +210,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: #ffffff;
+              background: #f5f5f5;
               position: relative;
             }
             
@@ -221,33 +221,57 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              padding: 20px;
+              padding: 40px 20px;
+              max-width: 900px;
+              margin: 0 auto;
+              text-align: center;
             }
             
-            /* Dynamic Island button */
+            /* Headline */
+            h1 {
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 64px;
+              font-weight: 600;
+              color: rgb(52, 50, 45);
+              margin-bottom: 16px;
+              line-height: 1.05;
+              letter-spacing: -0.03em;
+              max-width: 900px;
+            }
+            
+            /* Subtitle */
+            .subtitle {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              font-size: 20px;
+              color: #666666;
+              margin-bottom: 28px;
+              line-height: 1.6;
+              max-width: 700px;
+              font-weight: 400;
+            }
+            
+            /* Connect button */
             .connect-btn { 
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 20px 48px;
-              background: rgba(0, 0, 0, 0.85);
-              backdrop-filter: blur(20px);
-              -webkit-backdrop-filter: blur(20px);
+              padding: 12px 28px;
+              background: #000000;
               color: #ffffff;
               text-decoration: none;
-              font-size: 17px;
+              font-size: 15px;
               font-weight: 500;
               border-radius: 50px;
               transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
               letter-spacing: -0.01em;
-              border: 1px solid rgba(255, 255, 255, 0.1);
+              border: none;
             }
             
             .connect-btn:hover { 
-              transform: scale(1.05);
-              box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-              background: rgba(0, 0, 0, 0.9);
+              transform: scale(1.02);
+              box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+              background: #1a1a1a;
             }
             
             .connect-btn:active {
@@ -279,9 +303,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Responsive Design */
             @media (max-width: 768px) {
+              h1 {
+                font-size: 48px;
+              }
+              
+              .subtitle {
+                font-size: 18px;
+                margin-bottom: 32px;
+              }
+              
               .connect-btn {
-                padding: 18px 40px;
-                font-size: 16px;
+                padding: 10px 24px;
+                font-size: 14px;
               }
               
               .footer {
@@ -295,12 +328,22 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             @media (max-width: 480px) {
               .content {
-                padding: 16px;
+                padding: 24px 16px;
+              }
+              
+              h1 {
+                font-size: 36px;
+                margin-bottom: 20px;
+              }
+              
+              .subtitle {
+                font-size: 16px;
+                margin-bottom: 28px;
               }
               
               .connect-btn {
-                padding: 16px 36px;
-                font-size: 15px;
+                padding: 10px 22px;
+                font-size: 13px;
               }
               
               .footer {
@@ -312,6 +355,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <body>
           <!-- Content -->
           <div class="content">
+            <h1>Manus iMessage Connector</h1>
+            <p class="subtitle">Text like you always do. Now, bring Manus to your iMessage.</p>
             <a href="${smsLink}" class="connect-btn">Connect to Manus</a>
           </div>
           
@@ -684,7 +729,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: #ffffff;
+              background: #f5f5f5;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -692,8 +737,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .container {
-              max-width: 480px;
+              max-width: 520px;
               width: 100%;
+              text-align: center;
             }
             
             /* Form Section */
@@ -702,32 +748,33 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             h1 {
-              font-size: 32px;
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 48px;
               font-weight: 600;
-              color: #000000;
-              margin-bottom: 12px;
-              letter-spacing: -0.02em;
+              color: rgb(52, 50, 45);
+              margin-bottom: 16px;
+              line-height: 1.05;
+              letter-spacing: -0.03em;
             }
             
             .subtitle {
-              font-size: 17px;
-              color: rgba(0, 0, 0, 0.6);
+              font-size: 18px;
+              color: #666666;
               margin-bottom: 32px;
-              line-height: 1.5;
+              line-height: 1.6;
             }
             
             .get-key-link {
-              display: inline-flex;
-              align-items: center;
-              color: rgba(0, 0, 0, 0.6);
+              display: inline-block;
+              color: #666666;
               text-decoration: none;
-              font-size: 15px;
-              margin-bottom: 24px;
+              font-size: 16px;
+              margin-bottom: 28px;
               transition: color 0.2s;
             }
             
             .get-key-link:hover {
-              color: rgba(0, 0, 0, 0.9);
+              color: rgb(52, 50, 45);
             }
             
             .input-wrapper {
@@ -736,19 +783,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             input {
               width: 100%;
-              padding: 16px 20px;
-              font-size: 17px;
-              border: 1px solid rgba(0, 0, 0, 0.1);
+              padding: 14px 20px;
+              font-size: 16px;
+              border: 1px solid rgba(0, 0, 0, 0.15);
               border-radius: 12px;
-              background: rgba(0, 0, 0, 0.02);
+              background: #ffffff;
               transition: all 0.2s;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             }
             
             input:focus {
               outline: none;
-              border-color: rgba(0, 0, 0, 0.3);
-              background: #ffffff;
+              border-color: rgba(0, 0, 0, 0.4);
             }
             
             input::placeholder {
@@ -757,29 +803,27 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .submit-btn {
               width: 100%;
-              padding: 16px 48px;
-              background: rgba(0, 0, 0, 0.85);
-              backdrop-filter: blur(20px);
-              -webkit-backdrop-filter: blur(20px);
+              padding: 12px 28px;
+              background: #000000;
               color: #ffffff;
               border: none;
-              font-size: 17px;
+              font-size: 15px;
               font-weight: 500;
-              border-radius: 12px;
+              border-radius: 50px;
               cursor: pointer;
               transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
               letter-spacing: -0.01em;
-              border: 1px solid rgba(255, 255, 255, 0.1);
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
             
             .submit-btn:hover:not(:disabled) {
-              background: rgba(0, 0, 0, 0.9);
-              transform: translateY(-1px);
-              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+              background: #1a1a1a;
+              transform: scale(1.02);
+              box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
             }
             
             .submit-btn:active:not(:disabled) {
-              transform: translateY(0);
+              transform: scale(0.98);
             }
             
             .submit-btn:disabled {
@@ -792,8 +836,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               padding: 12px 16px;
               background: rgba(255, 59, 48, 0.1);
               color: #ff3b30;
-              border-radius: 8px;
-              font-size: 15px;
+              border-radius: 12px;
+              font-size: 14px;
               display: none;
             }
             
@@ -845,10 +889,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               top: 16px;
               right: 16px;
               padding: 8px 16px;
-              background: rgba(0, 0, 0, 0.85);
+              background: #000000;
               color: #ffffff;
               border: none;
-              border-radius: 8px;
+              border-radius: 20px;
               cursor: pointer;
               font-size: 13px;
               font-weight: 500;
@@ -856,8 +900,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .copy-btn:hover {
-              background: rgba(0, 0, 0, 0.95);
-              transform: translateY(-1px);
+              background: #1a1a1a;
+              transform: scale(1.02);
             }
             
             .copy-btn.copied {
@@ -869,27 +913,26 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               align-items: center;
               justify-content: center;
               padding: 16px 48px;
-              background: rgba(0, 0, 0, 0.85);
-              backdrop-filter: blur(20px);
-              -webkit-backdrop-filter: blur(20px);
+              background: #000000;
               color: #ffffff;
               text-decoration: none;
               font-size: 17px;
               font-weight: 500;
-              border-radius: 12px;
+              border-radius: 50px;
               transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
               letter-spacing: -0.01em;
-              border: 1px solid rgba(255, 255, 255, 0.1);
+              border: none;
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
             
             .action-btn:hover {
-              background: rgba(0, 0, 0, 0.9);
-              transform: translateY(-1px);
-              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+              background: #1a1a1a;
+              transform: scale(1.02);
+              box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
             }
             
             .action-btn:active {
-              transform: translateY(0);
+              transform: scale(0.98);
             }
             
             .note {
@@ -923,16 +966,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Responsive Design */
             @media (max-width: 768px) {
-              body {
-                padding: 16px;
-              }
-              
-              .container {
-                max-width: 100%;
-              }
-              
-              h1, .success-title {
-                font-size: 28px;
+              h1 {
+                font-size: 40px;
               }
               
               .subtitle, .success-subtitle {
@@ -941,16 +976,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .get-key-link {
-                font-size: 14px;
-                margin-bottom: 20px;
+                font-size: 15px;
+                margin-bottom: 24px;
               }
               
               input {
-                padding: 14px 18px;
-                font-size: 16px;
+                padding: 13px 18px;
+                font-size: 15px;
               }
               
-              .submit-btn, .action-btn {
+              .submit-btn {
+                padding: 11px 26px;
+                font-size: 14px;
+              }
+              
+              .action-btn {
                 padding: 14px 40px;
                 font-size: 16px;
               }
@@ -982,34 +1022,39 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               .footer a {
                 font-size: 13px;
               }
+              
+              .success-title {
+                font-size: 28px;
+              }
             }
             
             @media (max-width: 480px) {
-              body {
-                padding: 12px;
+              h1 {
+                font-size: 32px;
+                margin-bottom: 12px;
               }
               
-              h1, .success-title {
-                font-size: 24px;
-                margin-bottom: 10px;
-              }
-              
-              .subtitle, .success-subtitle {
+              .subtitle {
                 font-size: 15px;
                 margin-bottom: 24px;
               }
               
               .get-key-link {
-                font-size: 13px;
-                margin-bottom: 16px;
+                font-size: 14px;
+                margin-bottom: 20px;
               }
               
               input {
                 padding: 12px 16px;
-                font-size: 15px;
+                font-size: 14px;
               }
               
-              .submit-btn, .action-btn {
+              .submit-btn {
+                padding: 10px 24px;
+                font-size: 13px;
+              }
+              
+              .action-btn {
                 padding: 12px 32px;
                 font-size: 15px;
               }
@@ -1048,6 +1093,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               .footer a {
                 font-size: 12px;
               }
+              
+              .success-title {
+                font-size: 24px;
+                margin-bottom: 10px;
+              }
+              
+              .success-subtitle {
+                font-size: 15px;
+                margin-bottom: 24px;
+              }
             }
             
             @media (max-width: 360px) {
@@ -1079,8 +1134,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="container">
             <!-- Form Section -->
             <div id="form-section">
-              <h1>Connect to Manus</h1>
-              <p class="subtitle">Enter your Manus API key to complete the connection</p>
+              <h1>Complete Setup</h1>
+              <p class="subtitle">Enter your Manus API key to activate the connection</p>
               
               <a href="https://manus.im/app#settings/integrations/api" target="_blank" class="get-key-link">Get your API key &rarr;</a>
               
