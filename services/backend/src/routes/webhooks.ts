@@ -296,9 +296,10 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     // The worker will handle clearing it after the grace period
     // This allows users to send follow-up messages right after a task completes
     
-    // Clean up Redis task mapping
+    // Extend Redis task mapping TTL to cover grace period (10 minutes)
+    // Don't delete immediately - follow-ups might reuse this task ID
     const taskMappingKey = `task:mapping:${taskId}`;
-    await redis.del(taskMappingKey);
+    await redis.expire(taskMappingKey, 600); // 10 minutes to match grace period
   }
 
   // TODO: Add filtering logic here later to customize what to show
