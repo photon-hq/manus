@@ -46,6 +46,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               align-items: center;
               justify-content: center;
               padding: 20px;
+              position: relative;
             }
             .container { max-width: 480px; width: 100%; text-align: center; }
             h1 { font-size: 32px; font-weight: 600; color: #000000; margin-bottom: 12px; }
@@ -103,6 +104,27 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-top: 16px;
             }
             .show { display: block; }
+            .footer {
+              position: fixed;
+              bottom: 30px;
+              left: 0;
+              right: 0;
+              text-align: center;
+              padding: 0 20px;
+              color: rgba(0, 0, 0, 0.3);
+              font-size: 14px;
+              font-weight: 400;
+            }
+            .footer a {
+              color: rgba(0, 0, 0, 0.5);
+              text-decoration: none;
+              font-weight: 500;
+              transition: color 0.2s;
+              letter-spacing: -0.01em;
+            }
+            .footer a:hover {
+              color: rgba(0, 0, 0, 0.8);
+            }
           </style>
         </head>
         <body>
@@ -126,6 +148,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             <div id="success" class="success"></div>
             <div id="error" class="error"></div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            powered by <a href="https://photon.codes" target="_blank">photon.codes</a>
           </div>
           
           <script>
@@ -288,10 +315,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               padding: 0 20px;
             }
             
+            .footer {
+              color: rgba(0, 0, 0, 0.4);
+              font-size: 14px;
+              font-weight: 400;
+            }
+            
             .footer a {
               color: rgba(0, 0, 0, 0.6);
               text-decoration: none;
-              font-size: 14px;
               font-weight: 500;
               transition: color 0.2s;
               letter-spacing: -0.01em;
@@ -362,7 +394,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            <a href="https://photon.codes" target="_blank">photon.codes</a>
+            powered by <a href="https://photon.codes" target="_blank">photon.codes</a>
           </div>
         </body>
       </html>
@@ -951,10 +983,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               padding: 0 20px;
             }
             
+            .footer {
+              color: rgba(0, 0, 0, 0.3);
+              font-size: 14px;
+              font-weight: 400;
+            }
+            
             .footer a {
               color: rgba(0, 0, 0, 0.4);
               text-decoration: none;
-              font-size: 14px;
               font-weight: 500;
               transition: color 0.2s;
               letter-spacing: -0.01em;
@@ -1176,7 +1213,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            <a href="https://photon.codes" target="_blank">photon.codes</a>
+            powered by <a href="https://photon.codes" target="_blank">photon.codes</a>
           </div>
           
           <script>
