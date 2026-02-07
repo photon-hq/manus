@@ -177,6 +177,45 @@ fastify.get('/favicon.ico', async (request, reply) => {
   return reply.redirect('/favicon.png');
 });
 
+// Serve Photon logo images
+fastify.get('/Light@4x.png', async (request, reply) => {
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  
+  const logoPath = process.env.NODE_ENV === 'production'
+    ? '/app/Light@4x.png'
+    : path.join(process.cwd(), '../../Light@4x.png');
+  
+  try {
+    const logo = await fs.readFile(logoPath);
+    return reply
+      .header('Content-Type', 'image/png')
+      .header('Cache-Control', 'public, max-age=31536000')
+      .send(logo);
+  } catch (error) {
+    return reply.code(404).send({ error: 'Logo not found' });
+  }
+});
+
+fastify.get('/Dark@4x.png', async (request, reply) => {
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  
+  const logoPath = process.env.NODE_ENV === 'production'
+    ? '/app/Dark@4x.png'
+    : path.join(process.cwd(), '../../Dark@4x.png');
+  
+  try {
+    const logo = await fs.readFile(logoPath);
+    return reply
+      .header('Content-Type', 'image/png')
+      .header('Cache-Control', 'public, max-age=31536000')
+      .send(logo);
+  } catch (error) {
+    return reply.code(404).send({ error: 'Logo not found' });
+  }
+});
+
 // Graceful shutdown
 const closeGracefully = async (signal: string) => {
   fastify.log.info(`Received ${signal}, closing gracefully`);

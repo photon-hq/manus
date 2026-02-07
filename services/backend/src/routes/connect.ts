@@ -202,8 +202,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            built by <a href="https://photon.codes" target="_blank">photon.codes</a><br>
-            join community at <a href="https://dub.sh/photon-discord" target="_blank">Discord</a>
+            <div class="footer-text">built by</div>
+            <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+              <img src="/Light@4x.png" alt="Photon" class="footer-logo light-logo">
+              <img src="/Dark@4x.png" alt="Photon" class="footer-logo dark-logo">
+            </a>
+            <div class="footer-text">
+              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+            </div>
           </div>
           
           <script>
@@ -527,36 +533,70 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               right: 0;
               text-align: center;
               padding: 0 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 12px;
             }
             
-            .footer {
+            .footer-text {
               color: rgba(0, 0, 0, 0.4);
               font-size: 14px;
               font-weight: 400;
               transition: color 0.3s ease;
             }
             
-            body.dark-mode .footer {
+            body.dark-mode .footer-text {
               color: rgba(255, 255, 255, 0.4);
             }
             
             .footer a {
-              color: rgba(0, 0, 0, 0.6);
               text-decoration: none;
-              font-weight: 500;
-              transition: color 0.2s;
-              letter-spacing: -0.01em;
-            }
-            
-            body.dark-mode .footer a {
-              color: rgba(255, 255, 255, 0.6);
+              transition: opacity 0.2s;
+              display: inline-block;
             }
             
             .footer a:hover {
+              opacity: 0.7;
+            }
+            
+            .footer-logo {
+              height: 24px;
+              width: auto;
+              transition: opacity 0.2s;
+            }
+            
+            .footer-logo.light-logo {
+              display: block;
+            }
+            
+            .footer-logo.dark-logo {
+              display: none;
+            }
+            
+            body.dark-mode .footer-logo.light-logo {
+              display: none;
+            }
+            
+            body.dark-mode .footer-logo.dark-logo {
+              display: block;
+            }
+            
+            .footer-link {
+              color: rgba(0, 0, 0, 0.6);
+              font-weight: 500;
+              letter-spacing: -0.01em;
+            }
+            
+            body.dark-mode .footer-link {
+              color: rgba(255, 255, 255, 0.6);
+            }
+            
+            .footer-link:hover {
               color: rgba(0, 0, 0, 0.9);
             }
             
-            body.dark-mode .footer a:hover {
+            body.dark-mode .footer-link:hover {
               color: rgba(255, 255, 255, 0.9);
             }
             
@@ -656,8 +696,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            built by <a href="https://photon.codes" target="_blank">photon.codes</a><br>
-            join community at <a href="https://dub.sh/photon-discord" target="_blank">Discord</a>
+            <div class="footer-text">built by</div>
+            <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+              <img src="/Light@4x.png" alt="Photon" class="footer-logo light-logo">
+              <img src="/Dark@4x.png" alt="Photon" class="footer-logo dark-logo">
+            </a>
+            <div class="footer-text">
+              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+            </div>
           </div>
           
           <script>
@@ -1704,8 +1750,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Footer -->
           <div class="footer">
-            built by <a href="https://photon.codes" target="_blank">photon.codes</a><br>
-            join community at <a href="https://dub.sh/photon-discord" target="_blank">Discord</a>
+            <div class="footer-text">built by</div>
+            <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+              <img src="/Light@4x.png" alt="Photon" class="footer-logo light-logo">
+              <img src="/Dark@4x.png" alt="Photon" class="footer-logo dark-logo">
+            </a>
+            <div class="footer-text">
+              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+            </div>
           </div>
           
           <script>

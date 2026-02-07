@@ -10,6 +10,8 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.json ./
 COPY packages ./packages
 COPY services/backend ./services/backend
 COPY favicon.png ./
+COPY Light@4x.png ./
+COPY Dark@4x.png ./
 
 # Install all dependencies
 RUN pnpm install --no-frozen-lockfile
