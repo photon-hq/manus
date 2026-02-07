@@ -159,8 +159,39 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(0, 0, 0, 0.8);
             }
             body.dark-mode .footer a:hover { color: rgba(255, 255, 255, 0.8); }
+            .footer-logo {
+              height: 16px;
+              width: auto;
+              transition: opacity 0.2s;
+              vertical-align: middle;
+            }
+            .footer-logo.dark-logo {
+              display: inline-block;
+            }
+            .footer-logo.light-logo {
+              display: none;
+            }
+            body.dark-mode .footer-logo.dark-logo {
+              display: none;
+            }
+            body.dark-mode .footer-logo.light-logo {
+              display: inline-block;
+            }
+            @media (max-width: 768px) {
+              .footer-logo {
+                height: 14px;
+              }
+            }
             @media (max-width: 480px) {
               .theme-selector { top: 16px; right: 16px; }
+              .footer-logo {
+                height: 12px;
+              }
+            }
+            @media (max-width: 360px) {
+              .footer-logo {
+                height: 10px;
+              }
             }
           </style>
         </head>
@@ -571,7 +602,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-logo {
-              height: 20px;
+              height: 16px;
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
@@ -634,6 +665,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               .footer a {
                 font-size: 13px;
               }
+              
+              .footer-logo {
+                height: 14px;
+              }
             }
             
             @media (max-width: 480px) {
@@ -658,6 +693,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .footer {
                 bottom: 16px;
+              }
+              
+              .footer-logo {
+                height: 12px;
               }
               
               .theme-selector {
@@ -1592,6 +1631,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 font-size: 13px;
               }
               
+              .footer-logo {
+                height: 14px;
+              }
+              
               .success-title {
                 font-size: 28px;
               }
@@ -1663,6 +1706,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 font-size: 12px;
               }
               
+              .footer-logo {
+                height: 12px;
+              }
+              
               .success-title {
                 font-size: 24px;
                 margin-bottom: 10px;
@@ -1700,6 +1747,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .config-container pre {
                 font-size: 10px;
+              }
+              
+              .footer-logo {
+                height: 10px;
               }
             }
           </style>
