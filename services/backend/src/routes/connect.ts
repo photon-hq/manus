@@ -338,7 +338,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET / - Landing page with "Connect to Manus" button
   fastify.get('/', async (request, reply) => {
-    const photonHandle = process.env.PHOTON_HANDLE || '+14158156704';
+    const photonHandle = process.env.PHOTON_HANDLE || '';
     const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
     
     return reply.type('text/html').send(`
