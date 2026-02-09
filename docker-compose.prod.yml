@@ -39,7 +39,6 @@ services:
       REDIS_URL: redis://redis:6379
       IMESSAGE_SERVER_URL: ${IMESSAGE_SERVER_URL}
       IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
-      PHOTON_HANDLE: ${PHOTON_HANDLE}
       MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.im}
       PUBLIC_URL: ${PUBLIC_URL}
       PORT: 3000
