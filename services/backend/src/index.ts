@@ -156,10 +156,10 @@ fastify.get('/favicon.png', async (request, reply) => {
   const fs = await import('fs/promises');
   const path = await import('path');
   
-  // In Docker: /app/favicon.png, Local: ../../favicon.png from services/backend
+  // In Docker: /app/assets/favicon.png, Local: ../../assets/favicon.png from services/backend
   const faviconPath = process.env.NODE_ENV === 'production'
-    ? '/app/favicon.png'
-    : path.join(process.cwd(), '../../favicon.png');
+    ? '/app/assets/favicon.png'
+    : path.join(process.cwd(), '../../assets/favicon.png');
   
   try {
     const favicon = await fs.readFile(faviconPath);
@@ -183,8 +183,8 @@ fastify.get('/Light@4x.png', async (request, reply) => {
   const path = await import('path');
   
   const logoPath = process.env.NODE_ENV === 'production'
-    ? '/app/Light@4x.png'
-    : path.join(process.cwd(), '../../Light@4x.png');
+    ? '/app/assets/Light@4x.png'
+    : path.join(process.cwd(), '../../assets/Light@4x.png');
   
   try {
     const logo = await fs.readFile(logoPath);
@@ -202,8 +202,8 @@ fastify.get('/Dark@4x.png', async (request, reply) => {
   const path = await import('path');
   
   const logoPath = process.env.NODE_ENV === 'production'
-    ? '/app/Dark@4x.png'
-    : path.join(process.cwd(), '../../Dark@4x.png');
+    ? '/app/assets/Dark@4x.png'
+    : path.join(process.cwd(), '../../assets/Dark@4x.png');
   
   try {
     const logo = await fs.readFile(logoPath);
