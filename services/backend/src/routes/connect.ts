@@ -336,9 +336,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     `);
   });
 
+  // Default SMS number when PHOTON_HANDLE is missing/empty in env (e.g. in Docker)
+  const DEFAULT_PHOTON_HANDLE = '+14158156704';
+
   // GET / - Landing page with "Connect to Manus" button
   fastify.get('/', async (request, reply) => {
-    const photonHandle = process.env.PHOTON_HANDLE || '+14158156704';
+    const raw = process.env.PHOTON_HANDLE ?? '';
+    const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
     const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
     
     return reply.type('text/html').send(`
