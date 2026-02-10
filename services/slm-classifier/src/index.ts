@@ -69,36 +69,30 @@ fastify.post('/classify', async (request, reply) => {
       messages: [
         {
           role: 'system',
-          content: `You are a task classifier for an AI assistant. Your job is to determine if a user's message is:
+          content: `You classify whether the user's latest message belongs to the SAME conversation thread as the context, or starts a NEW thread.
 
-1. **NEW_TASK**: A completely new request or task that is unrelated to the previous conversation (different topic, new goal).
-2. **FOLLOW_UP**: A continuation, clarification, refinement, or follow-up question about the SAME topic or task. Same topic = FOLLOW_UP even if the phrasing is different or asks for a different angle (e.g. per month, per person, for company).
+**FOLLOW_UP** = Same thread. The message is part of the ongoing conversation. Include:
+- Reactions or comments about content just shared (e.g. "that's good", "i read this", "i like it", "this is great").
+- Clarifications or self-corrections ("i mean...", "actually...", "umm...").
+- Continuations ("and also...", "one more thing...", "what about...").
+- Answers or responses to the assistant's questions.
+- Refinements or sub-questions on the same topic (different angle, same subject).
+- Any message that could plausibly refer to or continue the context above.
 
-CRITICAL RULES:
-- If the context is empty (no previous messages), you MUST return NEW_TASK.
-- If the user's message is about the SAME topic as the recent conversation (same domain, same goal, just a refinement or sub-question), return FOLLOW_UP.
-- Only return NEW_TASK when the user clearly switches to a different topic or a new, unrelated request.
+**NEW_TASK** = New thread. Only when the user clearly starts a different, standalone request:
+- Explicitly different topic (e.g. "What's the weather?" in the middle of a product discussion).
+- A new request that does not reference or build on the previous exchange.
+
+RULES:
+1. Empty context (no previous messages) → always NEW_TASK.
+2. Non-empty context → prefer FOLLOW_UP. Only return NEW_TASK if the message clearly and unambiguously starts a different topic or new request.
+3. When in doubt with non-empty context, return FOLLOW_UP.
 
 Context from previous conversation (oldest to newest):
 ${contextStr || 'EMPTY - No previous context'}
 
-Respond ONLY with valid JSON in this exact format:
-{
-  "type": "NEW_TASK" or "FOLLOW_UP",
-  "confidence": 0.0 to 1.0
-}
-
-Examples:
-- Empty context + any message → NEW_TASK (ALWAYS)
-- "hey" with empty context → NEW_TASK
-- "Can you also check the pricing?" after discussing a product → FOLLOW_UP
-- "What's the per month cost?" or "What about two meals per day?" after a pricing report → FOLLOW_UP
-- "We want to hire a private chef for our company" after discussing private chef pricing → FOLLOW_UP (same topic: private chef)
-- "What's the average monthly salary for this kind of chef?" after hiring/chef discussion → FOLLOW_UP
-- "What's the weather today?" after discussing a product → NEW_TASK (different topic)
-- "Thanks!" after receiving a response → FOLLOW_UP
-- "What can you do?" after a greeting exchange → FOLLOW_UP
-- "Tell me about AI" after "Hey" / "Hello" exchange → FOLLOW_UP`,
+Respond ONLY with valid JSON:
+{"type": "NEW_TASK" or "FOLLOW_UP", "confidence": 0.0 to 1.0}`,
         },
         {
           role: 'user',
