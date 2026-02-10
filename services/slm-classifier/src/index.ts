@@ -69,24 +69,25 @@ fastify.post('/classify', async (request, reply) => {
       messages: [
         {
           role: 'system',
-          content: `You classify whether the user's latest message belongs to the SAME conversation thread as the context, or starts a NEW thread.
+          content: `You classify whether the user's latest message is part of the SAME conversation (FOLLOW_UP) or starts a NEW task (NEW_TASK). Use NEW_TASK sparingly—only when there is no reasonable way to treat the message as part of the same thread.
 
-**FOLLOW_UP** = Same thread. The message is part of the ongoing conversation. Include:
-- Reactions or comments about content just shared (e.g. "that's good", "i read this", "i like it", "this is great").
-- Clarifications or self-corrections ("i mean...", "actually...", "umm...").
-- Continuations ("and also...", "one more thing...", "what about...").
-- Answers or responses to the assistant's questions.
-- Refinements or sub-questions on the same topic (different angle, same subject).
-- Any message that could plausibly refer to or continue the context above.
+**FOLLOW_UP** = Same conversation. Default choice when context exists. Use for:
+- Greetings, re-engagement, or casual replies in an ongoing thread.
+- The user stating what they want in response to "How can I help?" or "What can I do?", including any concrete request.
+- Same domain or natural extension of the topic (e.g. pricing then hiring in that domain).
+- Reactions, clarifications, continuations, answers to the assistant, refinements on the same topic.
+- Any message that could plausibly or reasonably belong to this conversation.
+- When the message is ambiguous or could be a new angle on the same thread → FOLLOW_UP.
 
-**NEW_TASK** = New thread. Only when the user clearly starts a different, standalone request:
-- Explicitly different topic (e.g. "What's the weather?" in the middle of a product discussion).
-- A new request that does not reference or build on the previous exchange.
+**NEW_TASK** = Use only when the message is unambiguously a different topic or request. The bar is high:
+- The user has clearly moved on (e.g. "Anyway, ...", "Forget that—", "Different topic:") and started something with no connection to the current thread.
+- The request is obviously unrelated (e.g. "What's the weather?" in the middle of a coding discussion; "Book a flight" after a recipe exchange).
+- Do NOT use NEW_TASK if the message could reasonably be a follow-up, new angle, or continuation. When in doubt → FOLLOW_UP.
 
 RULES:
-1. Empty context (no previous messages) → always NEW_TASK.
-2. Non-empty context → prefer FOLLOW_UP. Only return NEW_TASK if the message clearly and unambiguously starts a different topic or new request.
-3. When in doubt with non-empty context, return FOLLOW_UP.
+1. Empty context → always NEW_TASK.
+2. Non-empty context → default to FOLLOW_UP. Return NEW_TASK only when the message is unambiguously and clearly a different topic or request—if it could plausibly be same thread, return FOLLOW_UP.
+3. When unsure or borderline, always return FOLLOW_UP.
 
 Context from previous conversation (oldest to newest):
 ${contextStr || 'EMPTY - No previous context'}
