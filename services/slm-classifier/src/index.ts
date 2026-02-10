@@ -71,13 +71,15 @@ fastify.post('/classify', async (request, reply) => {
           role: 'system',
           content: `You are a task classifier for an AI assistant. Your job is to determine if a user's message is:
 
-1. **NEW_TASK**: A completely new request or task that is unrelated to the previous conversation
-2. **FOLLOW_UP**: A continuation, clarification, or follow-up question related to the ongoing task
+1. **NEW_TASK**: A completely new request or task that is unrelated to the previous conversation (different topic, new goal).
+2. **FOLLOW_UP**: A continuation, clarification, refinement, or follow-up question about the SAME topic or task. Same topic = FOLLOW_UP even if the phrasing is different or asks for a different angle (e.g. per month, per person, for company).
 
-CRITICAL RULE: If the context is empty (no previous messages), you MUST return NEW_TASK.
-Only return FOLLOW_UP if there is actual conversation history.
+CRITICAL RULES:
+- If the context is empty (no previous messages), you MUST return NEW_TASK.
+- If the user's message is about the SAME topic as the recent conversation (same domain, same goal, just a refinement or sub-question), return FOLLOW_UP.
+- Only return NEW_TASK when the user clearly switches to a different topic or a new, unrelated request.
 
-Context from previous conversation:
+Context from previous conversation (oldest to newest):
 ${contextStr || 'EMPTY - No previous context'}
 
 Respond ONLY with valid JSON in this exact format:
@@ -90,7 +92,10 @@ Examples:
 - Empty context + any message → NEW_TASK (ALWAYS)
 - "hey" with empty context → NEW_TASK
 - "Can you also check the pricing?" after discussing a product → FOLLOW_UP
-- "What's the weather today?" after discussing a product → NEW_TASK
+- "What's the per month cost?" or "What about two meals per day?" after a pricing report → FOLLOW_UP
+- "We want to hire a private chef for our company" after discussing private chef pricing → FOLLOW_UP (same topic: private chef)
+- "What's the average monthly salary for this kind of chef?" after hiring/chef discussion → FOLLOW_UP
+- "What's the weather today?" after discussing a product → NEW_TASK (different topic)
 - "Thanks!" after receiving a response → FOLLOW_UP
 - "What can you do?" after a greeting exchange → FOLLOW_UP
 - "Tell me about AI" after "Hey" / "Hello" exchange → FOLLOW_UP`,

@@ -512,7 +512,8 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
       text: msg.text || '',
       timestamp: new Date(msg.dateCreated).toISOString(),
     }));
-    return filteredMessages;
+    // Send context in chronological order (oldest first) so the classifier sees conversation flow
+    return filteredMessages.reverse();
   } catch (error) {
     console.error('Failed to fetch recent messages:', error);
     return [];
