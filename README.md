@@ -1,10 +1,10 @@
-# Manus Backend - iMessage Integration
+# Manus AI (Photon Integration)
 
-Backend system for integrating iMessage with Manus AI using HTTP-based MCP protocol.
+Bring Manus AI into the messaging channel.
 
 ## Overview
 
-TypeScript monorepo with 3 microservices that bridge iMessage and Manus AI.
+TypeScript monorepo with 3 microservices that bridge messaging apps and Manus AI.
 
 ## Services
 
