@@ -648,6 +648,17 @@ async function createManusTask(
     await redis.set(taskMappingKey, phoneNumber, 'EX', TASK_MAPPING_TTL);
     console.log(`✅ Stored task mapping in Redis: ${data.task_id} → ${phoneNumber}`);
 
+    // Store reaction info so we can remove tapback when task stops
+    if (triggeringMessageGuid) {
+      const chatGuid = `any;-;${phoneNumber}`;
+      await redis.set(
+        `reaction:${data.task_id}`,
+        JSON.stringify({ messageGuid: triggeringMessageGuid, chatGuid, reaction: 'love' }),
+        'EX',
+        TASK_MAPPING_TTL
+      );
+    }
+
     // Start persistent typing indicator via manager
     try {
       // Ensure SDK is initialized
@@ -739,6 +750,17 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
         } as any,
       });
       console.log(`✅ Updated triggering message GUID for follow-up: ${triggeringMessageGuid}`);
+    }
+
+    // Store reaction info so we can remove tapback when task stops
+    if (triggeringMessageGuid) {
+      const chatGuid = `any;-;${phoneNumber}`;
+      await redis.set(
+        `reaction:${data.task_id}`,
+        JSON.stringify({ messageGuid: triggeringMessageGuid, chatGuid, reaction: 'love' }),
+        'EX',
+        TASK_MAPPING_TTL
+      );
     }
 
     return data.task_id;
@@ -894,6 +916,30 @@ async function listenForEvents() {
             }
           } catch (error) {
             console.warn('Failed to stop typing indicator:', error);
+          }
+
+          // Remove tapback from the user message we reacted to when the response stream started
+          try {
+            const reactionKey = `reaction:${taskId}`;
+            const payload = await redis.get(reactionKey);
+            if (payload) {
+              const { messageGuid, chatGuid, reaction } = JSON.parse(payload) as {
+                messageGuid?: string;
+                chatGuid?: string;
+                reaction?: string;
+              };
+              if (messageGuid && chatGuid && reaction) {
+                const sdk = await getIMessageSDK();
+                await sdk.messages.sendReaction({
+                  chatGuid,
+                  messageGuid,
+                  reaction: `-${reaction}`,
+                });
+                await redis.del(reactionKey);
+              }
+            }
+          } catch (error) {
+            console.warn('Failed to remove tapback (non-blocking):', error);
           }
         } catch (error) {
           console.error('Failed to handle task-stopped event:', error);

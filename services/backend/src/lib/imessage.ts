@@ -166,6 +166,27 @@ export function getChatGuid(handle: string): string {
 }
 
 /**
+ * Send a tapback reaction to a message (e.g. love, like, laugh).
+ * Use reaction "-love" etc. to remove a tapback.
+ *
+ * @param chatGuid - Chat identifier (e.g. any;-;+1234567890)
+ * @param messageGuid - Target message GUID
+ * @param reaction - love | like | dislike | laugh | emphasize | question, or -love etc. to remove
+ */
+export async function sendReaction(
+  chatGuid: string,
+  messageGuid: string,
+  reaction: string
+): Promise<void> {
+  const client = await getIMessageSDK();
+  await client.messages.sendReaction({
+    chatGuid,
+    messageGuid,
+    reaction,
+  });
+}
+
+/**
  * Send typing indicator and wait
  * 
  * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)

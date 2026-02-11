@@ -443,6 +443,14 @@ Your iMessage is connected to Manus AI.`;
 
       console.log('✅ Message queued for processing');
 
+      // React to the message so user sees we received it (tapback removed when response stream ends)
+      try {
+        const { sendReaction } = await import('../lib/imessage.js');
+        await sendReaction(chatGuid, message.guid, 'love');
+      } catch (error) {
+        console.warn('Failed to send reaction (non-blocking):', error);
+      }
+
       // Notify worker to ensure it's processing this queue
       try {
         await redis.publish('message-queued', handle);
