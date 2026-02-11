@@ -71,34 +71,42 @@ fastify.post('/classify', async (request, reply) => {
           role: 'system',
           content: `You classify whether the user's latest message is part of the SAME conversation (FOLLOW_UP) or starts a completely NEW and UNRELATED task (NEW_TASK).
 
-**CRITICAL: Default to FOLLOW_UP.** Use NEW_TASK ONLY for clearly unrelated topics.
+**CRITICAL: ALWAYS prefer FOLLOW_UP. NEW_TASK should be EXTREMELY RARE (< 5% of cases).**
 
-**FOLLOW_UP** = Same conversation thread. Use for (not exhaustive):
-- ANY message in an active conversation, including greetings, small talk, or the user's first real request after initial pleasantries
-- User stating their actual need/request at ANY point in the conversation (even if preceded by "hey", "how are you", etc.)
-- Continuing, clarifying, or refining any previous topic
-- Same domain or related topics (e.g., travel → passport; hiring → pricing; cooking → ingredients)
-- Reactions, answers, acknowledgments, or follow-up questions
-- When the assistant asked "How can I help?" and user NOW states what they want (even if they chatted first)
-- Anything that could plausibly belong to this ongoing conversation
-- **When in doubt → FOLLOW_UP**
+**FOLLOW_UP** = Default for ANY message in an ongoing conversation. Use for:
+- ANY message after context exists (greetings, questions, requests, statements, reactions)
+- User stating their need/request at ANY point (even after small talk like "hey", "how are you")
+- ANY topic that has even a REMOTE connection to previous messages
+- Related domains: travel → passport → visa → flights → hotels → budget → planning
+- Related domains: hiring → pricing → contracts → onboarding → team → culture
+- Related domains: coding → debugging → deployment → testing → documentation
+- Continuing, clarifying, refining, expanding on ANY previous topic
+- Answering assistant's questions or responding to assistant's output
+- **If there's ANY previous reference or connection, even loose → FOLLOW_UP**
+- **If you can imagine ANY way this relates to the conversation → FOLLOW_UP**
+- **When in doubt (which should be 95% of the time) → FOLLOW_UP**
 
-**NEW_TASK** = ONLY for clearly unrelated topics. High bar:
-- User explicitly signals topic change: "Anyway...", "Forget that", "Different topic:", "New question:"
-- Request is obviously unrelated (e.g., "What's the weather?" in middle of coding discussion; "Book a flight" after recipe exchange)
-- User is clearly done with previous topic and starting something with ZERO connection
-- **Do NOT use if message could reasonably be same conversation, new angle, or continuation**
+**NEW_TASK** = ONLY for COMPLETELY different, unrelated topics. Extremely high bar:
+- User explicitly says: "Forget that", "Different topic:", "New question:", "Nevermind, instead..."
+- Request is OBVIOUSLY unrelated with ZERO connection (e.g., "What's the weather in Tokyo?" after discussing code bugs; "Book a flight to Paris" after discussing cooking recipes with no travel context)
+- **Even if topics seem different, if there's ANY conceivable connection → FOLLOW_UP**
+- **If user previously mentioned anything related → FOLLOW_UP**
 
-**EXAMPLES:**
-- Context: "Hello! How can I help?" → "how are you" → "I'm doing well!" → User: "I need help with X" → **FOLLOW_UP** (user stating their actual request in same conversation)
-- Context: "Tell me about your trip" → "It was great!" → User: "Can you help me get a passport?" → **FOLLOW_UP** (travel-related)
-- Context: "Recipe for pasta?" → "Here's a recipe" → User: "What's the weather in Tokyo?" → **NEW_TASK** (unrelated)
+**EXAMPLES (all FOLLOW_UP unless stated):**
+- "Hello! How can I help?" → "how are you" → "I'm doing well!" → "I need passport for Bali" → **FOLLOW_UP**
+- "Tell me about your trip" → "It was great!" → "Can you get a passport?" → **FOLLOW_UP** (travel context)
+- "Hiring a chef" → "Here's info" → "What's the budget?" → **FOLLOW_UP** (same topic)
+- "Fix my code" → "Here's the fix" → "Can you deploy it?" → **FOLLOW_UP** (same project)
+- "Recipe for pasta" → "Here you go" → "What about dessert?" → **FOLLOW_UP** (cooking context)
+- "Recipe for pasta" → "Here you go" → "What's 2+2?" → **NEW_TASK** (completely unrelated, no connection)
+
+**GOLDEN RULE: If context exists and message isn't OBVIOUSLY, COMPLETELY unrelated → FOLLOW_UP**
 
 RULES:
 1. Empty context → NEW_TASK
-2. Non-empty context → **default FOLLOW_UP**. Only return NEW_TASK if message is unambiguously unrelated
-3. Unsure or borderline → **FOLLOW_UP**
-4. Conversation just started and user states their need → **FOLLOW_UP**
+2. Non-empty context → **FOLLOW_UP** (95%+ of cases)
+3. Only return NEW_TASK if message is COMPLETELY, OBVIOUSLY unrelated with ZERO connection
+4. Any doubt, any connection, any relation → **FOLLOW_UP**
 
 Context (oldest to newest):
 ${contextStr || 'EMPTY - No previous context'}
