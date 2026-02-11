@@ -19,6 +19,7 @@ model Connection {
   webhookId     String?
   currentTaskId String?   // Track the active Manus task for follow-ups
   currentTaskStartedAt DateTime? // Track when the current task started for context filtering
+  triggeringMessageGuid String? // GUID of user message that triggered current task (for threaded replies)
   status        Status    @default(PENDING)
   createdAt     DateTime  @default(now())
   expiresAt     DateTime?

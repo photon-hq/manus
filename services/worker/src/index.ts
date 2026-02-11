@@ -267,11 +267,11 @@ async function processMessage(phoneNumber: string, data: any) {
       if (connection?.currentTaskId) {
         // Active task exists - append files to it
         console.log(`📎 File-only message with active task - appending to ${connection.currentTaskId}`);
-        await appendToTask(phoneNumber, effectiveMessage, fileIds);
+        await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
         // No active task - create new task
         console.log(`📎 File-only message with no active task - creating new task`);
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
       // Regular message with text - use SLM classifier when we have task context
@@ -285,7 +285,7 @@ async function processMessage(phoneNumber: string, data: any) {
       // No context = no active task → create new task (don't rely on classifier with empty context)
       if (recentMessages.length === 0) {
         console.log(`No task context for ${phoneNumber}, creating new task`);
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       } else {
         // Classify message using SLM
         const classification = await classifyMessage(messageText, recentMessages);
@@ -306,10 +306,10 @@ async function processMessage(phoneNumber: string, data: any) {
           console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK detected, keeping conversation history)`);
           
           // Create new Manus task, preserving the conversation history start time
-          await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true);
+          await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true, messageGuid);
         } else {
           // Follow-up to existing task
-          await appendToTask(phoneNumber, effectiveMessage, fileIds);
+          await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
         }
       }
     }
@@ -559,7 +559,8 @@ async function createManusTask(
   message: string, 
   fileIds: string[] = [], 
   messageTimestamp?: Date | string,
-  preserveTaskStartTime: boolean = false // If true, don't update currentTaskStartedAt
+  preserveTaskStartTime: boolean = false, // If true, don't update currentTaskStartedAt
+  triggeringMessageGuid?: string // GUID of user message that triggered this task (for threaded replies)
 ) {
   console.log(`Creating new Manus task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
@@ -620,6 +621,7 @@ async function createManusTask(
         where: { phoneNumber },
         data: { 
           currentTaskId: data.task_id,
+          triggeringMessageGuid: triggeringMessageGuid || null,
         } as any,
       });
       console.log(`✅ Updated task ID, preserved conversation history`);
@@ -635,6 +637,7 @@ async function createManusTask(
         data: { 
           currentTaskId: data.task_id,
           currentTaskStartedAt: taskStartTime,
+          triggeringMessageGuid: triggeringMessageGuid || null,
         } as any,
       });
       console.log(`✅ Stored task start time: ${taskStartTime.toISOString()} (user message time, not task creation time)`);
@@ -664,7 +667,7 @@ async function createManusTask(
 }
 
 // Append to existing task (multi-turn conversation)
-async function appendToTask(phoneNumber: string, message: string, fileIds: string[] = []) {
+async function appendToTask(phoneNumber: string, message: string, fileIds: string[] = [], triggeringMessageGuid?: string) {
   console.log(`Appending to existing task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
   // Get connection to get Manus API key and current task ID
@@ -726,6 +729,17 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
 
     const data = await response.json() as { task_id: string };
     console.log('✅ Appended to Manus task:', data.task_id);
+
+    // Update triggering message GUID for follow-ups so webhook replies thread to this message
+    if (triggeringMessageGuid) {
+      await prisma.connection.update({
+        where: { phoneNumber },
+        data: {
+          triggeringMessageGuid: triggeringMessageGuid,
+        } as any,
+      });
+      console.log(`✅ Updated triggering message GUID for follow-up: ${triggeringMessageGuid}`);
+    }
 
     return data.task_id;
   } catch (error) {

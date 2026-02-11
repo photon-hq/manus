@@ -61,6 +61,7 @@ export async function disconnectIMessage() {
 /**
  * Send an iMessage to a phone number or iCloud email
  * Automatically enables rich link previews for messages containing URLs
+ * Supports threaded replies via selectedMessageGuid
  * 
  * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
  * @param message - Message text to send
@@ -69,7 +70,10 @@ export async function disconnectIMessage() {
 export async function sendIMessage(
   handle: string, 
   message: string,
-  options?: { disableRichLink?: boolean }
+  options?: { 
+    disableRichLink?: boolean;
+    replyToMessageGuid?: string; // Thread reply to this message GUID
+  }
 ): Promise<string> {
   const client = await getIMessageSDK();
   
@@ -87,6 +91,7 @@ export async function sendIMessage(
     chatGuid,
     message,
     richLink: enableRichLink,
+    ...(options?.replyToMessageGuid && { selectedMessageGuid: options.replyToMessageGuid }),
   });
 
   return result.guid;
@@ -192,7 +197,8 @@ export async function sendTypingIndicator(handle: string, durationMs: number): P
 export async function sendIMessageWithAttachments(
   handle: string,
   message: string,
-  attachments?: Array<{ url: string; filename: string; size_bytes?: number }>
+  attachments?: Array<{ url: string; filename: string; size_bytes?: number }>,
+  options?: { replyToMessageGuid?: string }
 ): Promise<string[]> {
   const client = await getIMessageSDK();
   const chatGuid = `any;-;${handle}`;
@@ -211,6 +217,7 @@ export async function sendIMessageWithAttachments(
       const result = await client.messages.sendMessage({
         chatGuid,
         message,
+        ...(options?.replyToMessageGuid && { selectedMessageGuid: options.replyToMessageGuid }),
       });
       messageGuids.push(result.guid);
     }
@@ -249,16 +256,17 @@ export async function sendIMessageWithAttachments(
           console.log(`💾 Saved to temp file: ${tempFilePath}`);
           
           try {
-            // Send attachment via iMessage SDK
+            // Send attachment via iMessage SDK, threaded if replyToMessageGuid provided
             console.log(`📤 Sending attachment via iMessage: ${attachment.filename}`);
             const result = await client.attachments.sendAttachment({
               chatGuid,
               filePath: tempFilePath,
               fileName: attachment.filename,
+              ...(options?.replyToMessageGuid && { selectedMessageGuid: options.replyToMessageGuid }),
             });
             
             messageGuids.push(result.guid);
-            console.log(`✅ Sent attachment: ${attachment.filename}`);
+            console.log(`✅ Sent attachment: ${attachment.filename}${options?.replyToMessageGuid ? ' (threaded)' : ''}`);
           } finally {
             // Clean up temp file
             try {

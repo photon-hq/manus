@@ -232,8 +232,13 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   // Send the progress message (no emoji - just the message text)
   const message = formatManusMessage(displayText);
   
-  const messageGuid = await sendIMessage(phoneNumber, message);
-  console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId}, type: ${progressType})`);
+  // Get the original message GUID to thread the reply
+  const originalMessageGuid = await getOriginalMessageGuid(phoneNumber);
+  
+  const messageGuid = await sendIMessage(phoneNumber, message, { 
+    replyToMessageGuid: originalMessageGuid || undefined 
+  });
+  console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId}, type: ${progressType})${originalMessageGuid ? ' (threaded)' : ''}`);
 
   // Record in database
   await prisma.manusMessage.create({
@@ -336,7 +341,10 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   const chunks = splitMessageByParagraphs(cleanMessage);
   console.log(`📤 Sending ${chunks.length} message chunk(s) to ${phoneNumber} (task: ${taskId}, reason: ${stopReason})`);
 
-  // Send each chunk as a separate message
+  // Get the original message GUID to thread all replies
+  const originalMessageGuid = await getOriginalMessageGuid(phoneNumber);
+
+  // Send each chunk as a separate message, threaded to the original user message
   const messageGuids: string[] = [];
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
@@ -346,10 +354,12 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
       await sendTypingIndicator(phoneNumber, 500);
     }
     
-    // Send the message chunk
-    const messageGuid = await sendIMessage(phoneNumber, chunk);
+    // Send the message chunk, threaded to original message
+    const messageGuid = await sendIMessage(phoneNumber, chunk, {
+      replyToMessageGuid: originalMessageGuid || undefined,
+    });
     messageGuids.push(messageGuid);
-    console.log(`  ✅ Sent chunk ${i + 1}/${chunks.length} (guid: ${messageGuid})`);
+    console.log(`  ✅ Sent chunk ${i + 1}/${chunks.length} (guid: ${messageGuid})${originalMessageGuid ? ' (threaded)' : ''}`);
     
     // Small delay between messages (except after last one)
     if (i < chunks.length - 1) {
@@ -368,7 +378,7 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
       // Show typing indicator before sending attachments
       await sendTypingIndicator(phoneNumber, 1000);
       
-      // Send attachments (no text message, just files)
+      // Send attachments (no text message, just files), threaded to original message
       const attachmentGuids = await sendIMessageWithAttachments(
         phoneNumber,
         '', // No text message, just attachments
@@ -376,11 +386,12 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
           url: att.url,
           filename: att.file_name,
           size_bytes: att.size_bytes,
-        }))
+        })),
+        { replyToMessageGuid: originalMessageGuid || undefined }
       );
       
       messageGuids.push(...attachmentGuids);
-      console.log(`✅ Sent ${attachmentGuids.length} attachment(s) successfully`);
+      console.log(`✅ Sent ${attachmentGuids.length} attachment(s) successfully${originalMessageGuid ? ' (threaded)' : ''}`);
     } catch (error) {
       // Fallback: If attachment sending fails, send download links as text
       console.error('❌ Failed to send attachments as files, falling back to links:', error);
@@ -391,11 +402,13 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
         fallbackMessage += `\n${idx + 1}. ${att.file_name} (${sizeMB} MB)\n   ${att.url}`;
       });
       
-      // Send fallback message with links
+      // Send fallback message with links, threaded to original message
       await sendTypingIndicator(phoneNumber, 500);
-      const fallbackGuid = await sendIMessage(phoneNumber, fallbackMessage);
+      const fallbackGuid = await sendIMessage(phoneNumber, fallbackMessage, {
+        replyToMessageGuid: originalMessageGuid || undefined,
+      });
       messageGuids.push(fallbackGuid);
-      console.log(`✅ Sent attachment links as fallback`);
+      console.log(`✅ Sent attachment links as fallback${originalMessageGuid ? ' (threaded)' : ''}`);
     }
   }
   
@@ -414,14 +427,38 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   console.log(`✅ All ${chunks.length} message chunk(s) sent successfully (tracked as 1 DB record)`);
 }
 
+// Helper function to get the original message GUID that triggered the current task
+async function getOriginalMessageGuid(phoneNumber: string): Promise<string | null> {
+  try {
+    const connection = await prisma.connection.findFirst({
+      where: { phoneNumber, status: 'ACTIVE' },
+      select: { triggeringMessageGuid: true },
+    });
+    
+    return connection?.triggeringMessageGuid || null;
+  } catch (error) {
+    console.error('Failed to get triggering message GUID:', error);
+    return null;
+  }
+}
+
 // Helper function to send iMessage with retry logic
-async function sendIMessage(phoneNumber: string, message: string, retries = 3): Promise<string> {
+async function sendIMessage(
+  phoneNumber: string, 
+  message: string, 
+  options?: { replyToMessageGuid?: string },
+  retries = 3
+): Promise<string> {
   const { sendIMessage: sendMessage } = await import('../lib/imessage.js');
   
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Disable rich link previews for Manus responses to ensure full message text is visible
-      return await sendMessage(phoneNumber, message, { disableRichLink: true });
+      // Thread reply if replyToMessageGuid is provided
+      return await sendMessage(phoneNumber, message, { 
+        disableRichLink: true,
+        replyToMessageGuid: options?.replyToMessageGuid,
+      });
     } catch (error) {
       console.error(`❌ Failed to send iMessage (attempt ${attempt}/${retries}):`, error);
       

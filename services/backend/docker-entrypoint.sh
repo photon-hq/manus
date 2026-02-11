@@ -36,6 +36,8 @@ SQL
       # Mark all failed migrations as rolled back
       npx prisma migrate resolve --rolled-back "20260201000000_init" || true
       npx prisma migrate resolve --rolled-back "20260202000000_add_attachments_and_current_task" || true
+      npx prisma migrate resolve --rolled-back "20260206000000_add_task_started_at" || true
+      npx prisma migrate resolve --rolled-back "20260211000000_add_triggering_message_guid" || true
       
       echo "✅ Failed migrations marked as rolled back"
     fi
