@@ -221,8 +221,8 @@ export async function startIMessageListener() {
       if (!connection) {
         console.log('⏭️  No active connection for:', handle);
         
-        // Check if user is trying to disconnect
-        if (/disconnect|stop|remove|revoke/i.test(messageText)) {
+        // Check if user is trying to revoke (exact command only)
+        if (/^revoke$/i.test(messageText.trim())) {
           const { sendIMessage } = await import('../lib/imessage.js');
           await sendIMessage(handle, "You don't have an active connection.");
           return;
@@ -341,9 +341,8 @@ export async function startIMessageListener() {
         return;
       }
 
-      // Check if user wants to revoke/disconnect
-      const revokeKeywords = /revoke|disconnect|stop|remove|delete|unlink/i;
-      if (revokeKeywords.test(messageText)) {
+      // Check if user wants to revoke (exact command only)
+      if (/^revoke$/i.test(messageText.trim())) {
         console.log('🔌 Revoke request from:', handle);
         
         try {

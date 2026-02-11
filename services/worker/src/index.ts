@@ -274,7 +274,7 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp);
       }
     } else {
-      // Regular message with text - use SLM classifier
+      // Regular message with text - use SLM classifier when we have task context
       // Get last task context (last 20 messages), excluding the current message
       const recentMessages = await getRecentMessages(phoneNumber, 20, messageGuid);
 
@@ -282,28 +282,35 @@ async function processMessage(phoneNumber: string, data: any) {
       console.log(`📝 Context for SLM (${recentMessages.length} messages):`, 
         recentMessages.map(m => `${m.from}: ${m.text.substring(0, 50)}`).join(' | '));
 
-      // Classify message using SLM
-      const classification = await classifyMessage(messageText, recentMessages);
-
-      console.log(`Classification for ${phoneNumber}:`, classification);
-
-      if (classification.type === TaskClassification.NEW_TASK) {
-        // Clear previous task context before creating new task
-        // This ensures follow-ups go to the new task, not the old one
-        await prisma.connection.update({
-          where: { phoneNumber },
-          data: { 
-            currentTaskId: null,
-            currentTaskStartedAt: null,
-          } as any,
-        });
-        console.log(`✅ Cleared previous task context for ${phoneNumber} (NEW_TASK detected)`);
-        
-        // Create new Manus task (pass message timestamp as task start time)
+      // No context = no active task → create new task (don't rely on classifier with empty context)
+      if (recentMessages.length === 0) {
+        console.log(`No task context for ${phoneNumber}, creating new task`);
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp);
       } else {
-        // Follow-up to existing task
-        await appendToTask(phoneNumber, effectiveMessage, fileIds);
+        // Classify message using SLM
+        const classification = await classifyMessage(messageText, recentMessages);
+
+        console.log(`Classification for ${phoneNumber}:`, classification);
+
+        if (classification.type === TaskClassification.NEW_TASK) {
+          // Clear previous task ID only (keep currentTaskStartedAt to preserve conversation history)
+          // This allows the new task to see recent messages for context while starting fresh
+          await prisma.connection.update({
+            where: { phoneNumber },
+            data: { 
+              currentTaskId: null,
+              // Keep currentTaskStartedAt - don't reset it
+              // This preserves conversation history across task boundaries
+            } as any,
+          });
+          console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK detected, keeping conversation history)`);
+          
+          // Create new Manus task, preserving the conversation history start time
+          await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true);
+        } else {
+          // Follow-up to existing task
+          await appendToTask(phoneNumber, effectiveMessage, fileIds);
+        }
       }
     }
 
@@ -547,7 +554,13 @@ async function classifyMessage(message: string, context: any[]): Promise<any> {
 }
 
 // Create new Manus task
-async function createManusTask(phoneNumber: string, message: string, fileIds: string[] = [], messageTimestamp?: Date | string) {
+async function createManusTask(
+  phoneNumber: string, 
+  message: string, 
+  fileIds: string[] = [], 
+  messageTimestamp?: Date | string,
+  preserveTaskStartTime: boolean = false // If true, don't update currentTaskStartedAt
+) {
   console.log(`Creating new Manus task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
   // Get connection to get Manus API key
@@ -599,21 +612,33 @@ async function createManusTask(phoneNumber: string, message: string, fileIds: st
     const data = await response.json() as { task_id: string };
     console.log('✅ Created Manus task:', data.task_id);
 
-    // Store the task ID and start time for follow-ups in database
-    // Use the user's message timestamp as task start time (not when Manus creates the task)
-    // This ensures the user's triggering message is included in the context
-    const taskStartTime = messageTimestamp 
-      ? (messageTimestamp instanceof Date ? messageTimestamp : new Date(messageTimestamp))
-      : new Date();
-    await prisma.connection.update({
-      where: { phoneNumber },
-      data: { 
-        currentTaskId: data.task_id,
-        currentTaskStartedAt: taskStartTime,
-      } as any,
-    });
-    
-    console.log(`✅ Stored task start time: ${taskStartTime.toISOString()} (user message time, not task creation time)`);
+    // Store the task ID and optionally start time for follow-ups in database
+    if (preserveTaskStartTime) {
+      // Only update task ID, preserve existing currentTaskStartedAt
+      // This keeps conversation history across task boundaries
+      await prisma.connection.update({
+        where: { phoneNumber },
+        data: { 
+          currentTaskId: data.task_id,
+        } as any,
+      });
+      console.log(`✅ Updated task ID, preserved conversation history`);
+    } else {
+      // Update both task ID and start time (new conversation)
+      // Use the user's message timestamp as task start time (not when Manus creates the task)
+      // This ensures the user's triggering message is included in the context
+      const taskStartTime = messageTimestamp 
+        ? (messageTimestamp instanceof Date ? messageTimestamp : new Date(messageTimestamp))
+        : new Date();
+      await prisma.connection.update({
+        where: { phoneNumber },
+        data: { 
+          currentTaskId: data.task_id,
+          currentTaskStartedAt: taskStartTime,
+        } as any,
+      });
+      console.log(`✅ Stored task start time: ${taskStartTime.toISOString()} (user message time, not task creation time)`);
+    }
 
     // Store task-to-phone mapping in Redis for webhook lookup
     const taskMappingKey = `task:mapping:${data.task_id}`;
@@ -843,9 +868,11 @@ async function listenForEvents() {
           const { phoneNumber, taskId } = data;
           console.log(`🛑 Task stopped event received: ${phoneNumber} (task: ${taskId})`);
           
-          // Stop typing indicator
+          // Stop typing indicator only. Do NOT clear task context here.
+          // Context is only cleared when the user sends a message classified as NEW_TASK.
+          // This keeps follow-up messages (e.g. "its not getting warm") in the same thread
+          // instead of starting a new task when the user is still in the same conversation.
           try {
-            // Ensure SDK is initialized
             await getIMessageSDK();
             const manager = getTypingManager();
             if (manager.isTyping(phoneNumber)) {
@@ -854,33 +881,6 @@ async function listenForEvents() {
           } catch (error) {
             console.warn('Failed to stop typing indicator:', error);
           }
-          
-          // Keep task context for 10 minutes to allow follow-up messages
-          // This prevents follow-ups from being classified as NEW_TASK
-          console.log(`⏱️  Keeping task context for 10 minutes to allow follow-ups (${phoneNumber})`);
-          setTimeout(async () => {
-            try {
-              // Only clear if the task ID hasn't changed (no new task started)
-              const connection = await prisma.connection.findFirst({
-                where: { phoneNumber, currentTaskId: taskId },
-              });
-              
-              if (connection) {
-                await prisma.connection.update({
-                  where: { phoneNumber },
-                  data: { 
-                    currentTaskId: null,
-                    currentTaskStartedAt: null,
-                  } as any,
-                });
-                console.log(`✅ Cleared task context after grace period (${phoneNumber})`);
-              } else {
-                console.log(`⏭️  Task context already changed, skipping clear (${phoneNumber})`);
-              }
-            } catch (error) {
-              console.error('Failed to clear task context after grace period:', error);
-            }
-          }, 600000); // 10 minutes grace period
         } catch (error) {
           console.error('Failed to handle task-stopped event:', error);
         }
