@@ -368,6 +368,20 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
           
           <style>
+            @font-face {
+              font-family: 'Manus';
+              src: url('/assets/6XPIMU23OJVRY676OG5YVJMWEHWICATX.woff2') format('woff2');
+              font-weight: normal;
+              font-style: normal;
+            }
+
+            @font-face {
+              font-family: 'Manus';
+              src: url('/assets/n9c0bF4qhIaA39BYi7EXzK2Qj6A.woff2') format('woff2');
+              font-weight: 300;
+              font-style: normal;
+            }
+          
             * { 
               box-sizing: border-box; 
               margin: 0; 
@@ -375,13 +389,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             body { 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
               background: url('/assets/_ (38) (1).jpeg') no-repeat center center;
-              background-size: 110%;
+              background-size: cover;
               position: relative;
               overflow: hidden;
-              transition: background-position 0.3s ease-out;
+              width: 100%;
+              margin: 0;
+              padding: 0;
             }
             
             body::before {
@@ -391,7 +407,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               left: 0;
               right: 0;
               bottom: 0;
-              background: rgba(0, 0, 0, 0.3);
+              background: rgba(0, 0, 0, 0.45);
               z-index: 0;
             }
             
@@ -410,29 +426,39 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               z-index: 1;
             }
             
-            /* Headline */
-            h1 {
-              font-family: 'Times New Roman', Times, serif;
-              font-size: 64px;
-              font-weight: 600;
+            /* Logo */
+            .logo {
+              font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              font-size: 36px;
+              font-weight: 300;
               color: #ffffff;
-              margin-bottom: 8px;
-              line-height: 1.05;
-              letter-spacing: -0.03em;
-              max-width: 900px;
+              margin-bottom: 30px;
+              letter-spacing: -0.5px;
               text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             }
             
-            /* Subtitle */
-            .subtitle {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              font-size: 20px;
-              color: rgba(255, 255, 255, 0.95);
-              margin-bottom: 28px;
-              line-height: 1.6;
-              max-width: 700px;
+            /* Message */
+            .message {
+              font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              font-size: 18px;
+              color: #ffffff;
+              line-height: 1.3;
               font-weight: 400;
+              margin-bottom: 30px;
+              max-width: 500px;
+              letter-spacing: -0.2px;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+            
+            .message p {
+              margin-bottom: 10px;
+            }
+            
+            .message .emphasis {
+              font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              font-weight: 400;
+              font-size: 20px;
+              margin: 15px 0;
             }
             
             /* Liquid Glass Button */
@@ -474,13 +500,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .glass-filter {
               z-index: 1;
-              backdrop-filter: blur(4px);
-              filter: url(#glass-distortion) saturate(120%) brightness(1.15);
+              backdrop-filter: blur(2px);
+              filter: url(#glass-distortion) saturate(40%) brightness(0.4);
             }
             
             .glass-overlay {
               z-index: 2;
-              background: rgba(255, 255, 255, 0.25);
+              background: rgba(255, 255, 255, 0.35);
+              border: 1px solid rgba(255, 255, 255, 0.4);
             }
             
             .glass-specular {
@@ -564,25 +591,40 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Responsive Design */
             @media (max-width: 768px) {
-              h1 {
-                font-size: 48px;
+              body {
+                background-size: cover;
+                background-position: center center;
               }
               
-              .subtitle {
+              .logo {
+                font-size: 28px;
+                margin-bottom: 24px;
+              }
+              
+              .message {
+                font-size: 16px;
+                max-width: 90%;
+              }
+              
+              .message p {
+                margin-bottom: 8px;
+              }
+              
+              .message .emphasis {
                 font-size: 18px;
-                margin-bottom: 32px;
+                margin: 12px 0;
               }
               
               .connect-btn {
-                padding: 10px 24px;
-                font-size: 14px;
+                padding: 12px 32px;
+                font-size: 15px;
               }
               
               .footer {
                 bottom: 20px;
               }
               
-              .footer a {
+              .footer-text {
                 font-size: 13px;
               }
               
@@ -592,36 +634,68 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             @media (max-width: 480px) {
-              .content {
-                padding: 24px 16px;
+              body {
+                background-size: cover;
+                background-position: center center;
               }
               
-              h1 {
-                font-size: 36px;
+              .content {
+                padding: 32px 20px;
+              }
+              
+              .logo {
+                font-size: 24px;
                 margin-bottom: 20px;
               }
               
-              .subtitle {
-                font-size: 16px;
-                margin-bottom: 28px;
+              .message {
+                font-size: 15px;
+                max-width: 95%;
+              }
+              
+              .message p {
+                margin-bottom: 7px;
+              }
+              
+              .message .emphasis {
+                font-size: 17px;
+                margin: 10px 0;
               }
               
               .connect-btn {
-                padding: 10px 22px;
-                font-size: 13px;
+                padding: 11px 28px;
+                font-size: 14px;
               }
               
               .footer {
                 bottom: 16px;
               }
               
+              .footer-text {
+                font-size: 12px;
+              }
+              
               .footer-logo {
                 height: 12px;
               }
+            }
+            
+            @media (max-width: 375px) {
+              .logo {
+                font-size: 22px;
+              }
               
-              .theme-selector {
-                top: 16px;
-                right: 16px;
+              .message {
+                font-size: 14px;
+              }
+              
+              .message .emphasis {
+                font-size: 16px;
+              }
+              
+              .connect-btn {
+                padding: 10px 24px;
+                font-size: 13px;
               }
             }
           </style>
@@ -637,8 +711,19 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Content -->
           <div class="content">
-            <h1>Manus iMessage Connector</h1>
-            <p class="subtitle">Bringing Manus to your iMessage.</p>
+            <div class="logo">manus</div>
+            
+            <div class="message">
+              <p>Manus gives you superpowers.<br>But here's the truth:</p>
+              
+              <p>You're not sitting at your computer all day.<br>
+              You're moving. Texting. Living.</p>
+              
+              <p>So we built the bridge.</p>
+              
+              <p class="emphasis">Manus Connector for iMessage.</p>
+            </div>
+            
             <a href="${smsLink}" class="connect-btn">
               <div class="glass-filter"></div>
               <div class="glass-overlay"></div>
@@ -693,14 +778,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 });
               }
               
-              // Subtle Background Parallax Effect
+              // Subtle Background Parallax Effect (opposite to mouse direction)
               document.addEventListener('mousemove', function(e) {
                 const moveX = (e.clientX - window.innerWidth / 2) / window.innerWidth;
                 const moveY = (e.clientY - window.innerHeight / 2) / window.innerHeight;
                 
-                // Very subtle movement (5% range)
-                const offsetX = moveX * 5;
-                const offsetY = moveY * 5;
+                // Move opposite to mouse direction (negative values)
+                const offsetX = -moveX * 10;
+                const offsetY = -moveY * 10;
                 
                 document.body.style.backgroundPosition = \`calc(50% + \${offsetX}px) calc(50% + \${offsetY}px)\`;
               });

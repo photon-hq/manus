@@ -231,14 +231,16 @@ fastify.get('/assets/:filename', async (request, reply) => {
     const ext = path.extname(filename).toLowerCase();
     const contentType = ext === '.jpeg' || ext === '.jpg' ? 'image/jpeg' : 
                        ext === '.png' ? 'image/png' : 
-                       ext === '.gif' ? 'image/gif' : 'application/octet-stream';
+                       ext === '.gif' ? 'image/gif' :
+                       ext === '.woff2' ? 'font/woff2' :
+                       ext === '.woff' ? 'font/woff' : 'application/octet-stream';
     
     return reply
       .header('Content-Type', contentType)
       .header('Cache-Control', 'public, max-age=31536000')
       .send(image);
   } catch (error) {
-    return reply.code(404).send({ error: 'Image not found' });
+    return reply.code(404).send({ error: 'Asset not found' });
   }
 });
 
