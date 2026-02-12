@@ -385,19 +385,36 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             * { 
               box-sizing: border-box; 
               margin: 0; 
-              padding: 0; 
+              padding: 0;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            
+            html {
+              height: 100%;
+              height: -webkit-fill-available;
+              -webkit-text-size-adjust: 100%;
             }
             
             body { 
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: url('/assets/background.jpeg') no-repeat center center;
+              min-height: -webkit-fill-available;
+              background: url('/assets/background.jpeg') no-repeat center center fixed;
               background-size: cover;
+              background-position: center center;
               position: relative;
-              overflow: hidden;
+              overflow-x: hidden;
+              overflow-y: auto;
               width: 100%;
               margin: 0;
               padding: 0;
+            }
+            
+            @supports (-webkit-touch-callout: none) {
+              body {
+                min-height: -webkit-fill-available;
+              }
             }
             
             body::before {
@@ -407,8 +424,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               left: 0;
               right: 0;
               bottom: 0;
+              width: 100%;
+              height: 100%;
+              min-height: 100vh;
+              min-height: -webkit-fill-available;
               background: rgba(0, 0, 0, 0.45);
               z-index: 0;
+              pointer-events: none;
             }
             
             /* Content container */
@@ -1229,7 +1251,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             * { 
               box-sizing: border-box; 
               margin: 0; 
-              padding: 0; 
+              padding: 0;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            
+            html {
+              height: 100%;
+              height: -webkit-fill-available;
+              -webkit-text-size-adjust: 100%;
             }
             
             body { 
@@ -1254,8 +1284,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               left: 0;
               right: 0;
               bottom: 0;
+              width: 100%;
+              height: 100%;
+              min-height: 100vh;
+              min-height: -webkit-fill-available;
               background: rgba(0, 0, 0, 0.45);
               z-index: 0;
+              pointer-events: none;
             }
             
             .container {
