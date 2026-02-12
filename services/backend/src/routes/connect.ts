@@ -1428,12 +1428,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 14px 40px;
+              padding: 12px 32px;
               background: rgba(255, 255, 255, 0.35);
               backdrop-filter: blur(12px);
               color: #ffffff;
               text-decoration: none;
-              font-size: 15px;
+              font-size: 14px;
               font-weight: 500;
               border-radius: 50px;
               transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1444,12 +1444,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .action-btn:hover {
               background: rgba(255, 255, 255, 0.45);
-              transform: scale(1.02);
+              transform: scale(1.05);
               box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
             }
             
             .action-btn:active {
-              transform: scale(0.98);
+              transform: scale(0.95);
             }
             
             .note {
