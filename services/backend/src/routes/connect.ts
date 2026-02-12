@@ -1363,10 +1363,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .success-title {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 28px;
+              font-size: 32px;
               font-weight: 300;
               color: #ffffff;
-              margin-bottom: 12px;
+              margin-bottom: 10px;
               letter-spacing: -0.5px;
               text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             }
@@ -1374,43 +1374,47 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             .success-subtitle {
               font-size: 15px;
               color: rgba(255, 255, 255, 0.9);
-              margin-bottom: 28px;
+              margin-bottom: 32px;
               line-height: 1.5;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             .config-container {
-              background: rgba(255, 255, 255, 0.2);
-              border: 1px solid rgba(255, 255, 255, 0.3);
+              background: rgba(255, 255, 255, 0.25);
+              border: 1px solid rgba(255, 255, 255, 0.4);
               border-radius: 20px;
-              padding: 24px;
+              padding: 20px 24px;
               margin-bottom: 24px;
               position: relative;
               text-align: left;
               backdrop-filter: blur(12px);
               box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+              max-width: 550px;
+              margin-left: auto;
+              margin-right: auto;
             }
             
             .config-container pre {
               overflow-x: auto;
-              font-size: 13px;
-              line-height: 1.6;
+              font-size: 12px;
+              line-height: 1.5;
               color: rgba(255, 255, 255, 0.95);
               font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+              padding-right: 80px;
             }
             
             .copy-btn {
               position: absolute;
-              top: 20px;
-              right: 20px;
-              padding: 8px 16px;
+              top: 16px;
+              right: 16px;
+              padding: 6px 14px;
               background: rgba(255, 255, 255, 0.3);
               backdrop-filter: blur(12px);
               color: #ffffff;
               border: 1px solid rgba(255, 255, 255, 0.4);
               border-radius: 50px;
               cursor: pointer;
-              font-size: 13px;
+              font-size: 12px;
               font-weight: 500;
               transition: all 0.2s;
               box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -1418,7 +1422,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .copy-btn:hover {
               background: rgba(255, 255, 255, 0.4);
-              transform: scale(1.02);
+              transform: scale(1.05);
             }
             
             .copy-btn.copied {
@@ -1456,9 +1460,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .note {
-              margin-top: 24px;
-              font-size: 15px;
-              color: rgba(255, 255, 255, 0.8);
+              margin-top: 20px;
+              font-size: 13px;
+              color: rgba(255, 255, 255, 0.75);
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
@@ -1597,7 +1601,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .success-title {
-                font-size: 28px;
+                font-size: 26px;
+              }
+              
+              .config-container {
+                max-width: 90%;
+                padding: 18px 20px;
+              }
+              
+              .config-container pre {
+                font-size: 11px;
               }
             }
             
@@ -1676,23 +1689,44 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .success-title {
-                font-size: 24px;
+                font-size: 22px;
                 margin-bottom: 10px;
               }
               
               .success-subtitle {
-                font-size: 15px;
+                font-size: 14px;
                 margin-bottom: 24px;
+              }
+              
+              .config-container {
+                max-width: 95%;
+                padding: 16px 18px;
+              }
+              
+              .config-container pre {
+                font-size: 10px;
+                padding-right: 70px;
+              }
+              
+              .copy-btn {
+                top: 14px;
+                right: 14px;
+                padding: 5px 12px;
+                font-size: 11px;
+              }
+              
+              .note {
+                font-size: 12px;
               }
             }
             
             @media (max-width: 360px) {
               h1, .success-title {
-                font-size: 22px;
+                font-size: 20px;
               }
               
               .subtitle, .success-subtitle {
-                font-size: 14px;
+                font-size: 13px;
               }
               
               input {
