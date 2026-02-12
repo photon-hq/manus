@@ -178,13 +178,13 @@ fastify.get('/favicon.ico', async (request, reply) => {
 });
 
 // Serve Photon logo images
-fastify.get('/Light@4x.png', async (request, reply) => {
+fastify.get('/photon-logo-light.png', async (request, reply) => {
   const fs = await import('fs/promises');
   const path = await import('path');
   
   const logoPath = process.env.NODE_ENV === 'production'
-    ? '/app/assets/Light@4x.png'
-    : path.join(process.cwd(), '../../assets/Light@4x.png');
+    ? '/app/assets/photon-logo-light.png'
+    : path.join(process.cwd(), '../../assets/photon-logo-light.png');
   
   try {
     const logo = await fs.readFile(logoPath);
@@ -197,13 +197,13 @@ fastify.get('/Light@4x.png', async (request, reply) => {
   }
 });
 
-fastify.get('/Dark@4x.png', async (request, reply) => {
+fastify.get('/photon-logo-dark.png', async (request, reply) => {
   const fs = await import('fs/promises');
   const path = await import('path');
   
   const logoPath = process.env.NODE_ENV === 'production'
-    ? '/app/assets/Dark@4x.png'
-    : path.join(process.cwd(), '../../assets/Dark@4x.png');
+    ? '/app/assets/photon-logo-dark.png'
+    : path.join(process.cwd(), '../../assets/photon-logo-dark.png');
   
   try {
     const logo = await fs.readFile(logoPath);

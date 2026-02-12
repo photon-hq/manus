@@ -257,8 +257,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             <div class="footer-row">
               <span class="footer-text">built by</span>
               <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
-                <img src="/Dark@4x.png" alt="Photon" class="footer-logo dark-logo">
-                <img src="/Light@4x.png" alt="Photon" class="footer-logo light-logo">
+                <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
+                <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
               </a>
             </div>
             <div class="footer-text">
@@ -358,26 +358,26 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
           <meta property="og:title" content="Manus Connector for iMessage">
           <meta property="og:description" content="Manus gives you superpowers. But here's the truth: You're not sitting at your computer all day. So we built the bridge.">
-          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/og-preview.png">
           
           <!-- Twitter -->
           <meta property="twitter:card" content="summary_large_image">
           <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
           <meta property="twitter:title" content="Manus Connector for iMessage">
           <meta property="twitter:description" content="Manus gives you superpowers. But here's the truth: You're not sitting at your computer all day. So we built the bridge.">
-          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/og-preview.png">
           
           <style>
             @font-face {
               font-family: 'Manus';
-              src: url('/assets/6XPIMU23OJVRY676OG5YVJMWEHWICATX.woff2') format('woff2');
+              src: url('/assets/manus-font-regular.woff2') format('woff2');
               font-weight: normal;
               font-style: normal;
             }
 
             @font-face {
               font-family: 'Manus';
-              src: url('/assets/n9c0bF4qhIaA39BYi7EXzK2Qj6A.woff2') format('woff2');
+              src: url('/assets/manus-font-light.woff2') format('woff2');
               font-weight: 300;
               font-style: normal;
             }
@@ -391,7 +391,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: url('/assets/_ (38) (1).jpeg') no-repeat center center;
+              background: url('/assets/background.jpeg') no-repeat center center;
               background-size: cover;
               position: relative;
               overflow: hidden;
@@ -739,8 +739,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             <div class="footer-row">
               <span class="footer-text">built by</span>
               <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
-                <img src="/Dark@4x.png" alt="Photon" class="footer-logo dark-logo">
-                <img src="/Light@4x.png" alt="Photon" class="footer-logo light-logo">
+                <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
+                <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
               </a>
             </div>
             <div class="footer-text">
@@ -1137,26 +1137,26 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
           <meta property="og:title" content="Complete Manus Setup">
           <meta property="og:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
-          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/og-preview.png">
           
           <!-- Twitter -->
           <meta property="twitter:card" content="summary_large_image">
           <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
           <meta property="twitter:title" content="Complete Manus Setup">
           <meta property="twitter:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
-          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/og-preview.png">
           
           <style>
             @font-face {
               font-family: 'Manus';
-              src: url('/assets/6XPIMU23OJVRY676OG5YVJMWEHWICATX.woff2') format('woff2');
+              src: url('/assets/manus-font-regular.woff2') format('woff2');
               font-weight: normal;
               font-style: normal;
             }
 
             @font-face {
               font-family: 'Manus';
-              src: url('/assets/n9c0bF4qhIaA39BYi7EXzK2Qj6A.woff2') format('woff2');
+              src: url('/assets/manus-font-light.woff2') format('woff2');
               font-weight: 300;
               font-style: normal;
             }
@@ -1170,7 +1170,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: url('/assets/_ (38) (1).jpeg') no-repeat center center;
+              background: url('/assets/background.jpeg') no-repeat center center;
               background-size: cover;
               display: flex;
               align-items: center;
@@ -1850,8 +1850,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             <div class="footer-row">
               <span class="footer-text">built by</span>
               <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
-                <img src="/Dark@4x.png" alt="Photon" class="footer-logo dark-logo">
-                <img src="/Light@4x.png" alt="Photon" class="footer-logo light-logo">
+                <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
+                <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
               </a>
             </div>
             <div class="footer-text">
