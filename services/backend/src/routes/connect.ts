@@ -429,10 +429,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Logo */
             .logo {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 36px;
+              font-size: 32px;
               font-weight: 300;
               color: #ffffff;
-              margin-bottom: 30px;
+              margin-bottom: 28px;
               letter-spacing: -0.5px;
               text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             }
@@ -440,11 +440,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Message */
             .message {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 18px;
+              font-size: 16px;
               color: #ffffff;
               line-height: 1.3;
               font-weight: 400;
-              margin-bottom: 30px;
+              margin-bottom: 28px;
               max-width: 500px;
               letter-spacing: -0.2px;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -457,7 +457,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             .message .emphasis {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
               font-weight: 400;
-              font-size: 20px;
+              font-size: 18px;
               margin: 15px 0;
             }
             
