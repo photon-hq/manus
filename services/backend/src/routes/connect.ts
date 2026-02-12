@@ -433,56 +433,98 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
-            /* Connect button */
+            /* Connect button - Liquid Glass Effect */
             .connect-btn { 
               display: inline-flex;
               align-items: center;
               justify-content: center;
               padding: 16px 48px;
-              background: rgba(255, 255, 255, 0.025);
+              background: rgba(255, 255, 255, 0.08);
               color: #ffffff;
               text-decoration: none;
               font-size: 17px;
               font-weight: 500;
               border-radius: 50px;
-              transition: all 0.3s ease;
-              box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.75), 0 0 9px rgba(0, 0, 0, 0.2), 0 3px 8px rgba(0, 0, 0, 0.15);
+              transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+              box-shadow: 
+                inset 0 1px 1px rgba(255, 255, 255, 0.9),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.1),
+                0 4px 16px rgba(0, 0, 0, 0.15),
+                0 8px 32px rgba(0, 0, 0, 0.1);
               letter-spacing: -0.01em;
-              border: 0.5px solid rgba(255, 255, 255, 0.3);
-              backdrop-filter: blur(12px);
-              -webkit-backdrop-filter: blur(12px);
+              border: 0.5px solid rgba(255, 255, 255, 0.25);
+              backdrop-filter: blur(20px) saturate(180%);
+              -webkit-backdrop-filter: blur(20px) saturate(180%);
               position: relative;
               overflow: hidden;
+              z-index: 1;
             }
             
+            /* Top gradient highlight */
             .connect-btn::before {
               content: '';
               position: absolute;
-              inset: 0;
-              border-radius: 50px;
-              background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.6), transparent, transparent);
-              opacity: 0.7;
+              top: 0;
+              left: 0;
+              right: 0;
+              height: 50%;
+              border-radius: 50px 50px 0 0;
+              background: linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.5) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 100%
+              );
+              opacity: 0.8;
               pointer-events: none;
+              transition: opacity 0.4s ease;
             }
             
+            /* Bottom subtle gradient */
             .connect-btn::after {
               content: '';
               position: absolute;
-              inset: 0;
-              border-radius: 50px;
-              background: linear-gradient(to top left, rgba(255, 255, 255, 0.3), transparent, transparent);
-              opacity: 0.5;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 30%;
+              border-radius: 0 0 50px 50px;
+              background: linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15) 0%,
+                transparent 100%
+              );
+              opacity: 0.6;
               pointer-events: none;
+              transition: opacity 0.4s ease;
             }
             
             .connect-btn:hover { 
-              background: rgba(255, 255, 255, 0.3);
-              box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.85), 0 0 12px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
+              background: rgba(255, 255, 255, 0.15);
+              border-color: rgba(255, 255, 255, 0.35);
+              box-shadow: 
+                inset 0 1px 1px rgba(255, 255, 255, 1),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.15),
+                0 6px 20px rgba(0, 0, 0, 0.2),
+                0 12px 40px rgba(0, 0, 0, 0.15);
+              transform: translateY(-1px);
+            }
+            
+            .connect-btn:hover::before {
+              opacity: 1;
+            }
+            
+            .connect-btn:hover::after {
+              opacity: 0.8;
             }
             
             .connect-btn:active {
-              transform: scale(0.98);
-              background: rgba(255, 255, 255, 0.2);
+              transform: translateY(0) scale(0.98);
+              background: rgba(255, 255, 255, 0.12);
+              box-shadow: 
+                inset 0 1px 1px rgba(255, 255, 255, 0.8),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                0 2px 8px rgba(0, 0, 0, 0.15);
             }
             
             /* Footer */
