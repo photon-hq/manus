@@ -1172,7 +1172,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               left: 0;
               right: 0;
               bottom: 0;
-              background: rgba(0, 0, 0, 0.3);
+              background: rgba(0, 0, 0, 0.45);
               z-index: 0;
             }
             
@@ -1182,11 +1182,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               text-align: center;
               position: relative;
               z-index: 1;
-              background: rgba(255, 255, 255, 0.95);
+              background: rgba(255, 255, 255, 0.35);
               padding: 40px;
               border-radius: 20px;
-              backdrop-filter: blur(10px);
-              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+              backdrop-filter: blur(16px);
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+              border: 1px solid rgba(255, 255, 255, 0.4);
             }
             
             /* Form Section */
@@ -1198,30 +1199,33 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-family: 'Times New Roman', Times, serif;
               font-size: 48px;
               font-weight: 600;
-              color: rgb(52, 50, 45);
+              color: #ffffff;
               margin-bottom: 8px;
               line-height: 1.05;
               letter-spacing: -0.03em;
+              text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             }
             
             .subtitle {
               font-size: 18px;
-              color: #666666;
+              color: rgba(255, 255, 255, 0.95);
               margin-bottom: 32px;
               line-height: 1.6;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             }
             
             .get-key-link {
               display: inline-block;
-              color: #666666;
+              color: rgba(255, 255, 255, 0.9);
               text-decoration: none;
               font-size: 16px;
               margin-bottom: 28px;
               transition: color 0.2s;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             }
             
             .get-key-link:hover {
-              color: rgb(52, 50, 45);
+              color: #ffffff;
             }
             
             .input-wrapper {
@@ -1232,29 +1236,32 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               width: 100%;
               padding: 14px 20px;
               font-size: 16px;
-              border: 1px solid rgba(0, 0, 0, 0.15);
+              border: 1px solid rgba(255, 255, 255, 0.3);
               border-radius: 12px;
-              background: #ffffff;
+              background: rgba(255, 255, 255, 0.2);
+              backdrop-filter: blur(8px);
               transition: all 0.2s;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              color: #000000;
+              color: #ffffff;
             }
             
             input:focus {
               outline: none;
-              border-color: rgba(0, 0, 0, 0.4);
+              border-color: rgba(255, 255, 255, 0.5);
+              background: rgba(255, 255, 255, 0.25);
             }
             
             input::placeholder {
-              color: rgba(0, 0, 0, 0.3);
+              color: rgba(255, 255, 255, 0.6);
             }
             
             .submit-btn {
               width: 100%;
               padding: 12px 28px;
-              background: #000000;
+              background: rgba(255, 255, 255, 0.3);
+              backdrop-filter: blur(8px);
               color: #ffffff;
-              border: none;
+              border: 1px solid rgba(255, 255, 255, 0.4);
               font-size: 15px;
               font-weight: 500;
               border-radius: 50px;
@@ -1265,7 +1272,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .submit-btn:hover:not(:disabled) {
-              background: #1a1a1a;
+              background: rgba(255, 255, 255, 0.4);
               transform: scale(1.02);
               box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
             }
@@ -1302,33 +1309,36 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             .success-title {
               font-size: 32px;
               font-weight: 600;
-              color: #000000;
+              color: #ffffff;
               margin-bottom: 12px;
               letter-spacing: -0.02em;
+              text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             }
             
             .success-subtitle {
               font-size: 17px;
-              color: rgba(0, 0, 0, 0.6);
+              color: rgba(255, 255, 255, 0.9);
               margin-bottom: 32px;
               line-height: 1.5;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             }
             
             .config-container {
-              background: rgba(0, 0, 0, 0.03);
-              border: 1px solid rgba(0, 0, 0, 0.06);
+              background: rgba(255, 255, 255, 0.15);
+              border: 1px solid rgba(255, 255, 255, 0.25);
               border-radius: 12px;
               padding: 20px;
               margin-bottom: 20px;
               position: relative;
               text-align: left;
+              backdrop-filter: blur(8px);
             }
             
             .config-container pre {
               overflow-x: auto;
               font-size: 13px;
               line-height: 1.6;
-              color: rgba(0, 0, 0, 0.8);
+              color: rgba(255, 255, 255, 0.95);
               font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
             }
             
@@ -1337,9 +1347,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               top: 16px;
               right: 16px;
               padding: 8px 16px;
-              background: #000000;
+              background: rgba(255, 255, 255, 0.3);
+              backdrop-filter: blur(8px);
               color: #ffffff;
-              border: none;
+              border: 1px solid rgba(255, 255, 255, 0.4);
               border-radius: 20px;
               cursor: pointer;
               font-size: 13px;
@@ -1348,12 +1359,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .copy-btn:hover {
-              background: #1a1a1a;
+              background: rgba(255, 255, 255, 0.4);
               transform: scale(1.02);
             }
             
             .copy-btn.copied {
-              background: #34c759;
+              background: rgba(52, 199, 89, 0.8);
+              border-color: rgba(52, 199, 89, 1);
               color: #ffffff;
             }
             
@@ -1362,7 +1374,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               align-items: center;
               justify-content: center;
               padding: 16px 48px;
-              background: #000000;
+              background: rgba(255, 255, 255, 0.3);
+              backdrop-filter: blur(8px);
               color: #ffffff;
               text-decoration: none;
               font-size: 17px;
@@ -1370,12 +1383,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               border-radius: 50px;
               transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
               letter-spacing: -0.01em;
-              border: none;
+              border: 1px solid rgba(255, 255, 255, 0.4);
               box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
             
             .action-btn:hover {
-              background: #1a1a1a;
+              background: rgba(255, 255, 255, 0.4);
               transform: scale(1.02);
               box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
             }
@@ -1387,7 +1400,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             .note {
               margin-top: 24px;
               font-size: 15px;
-              color: rgba(0, 0, 0, 0.5);
+              color: rgba(255, 255, 255, 0.8);
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             }
             
             /* Footer */
@@ -1769,6 +1783,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 }, 2000);
               });
             }
+            
+            // Background Parallax Effect (opposite to mouse direction)
+            document.addEventListener('mousemove', function(e) {
+              const moveX = (e.clientX - window.innerWidth / 2) / window.innerWidth;
+              const moveY = (e.clientY - window.innerHeight / 2) / window.innerHeight;
+              
+              // Move opposite to mouse direction (negative values)
+              const offsetX = -moveX * 10;
+              const offsetY = -moveY * 10;
+              
+              document.body.style.backgroundPosition = \`calc(50% + \${offsetX}px) calc(50% + \${offsetY}px)\`;
+            });
           </script>
         </body>
       </html>
