@@ -377,125 +377,20 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: #f5f5f5;
+              background: url('/assets/_ (38) (1).jpeg') no-repeat center center fixed;
+              background-size: cover;
               position: relative;
-              transition: background 0.3s ease, color 0.3s ease;
             }
             
-            body.dark-mode {
-              background: #1a1a1a;
-            }
-            
-            /* Theme selector dropdown */
-            .theme-selector {
+            body::before {
+              content: '';
               position: fixed;
-              top: 24px;
-              right: 24px;
-              z-index: 1000;
-            }
-            
-            .theme-button {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              padding: 8px 16px;
-              background: white;
-              border: 1.5px solid #d1d5db;
-              border-radius: 8px;
-              cursor: pointer;
-              font-size: 14px;
-              font-weight: 500;
-              color: #374151;
-              transition: all 0.2s;
-            }
-            
-            .theme-button:hover {
-              border-color: #2563eb;
-            }
-            
-            body.dark-mode .theme-button {
-              background: #27272a;
-              border-color: #52525b;
-              color: #e4e4e7;
-            }
-            
-            body.dark-mode .theme-button:hover {
-              border-color: #3b82f6;
-            }
-            
-            .theme-button svg {
-              width: 12px;
-              height: 12px;
-              fill: currentColor;
-              transition: transform 0.2s;
-            }
-            
-            .theme-button.open svg {
-              transform: rotate(180deg);
-            }
-            
-            .theme-dropdown {
-              position: absolute;
-              top: calc(100% + 8px);
+              top: 0;
+              left: 0;
               right: 0;
-              min-width: 200px;
-              background: white;
-              border: 1px solid #e5e7eb;
-              border-radius: 8px;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-              display: none;
-              overflow: hidden;
-            }
-            
-            .theme-dropdown.show {
-              display: block;
-            }
-            
-            body.dark-mode .theme-dropdown {
-              background: #27272a;
-              border-color: #3f3f46;
-            }
-            
-            .theme-option {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              padding: 10px 16px;
-              cursor: pointer;
-              font-size: 14px;
-              color: #374151;
-              transition: background 0.15s;
-            }
-            
-            .theme-option:hover {
-              background: #f3f4f6;
-            }
-            
-            body.dark-mode .theme-option {
-              color: #e4e4e7;
-            }
-            
-            body.dark-mode .theme-option:hover {
-              background: #3f3f46;
-            }
-            
-            .theme-option.active {
-              font-weight: 500;
-            }
-            
-            .theme-option svg {
-              width: 16px;
-              height: 16px;
-              fill: #2563eb;
-              opacity: 0;
-            }
-            
-            .theme-option.active svg {
-              opacity: 1;
-            }
-            
-            body.dark-mode .theme-option svg {
-              fill: #3b82f6;
+              bottom: 0;
+              background: rgba(0, 0, 0, 0.3);
+              z-index: 0;
             }
             
             /* Content container */
@@ -509,6 +404,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               max-width: 900px;
               margin: 0 auto;
               text-align: center;
+              position: relative;
+              z-index: 1;
             }
             
             /* Headline */
@@ -516,32 +413,24 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-family: 'Times New Roman', Times, serif;
               font-size: 64px;
               font-weight: 600;
-              color: rgb(52, 50, 45);
+              color: #ffffff;
               margin-bottom: 8px;
               line-height: 1.05;
               letter-spacing: -0.03em;
               max-width: 900px;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode h1 {
-              color: rgb(230, 228, 225);
+              text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             }
             
             /* Subtitle */
             .subtitle {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
               font-size: 20px;
-              color: #666666;
+              color: rgba(255, 255, 255, 0.95);
               margin-bottom: 28px;
               line-height: 1.6;
               max-width: 700px;
               font-weight: 400;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .subtitle {
-              color: #999999;
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             /* Connect button */
@@ -550,37 +439,27 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               align-items: center;
               justify-content: center;
               padding: 12px 28px;
-              background: #000000;
-              color: #ffffff;
+              background: rgba(255, 255, 255, 0.95);
+              color: #000000;
               text-decoration: none;
               font-size: 15px;
               font-weight: 500;
               border-radius: 50px;
               transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
               letter-spacing: -0.01em;
               border: none;
+              backdrop-filter: blur(10px);
             }
             
             .connect-btn:hover { 
               transform: scale(1.02);
-              box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
-              background: #1a1a1a;
+              box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+              background: rgba(255, 255, 255, 1);
             }
             
             .connect-btn:active {
               transform: scale(0.98);
-            }
-            
-            body.dark-mode .connect-btn {
-              background: #ffffff;
-              color: #000000;
-              box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
-            }
-            
-            body.dark-mode .connect-btn:hover {
-              background: #e6e6e6;
-              box-shadow: 0 6px 24px rgba(255, 255, 255, 0.2);
             }
             
             /* Footer */
@@ -595,6 +474,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               flex-direction: column;
               align-items: center;
               gap: 8px;
+              z-index: 1;
             }
             
             .footer-row {
@@ -606,14 +486,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-text {
-              color: rgba(0, 0, 0, 0.4);
+              color: rgba(255, 255, 255, 0.9);
               font-size: 14px;
               font-weight: 400;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .footer-text {
-              color: rgba(255, 255, 255, 0.4);
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             .footer a {
@@ -631,40 +507,26 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
+              filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
             }
             
             .footer-logo.dark-logo {
-              display: inline-block !important;
+              display: none !important;
             }
             
             .footer-logo.light-logo {
-              display: none !important;
-            }
-            
-            body.dark-mode .footer-logo.dark-logo {
-              display: none !important;
-            }
-            
-            body.dark-mode .footer-logo.light-logo {
               display: inline-block !important;
             }
             
             .footer-link {
-              color: rgba(0, 0, 0, 0.6);
+              color: rgba(255, 255, 255, 0.9);
               font-weight: 500;
               letter-spacing: -0.01em;
-            }
-            
-            body.dark-mode .footer-link {
-              color: rgba(255, 255, 255, 0.6);
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             .footer-link:hover {
-              color: rgba(0, 0, 0, 0.9);
-            }
-            
-            body.dark-mode .footer-link:hover {
-              color: rgba(255, 255, 255, 0.9);
+              color: rgba(255, 255, 255, 1);
             }
             
             /* Responsive Design */
@@ -732,36 +594,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </style>
         </head>
         <body>
-          <!-- Theme selector -->
-          <div class="theme-selector">
-            <button class="theme-button" onclick="toggleThemeDropdown()" aria-label="Select theme">
-              <span id="theme-label">Light</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-              </svg>
-            </button>
-            <div class="theme-dropdown" id="theme-dropdown">
-              <div class="theme-option" onclick="setTheme('system')" data-theme="system">
-                <span>Use system setting</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                </svg>
-              </div>
-              <div class="theme-option" onclick="setTheme('light')" data-theme="light">
-                <span>Light</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                </svg>
-              </div>
-              <div class="theme-option" onclick="setTheme('dark')" data-theme="dark">
-                <span>Dark</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                </svg>
-              </div>
-            </div>
-          </div>
-          
           <!-- Content -->
           <div class="content">
             <h1>Manus iMessage Connector</h1>
@@ -782,83 +614,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
             </div>
           </div>
-          
-          <script>
-            // Theme management
-            function getSystemTheme() {
-              return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            }
-            
-            function applyTheme(theme) {
-              if (theme === 'system') {
-                theme = getSystemTheme();
-              }
-              
-              if (theme === 'dark') {
-                document.body.classList.add('dark-mode');
-              } else {
-                document.body.classList.remove('dark-mode');
-              }
-            }
-            
-            function updateThemeLabel() {
-              const savedTheme = localStorage.getItem('theme') || 'system';
-              const label = document.getElementById('theme-label');
-              const options = document.querySelectorAll('.theme-option');
-              
-              // Update label
-              if (savedTheme === 'system') {
-                label.textContent = 'Use system setting';
-              } else {
-                label.textContent = savedTheme.charAt(0).toUpperCase() + savedTheme.slice(1);
-              }
-              
-              // Update active state
-              options.forEach(option => {
-                if (option.dataset.theme === savedTheme) {
-                  option.classList.add('active');
-                } else {
-                  option.classList.remove('active');
-                }
-              });
-            }
-            
-            function setTheme(theme) {
-              localStorage.setItem('theme', theme);
-              applyTheme(theme);
-              updateThemeLabel();
-              toggleThemeDropdown();
-            }
-            
-            function toggleThemeDropdown() {
-              const dropdown = document.getElementById('theme-dropdown');
-              const button = document.querySelector('.theme-button');
-              dropdown.classList.toggle('show');
-              button.classList.toggle('open');
-            }
-            
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-              const selector = document.querySelector('.theme-selector');
-              if (selector && !selector.contains(e.target)) {
-                document.getElementById('theme-dropdown').classList.remove('show');
-                document.querySelector('.theme-button').classList.remove('open');
-              }
-            });
-            
-            // Listen for system theme changes
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-              const savedTheme = localStorage.getItem('theme') || 'system';
-              if (savedTheme === 'system') {
-                applyTheme('system');
-              }
-            });
-            
-            // Initialize theme
-            const savedTheme = localStorage.getItem('theme') || 'system';
-            applyTheme(savedTheme);
-            updateThemeLabel();
-          </script>
         </body>
       </html>
     `);
