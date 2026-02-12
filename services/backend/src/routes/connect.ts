@@ -590,34 +590,53 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             /* Responsive Design */
+            @media (max-width: 1024px) {
+              .content {
+                padding: 40px 30px;
+              }
+              
+              .logo {
+                font-size: 30px;
+              }
+              
+              .message {
+                font-size: 15px;
+              }
+            }
+            
             @media (max-width: 768px) {
               body {
                 background-size: cover;
                 background-position: center center;
+                padding: 30px 20px;
+              }
+              
+              .content {
+                padding: 30px 20px;
               }
               
               .logo {
-                font-size: 28px;
-                margin-bottom: 24px;
+                font-size: 26px;
+                margin-bottom: 22px;
               }
               
               .message {
-                font-size: 16px;
+                font-size: 14px;
                 max-width: 90%;
               }
               
               .message p {
-                margin-bottom: 8px;
+                margin-bottom: 9px;
               }
               
               .message .emphasis {
-                font-size: 18px;
-                margin: 12px 0;
+                font-size: 16px;
+                margin: 13px 0;
               }
               
               .connect-btn {
                 padding: 12px 32px;
-                font-size: 15px;
+                font-size: 14px;
               }
               
               .footer {
@@ -629,7 +648,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-logo {
-                height: 14px;
+                height: 13px;
               }
             }
             
@@ -637,34 +656,35 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               body {
                 background-size: cover;
                 background-position: center center;
+                padding: 24px 16px;
               }
               
               .content {
-                padding: 32px 20px;
+                padding: 24px 16px;
               }
               
               .logo {
-                font-size: 24px;
-                margin-bottom: 20px;
+                font-size: 22px;
+                margin-bottom: 18px;
               }
               
               .message {
-                font-size: 15px;
+                font-size: 13px;
                 max-width: 95%;
               }
               
               .message p {
-                margin-bottom: 7px;
+                margin-bottom: 8px;
               }
               
               .message .emphasis {
-                font-size: 17px;
-                margin: 10px 0;
+                font-size: 15px;
+                margin: 12px 0;
               }
               
               .connect-btn {
                 padding: 11px 28px;
-                font-size: 14px;
+                font-size: 13px;
               }
               
               .footer {
@@ -681,21 +701,66 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             @media (max-width: 375px) {
+              body {
+                padding: 20px 12px;
+              }
+              
+              .content {
+                padding: 20px 12px;
+              }
+              
               .logo {
-                font-size: 22px;
+                font-size: 20px;
+                margin-bottom: 16px;
               }
               
               .message {
-                font-size: 14px;
+                font-size: 12px;
+              }
+              
+              .message p {
+                margin-bottom: 7px;
               }
               
               .message .emphasis {
-                font-size: 16px;
+                font-size: 14px;
+                margin: 10px 0;
               }
               
               .connect-btn {
                 padding: 10px 24px;
+                font-size: 12px;
+              }
+              
+              .footer {
+                bottom: 12px;
+              }
+              
+              .footer-text {
+                font-size: 11px;
+              }
+              
+              .footer-logo {
+                height: 11px;
+              }
+            }
+            
+            @media (max-width: 320px) {
+              .logo {
+                font-size: 18px;
+              }
+              
+              .message {
+                font-size: 11px;
+              }
+              
+              .message .emphasis {
                 font-size: 13px;
+              }
+              
+              .connect-btn {
+                padding: 9px 20px;
+                font-size: 11px;
               }
             }
           </style>
@@ -1566,13 +1631,31 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             /* Responsive Design */
-            @media (max-width: 768px) {
-              .container {
-                padding: 32px;
+            @media (max-width: 1024px) {
+              body {
+                padding: 35px 25px;
               }
               
               h1 {
-                font-size: 40px;
+                font-size: 34px;
+              }
+              
+              .subtitle {
+                font-size: 15px;
+              }
+              
+              .input-wrapper {
+                max-width: 500px;
+              }
+            }
+            
+            @media (max-width: 768px) {
+              body {
+                padding: 30px 20px;
+              }
+              
+              h1 {
+                font-size: 32px;
               }
               
               .subtitle, .success-subtitle {
