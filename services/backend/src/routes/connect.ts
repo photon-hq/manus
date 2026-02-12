@@ -1436,27 +1436,59 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               align-items: center;
               justify-content: center;
               padding: 12px 32px;
-              background: rgba(255, 255, 255, 0.35);
-              backdrop-filter: blur(12px);
+              background: transparent;
               color: #ffffff;
               text-decoration: none;
               font-size: 14px;
               font-weight: 500;
               border-radius: 50px;
-              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              transition: transform 0.2s ease;
               letter-spacing: -0.01em;
-              border: 1px solid rgba(255, 255, 255, 0.4);
-              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+              border: none;
+              position: relative;
+              overflow: hidden;
+              cursor: pointer;
+              outline: none;
             }
             
             .action-btn:hover {
-              background: rgba(255, 255, 255, 0.45);
               transform: scale(1.05);
-              box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
             }
             
             .action-btn:active {
               transform: scale(0.95);
+            }
+            
+            .action-btn .glass-filter,
+            .action-btn .glass-overlay,
+            .action-btn .glass-specular {
+              position: absolute;
+              inset: 0;
+              border-radius: 50px;
+            }
+            
+            .action-btn .glass-filter {
+              z-index: 1;
+              backdrop-filter: blur(8px);
+              filter: url(#glass-distortion) saturate(120%) brightness(1.15);
+            }
+            
+            .action-btn .glass-overlay {
+              z-index: 2;
+              background: rgba(255, 255, 255, 0.35);
+              border: 1px solid rgba(255, 255, 255, 0.4);
+            }
+            
+            .action-btn .glass-specular {
+              z-index: 3;
+              box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.75);
+            }
+            
+            .action-btn .glass-content {
+              position: relative;
+              z-index: 4;
+              color: #ffffff;
+              font-weight: 500;
             }
             
             .note {
@@ -1801,7 +1833,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </div>
               
               <a href="https://manus.im/app#settings/connectors/mcp-server" target="_blank" class="action-btn">
-                Open Manus Settings &rarr;
+                <div class="glass-filter"></div>
+                <div class="glass-overlay"></div>
+                <div class="glass-specular"></div>
+                <div class="glass-content">
+                  <span>Open Manus Settings &rarr;</span>
+                </div>
               </a>
               
               <p class="note">Configuration also sent to your iMessage</p>
@@ -1893,9 +1930,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             // Liquid Glass Button Mouse Effect
-            const glassButton = document.querySelector('.submit-btn');
+            const glassButtons = document.querySelectorAll('.submit-btn, .action-btn');
             
-            if (glassButton) {
+            glassButtons.forEach(function(glassButton) {
               glassButton.addEventListener('mousemove', function(e) {
                 const rect = this.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -1918,7 +1955,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   specular.style.background = 'none';
                 }
               });
-            }
+            });
             
             // Background Parallax Effect (opposite to mouse direction)
             document.addEventListener('mousemove', function(e) {
