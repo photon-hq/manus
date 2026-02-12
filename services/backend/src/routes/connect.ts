@@ -1241,12 +1241,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .input-wrapper {
               margin-bottom: 16px;
+              max-width: 450px;
+              margin-left: auto;
+              margin-right: auto;
             }
             
             input {
               width: 100%;
-              padding: 14px 22px;
-              font-size: 15px;
+              padding: 12px 20px;
+              font-size: 14px;
               border: 1px solid rgba(255, 255, 255, 0.4);
               border-radius: 50px;
               background: rgba(255, 255, 255, 0.25);
@@ -1269,35 +1272,67 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .submit-btn {
-              width: 100%;
-              padding: 14px 40px;
-              background: rgba(255, 255, 255, 0.35);
-              backdrop-filter: blur(12px);
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 12px 36px;
+              background: transparent;
               color: #ffffff;
-              border: 1px solid rgba(255, 255, 255, 0.4);
-              font-size: 15px;
+              border: none;
+              font-size: 14px;
               font-weight: 500;
               border-radius: 50px;
               cursor: pointer;
-              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              transition: transform 0.2s ease;
               letter-spacing: -0.01em;
-              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-              margin-top: 8px;
+              position: relative;
+              overflow: hidden;
+              outline: none;
             }
             
             .submit-btn:hover:not(:disabled) {
-              background: rgba(255, 255, 255, 0.45);
-              transform: scale(1.02);
-              box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+              transform: scale(1.05);
             }
             
             .submit-btn:active:not(:disabled) {
-              transform: scale(0.98);
+              transform: scale(0.95);
             }
             
             .submit-btn:disabled {
               opacity: 0.5;
               cursor: not-allowed;
+            }
+            
+            .glass-filter,
+            .glass-overlay,
+            .glass-specular {
+              position: absolute;
+              inset: 0;
+              border-radius: 50px;
+            }
+            
+            .glass-filter {
+              z-index: 1;
+              backdrop-filter: blur(8px);
+              filter: url(#glass-distortion) saturate(120%) brightness(1.15);
+            }
+            
+            .glass-overlay {
+              z-index: 2;
+              background: rgba(255, 255, 255, 0.35);
+              border: 1px solid rgba(255, 255, 255, 0.4);
+            }
+            
+            .glass-specular {
+              z-index: 3;
+              box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.75);
+            }
+            
+            .glass-content {
+              position: relative;
+              z-index: 4;
+              color: #ffffff;
+              font-weight: 500;
             }
             
             .error {
@@ -1678,6 +1713,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </style>
         </head>
         <body>
+          <!-- SVG Filter for Glass Distortion -->
+          <svg style="display: none">
+            <filter id="glass-distortion">
+              <feTurbulence type="turbulence" baseFrequency="0.008" numOctaves="2" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="77" />
+            </filter>
+          </svg>
+          
           <div class="container">
             <!-- Form Section -->
             <div id="form-section">
@@ -1697,7 +1740,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   required 
                 />
                 </div>
-                <button type="submit" class="submit-btn" id="submitBtn">Continue</button>
+                <button type="submit" class="submit-btn" id="submitBtn">
+                  <div class="glass-filter"></div>
+                  <div class="glass-overlay"></div>
+                  <div class="glass-specular"></div>
+                  <div class="glass-content">
+                    <span>Continue</span>
+                  </div>
+                </button>
               </form>
               
               <div id="error" class="error"></div>
@@ -1748,6 +1798,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             document.getElementById('tokenForm').addEventListener('submit', async (e) => {
               e.preventDefault();
               const submitBtn = document.getElementById('submitBtn');
+              const submitBtnText = submitBtn.querySelector('.glass-content span');
               const errorDiv = document.getElementById('error');
               const manusApiKey = document.getElementById('manusApiKey').value.trim();
               
@@ -1759,7 +1810,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               submitBtn.disabled = true;
-              submitBtn.textContent = 'Connecting...';
+              submitBtnText.textContent = 'Connecting...';
               errorDiv.classList.remove('show');
               errorDiv.textContent = '';
               
@@ -1781,13 +1832,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   errorDiv.textContent = data.error || 'Failed to connect. Please try again.';
                   errorDiv.classList.add('show');
                   submitBtn.disabled = false;
-                  submitBtn.textContent = 'Continue';
+                  submitBtnText.textContent = 'Continue';
                 }
               } catch (error) {
                 errorDiv.textContent = 'Connection failed. Please check your API key and try again.';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Continue';
+                submitBtnText.textContent = 'Continue';
               }
             });
             
@@ -1801,6 +1852,34 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   btn.textContent = 'Copy';
                   btn.classList.remove('copied');
                 }, 2000);
+              });
+            }
+            
+            // Liquid Glass Button Mouse Effect
+            const glassButton = document.querySelector('.submit-btn');
+            
+            if (glassButton) {
+              glassButton.addEventListener('mousemove', function(e) {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const specular = this.querySelector('.glass-specular');
+                if (specular) {
+                  specular.style.background = \`radial-gradient(
+                    circle at \${x}px \${y}px,
+                    rgba(255,255,255,0.15) 0%,
+                    rgba(255,255,255,0.05) 30%,
+                    rgba(255,255,255,0) 60%
+                  )\`;
+                }
+              });
+              
+              glassButton.addEventListener('mouseleave', function() {
+                const specular = this.querySelector('.glass-specular');
+                if (specular) {
+                  specular.style.background = 'none';
+                }
               });
             }
             
