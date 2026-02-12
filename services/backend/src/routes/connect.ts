@@ -1208,7 +1208,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             h1 {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 48px;
+              font-size: 36px;
               font-weight: 300;
               color: #ffffff;
               margin-bottom: 8px;
@@ -1218,10 +1218,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .subtitle {
-              font-size: 18px;
+              font-size: 16px;
               color: rgba(255, 255, 255, 0.95);
-              margin-bottom: 40px;
-              line-height: 1.6;
+              margin-bottom: 16px;
+              line-height: 1.5;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
@@ -1229,8 +1229,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: inline-block;
               color: rgba(255, 255, 255, 0.9);
               text-decoration: none;
-              font-size: 16px;
-              margin-bottom: 32px;
+              font-size: 14px;
+              margin-bottom: 28px;
               transition: color 0.2s;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
@@ -1245,8 +1245,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             input {
               width: 100%;
-              padding: 16px 24px;
-              font-size: 16px;
+              padding: 14px 22px;
+              font-size: 15px;
               border: 1px solid rgba(255, 255, 255, 0.4);
               border-radius: 50px;
               background: rgba(255, 255, 255, 0.25);
@@ -1270,12 +1270,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .submit-btn {
               width: 100%;
-              padding: 16px 48px;
+              padding: 14px 40px;
               background: rgba(255, 255, 255, 0.35);
               backdrop-filter: blur(12px);
               color: #ffffff;
               border: 1px solid rgba(255, 255, 255, 0.4);
-              font-size: 16px;
+              font-size: 15px;
               font-weight: 500;
               border-radius: 50px;
               cursor: pointer;
@@ -1325,7 +1325,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .success-title {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 32px;
+              font-size: 28px;
               font-weight: 300;
               color: #ffffff;
               margin-bottom: 12px;
@@ -1334,9 +1334,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .success-subtitle {
-              font-size: 17px;
+              font-size: 15px;
               color: rgba(255, 255, 255, 0.9);
-              margin-bottom: 32px;
+              margin-bottom: 28px;
               line-height: 1.5;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
@@ -1393,12 +1393,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 16px 48px;
+              padding: 14px 40px;
               background: rgba(255, 255, 255, 0.35);
               backdrop-filter: blur(12px);
               color: #ffffff;
               text-decoration: none;
-              font-size: 17px;
+              font-size: 15px;
               font-weight: 500;
               border-radius: 50px;
               transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
