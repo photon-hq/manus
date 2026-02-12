@@ -377,9 +377,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: url('/assets/_ (38) (1).jpeg') no-repeat center center fixed;
-              background-size: cover;
+              background: url('/assets/_ (38) (1).jpeg') no-repeat center center;
+              background-size: 110%;
               position: relative;
+              overflow: hidden;
+              transition: background-position 0.3s ease-out;
             }
             
             body::before {
@@ -433,56 +435,64 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
-            /* Connect button */
+            /* Liquid Glass Button */
             .connect-btn { 
               display: inline-flex;
               align-items: center;
               justify-content: center;
               padding: 16px 48px;
-              background: rgba(255, 255, 255, 0.025);
+              background: transparent;
               color: #ffffff;
               text-decoration: none;
               font-size: 17px;
               font-weight: 500;
               border-radius: 50px;
-              transition: all 0.3s ease;
-              box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.75), 0 0 9px rgba(0, 0, 0, 0.2), 0 3px 8px rgba(0, 0, 0, 0.15);
+              transition: transform 0.2s ease;
               letter-spacing: -0.01em;
-              border: 0.5px solid rgba(255, 255, 255, 0.3);
-              backdrop-filter: blur(12px);
-              -webkit-backdrop-filter: blur(12px);
+              border: none;
               position: relative;
               overflow: hidden;
+              cursor: pointer;
+              outline: none;
             }
             
-            .connect-btn::before {
-              content: '';
-              position: absolute;
-              inset: 0;
-              border-radius: 50px;
-              background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.6), transparent, transparent);
-              opacity: 0.7;
-              pointer-events: none;
-            }
-            
-            .connect-btn::after {
-              content: '';
-              position: absolute;
-              inset: 0;
-              border-radius: 50px;
-              background: linear-gradient(to top left, rgba(255, 255, 255, 0.3), transparent, transparent);
-              opacity: 0.5;
-              pointer-events: none;
-            }
-            
-            .connect-btn:hover { 
-              background: rgba(255, 255, 255, 0.3);
-              box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.85), 0 0 12px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
+            .connect-btn:hover {
+              transform: scale(1.05);
             }
             
             .connect-btn:active {
-              transform: scale(0.98);
-              background: rgba(255, 255, 255, 0.2);
+              transform: scale(0.95);
+            }
+            
+            .glass-filter,
+            .glass-overlay,
+            .glass-specular {
+              position: absolute;
+              inset: 0;
+              border-radius: 50px;
+            }
+            
+            .glass-filter {
+              z-index: 1;
+              backdrop-filter: blur(4px);
+              filter: url(#glass-distortion) saturate(120%) brightness(1.15);
+            }
+            
+            .glass-overlay {
+              z-index: 2;
+              background: rgba(255, 255, 255, 0.25);
+            }
+            
+            .glass-specular {
+              z-index: 3;
+              box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.75);
+            }
+            
+            .glass-content {
+              position: relative;
+              z-index: 4;
+              color: #ffffff;
+              font-weight: 500;
             }
             
             /* Footer */
@@ -617,11 +627,26 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </style>
         </head>
         <body>
+          <!-- SVG Filter for Glass Distortion -->
+          <svg style="display: none">
+            <filter id="glass-distortion">
+              <feTurbulence type="turbulence" baseFrequency="0.008" numOctaves="2" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="77" />
+            </filter>
+          </svg>
+          
           <!-- Content -->
           <div class="content">
             <h1>Manus iMessage Connector</h1>
             <p class="subtitle">Bringing Manus to your iMessage.</p>
-            <a href="${smsLink}" class="connect-btn">Connect to Manus</a>
+            <a href="${smsLink}" class="connect-btn">
+              <div class="glass-filter"></div>
+              <div class="glass-overlay"></div>
+              <div class="glass-specular"></div>
+              <div class="glass-content">
+                <span>Connect to Manus</span>
+              </div>
+            </a>
           </div>
           
           <!-- Footer -->
@@ -637,6 +662,50 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
             </div>
           </div>
+          
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              // Liquid Glass Button Mouse Effect
+              const glassButton = document.querySelector('.connect-btn');
+              
+              if (glassButton) {
+                glassButton.addEventListener('mousemove', function(e) {
+                  const rect = this.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  
+                  const specular = this.querySelector('.glass-specular');
+                  if (specular) {
+                    specular.style.background = \`radial-gradient(
+                      circle at \${x}px \${y}px,
+                      rgba(255,255,255,0.15) 0%,
+                      rgba(255,255,255,0.05) 30%,
+                      rgba(255,255,255,0) 60%
+                    )\`;
+                  }
+                });
+                
+                glassButton.addEventListener('mouseleave', function() {
+                  const specular = this.querySelector('.glass-specular');
+                  if (specular) {
+                    specular.style.background = 'none';
+                  }
+                });
+              }
+              
+              // Subtle Background Parallax Effect
+              document.addEventListener('mousemove', function(e) {
+                const moveX = (e.clientX - window.innerWidth / 2) / window.innerWidth;
+                const moveY = (e.clientY - window.innerHeight / 2) / window.innerHeight;
+                
+                // Very subtle movement (5% range)
+                const offsetX = moveX * 5;
+                const offsetY = moveY * 5;
+                
+                document.body.style.backgroundPosition = \`calc(50% + \${offsetX}px) calc(50% + \${offsetY}px)\`;
+              });
+            });
+          </script>
         </body>
       </html>
     `);
