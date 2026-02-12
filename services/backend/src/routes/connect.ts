@@ -439,27 +439,29 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               align-items: center;
               justify-content: center;
               padding: 14px 36px;
-              background: rgba(60, 60, 60, 0.85);
+              background: rgba(255, 255, 255, 0.15);
               color: #ffffff;
               text-decoration: none;
               font-size: 16px;
               font-weight: 500;
               border-radius: 50px;
               transition: all 0.2s ease;
-              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
               letter-spacing: -0.01em;
-              border: none;
-              backdrop-filter: blur(20px);
+              border: 1px solid rgba(255, 255, 255, 0.18);
+              backdrop-filter: blur(20px) saturate(180%);
+              -webkit-backdrop-filter: blur(20px) saturate(180%);
             }
             
             .connect-btn:hover { 
-              background: rgba(70, 70, 70, 0.9);
-              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+              background: rgba(255, 255, 255, 0.25);
+              border-color: rgba(255, 255, 255, 0.3);
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
             }
             
             .connect-btn:active {
               transform: scale(0.98);
-              background: rgba(50, 50, 50, 0.9);
+              background: rgba(255, 255, 255, 0.2);
             }
             
             /* Footer */
