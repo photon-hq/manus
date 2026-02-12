@@ -216,6 +216,32 @@ fastify.get('/Dark@4x.png', async (request, reply) => {
   }
 });
 
+// Serve background image for connect page
+fastify.get('/assets/:filename', async (request, reply) => {
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  const { filename } = request.params as { filename: string };
+  
+  const imagePath = process.env.NODE_ENV === 'production'
+    ? `/app/assets/${filename}`
+    : path.join(process.cwd(), '../../assets', filename);
+  
+  try {
+    const image = await fs.readFile(imagePath);
+    const ext = path.extname(filename).toLowerCase();
+    const contentType = ext === '.jpeg' || ext === '.jpg' ? 'image/jpeg' : 
+                       ext === '.png' ? 'image/png' : 
+                       ext === '.gif' ? 'image/gif' : 'application/octet-stream';
+    
+    return reply
+      .header('Content-Type', contentType)
+      .header('Cache-Control', 'public, max-age=31536000')
+      .send(image);
+  } catch (error) {
+    return reply.code(404).send({ error: 'Image not found' });
+  }
+});
+
 // Graceful shutdown
 const closeGracefully = async (signal: string) => {
   fastify.log.info(`Received ${signal}, closing gracefully`);

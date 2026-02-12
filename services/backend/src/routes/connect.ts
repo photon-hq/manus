@@ -1224,42 +1224,37 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             body { 
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
-              background: #f5f5f5;
+              background: url('/assets/_ (38) (1).jpeg') no-repeat center center fixed;
+              background-size: cover;
               display: flex;
               align-items: center;
               justify-content: center;
               padding: 20px;
-              transition: background 0.3s ease;
+              position: relative;
             }
             
-            body.dark-mode {
-              background: #1a1a1a;
+            body::before {
+              content: '';
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0, 0, 0, 0.3);
+              z-index: 0;
             }
-            
-            /* Theme selector dropdown */
-            .theme-selector { position: fixed; top: 24px; right: 24px; z-index: 1000; }
-            .theme-button { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border: 1.5px solid #d1d5db; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; color: #374151; transition: all 0.2s; }
-            .theme-button:hover { border-color: #2563eb; }
-            body.dark-mode .theme-button { background: #27272a; border-color: #52525b; color: #e4e4e7; }
-            body.dark-mode .theme-button:hover { border-color: #3b82f6; }
-            .theme-button svg { width: 12px; height: 12px; fill: currentColor; transition: transform 0.2s; }
-            .theme-button.open svg { transform: rotate(180deg); }
-            .theme-dropdown { position: absolute; top: calc(100% + 8px); right: 0; min-width: 200px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); display: none; overflow: hidden; }
-            .theme-dropdown.show { display: block; }
-            body.dark-mode .theme-dropdown { background: #27272a; border-color: #3f3f46; }
-            .theme-option { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; cursor: pointer; font-size: 14px; color: #374151; transition: background 0.15s; }
-            .theme-option:hover { background: #f3f4f6; }
-            body.dark-mode .theme-option { color: #e4e4e7; }
-            body.dark-mode .theme-option:hover { background: #3f3f46; }
-            .theme-option.active { font-weight: 500; }
-            .theme-option svg { width: 16px; height: 16px; fill: #2563eb; opacity: 0; }
-            .theme-option.active svg { opacity: 1; }
-            body.dark-mode .theme-option svg { fill: #3b82f6; }
             
             .container {
               max-width: 520px;
               width: 100%;
               text-align: center;
+              position: relative;
+              z-index: 1;
+              background: rgba(255, 255, 255, 0.95);
+              padding: 40px;
+              border-radius: 20px;
+              backdrop-filter: blur(10px);
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             }
             
             /* Form Section */
@@ -1275,11 +1270,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-bottom: 8px;
               line-height: 1.05;
               letter-spacing: -0.03em;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode h1 {
-              color: rgb(230, 228, 225);
             }
             
             .subtitle {
@@ -1287,11 +1277,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: #666666;
               margin-bottom: 32px;
               line-height: 1.6;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .subtitle {
-              color: #999999;
             }
             
             .get-key-link {
@@ -1303,16 +1288,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               transition: color 0.2s;
             }
             
-            body.dark-mode .get-key-link {
-              color: #999999;
-            }
-            
             .get-key-link:hover {
               color: rgb(52, 50, 45);
-            }
-            
-            body.dark-mode .get-key-link:hover {
-              color: rgb(230, 228, 225);
             }
             
             .input-wrapper {
@@ -1331,27 +1308,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: #000000;
             }
             
-            body.dark-mode input {
-              background: #2a2a2a;
-              border-color: rgba(255, 255, 255, 0.2);
-              color: #ffffff;
-            }
-            
             input:focus {
               outline: none;
               border-color: rgba(0, 0, 0, 0.4);
             }
             
-            body.dark-mode input:focus {
-              border-color: rgba(255, 255, 255, 0.4);
-            }
-            
             input::placeholder {
               color: rgba(0, 0, 0, 0.3);
-            }
-            
-            body.dark-mode input::placeholder {
-              color: rgba(255, 255, 255, 0.3);
             }
             
             .submit-btn {
@@ -1369,21 +1332,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
             
-            body.dark-mode .submit-btn {
-              background: #ffffff;
-              color: #000000;
-              box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
-            }
-            
             .submit-btn:hover:not(:disabled) {
               background: #1a1a1a;
               transform: scale(1.02);
               box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
-            }
-            
-            body.dark-mode .submit-btn:hover:not(:disabled) {
-              background: #e6e6e6;
-              box-shadow: 0 6px 24px rgba(255, 255, 255, 0.2);
             }
             
             .submit-btn:active:not(:disabled) {
@@ -1421,11 +1373,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: #000000;
               margin-bottom: 12px;
               letter-spacing: -0.02em;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .success-title {
-              color: #ffffff;
             }
             
             .success-subtitle {
@@ -1433,11 +1380,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(0, 0, 0, 0.6);
               margin-bottom: 32px;
               line-height: 1.5;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .success-subtitle {
-              color: rgba(255, 255, 255, 0.6);
             }
             
             .config-container {
@@ -1448,12 +1390,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-bottom: 20px;
               position: relative;
               text-align: left;
-              transition: all 0.3s ease;
-            }
-            
-            body.dark-mode .config-container {
-              background: rgba(255, 255, 255, 0.05);
-              border-color: rgba(255, 255, 255, 0.1);
             }
             
             .config-container pre {
@@ -1462,11 +1398,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               line-height: 1.6;
               color: rgba(0, 0, 0, 0.8);
               font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .config-container pre {
-              color: rgba(255, 255, 255, 0.8);
             }
             
             .copy-btn {
@@ -1484,25 +1415,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               transition: all 0.2s;
             }
             
-            body.dark-mode .copy-btn {
-              background: #ffffff;
-              color: #000000;
-            }
-            
             .copy-btn:hover {
               background: #1a1a1a;
               transform: scale(1.02);
             }
             
-            body.dark-mode .copy-btn:hover {
-              background: #e6e6e6;
-            }
-            
             .copy-btn.copied {
-              background: #34c759;
-            }
-            
-            body.dark-mode .copy-btn.copied {
               background: #34c759;
               color: #ffffff;
             }
@@ -1524,21 +1442,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             }
             
-            body.dark-mode .action-btn {
-              background: #ffffff;
-              color: #000000;
-              box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
-            }
-            
             .action-btn:hover {
               background: #1a1a1a;
               transform: scale(1.02);
               box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
-            }
-            
-            body.dark-mode .action-btn:hover {
-              background: #e6e6e6;
-              box-shadow: 0 6px 24px rgba(255, 255, 255, 0.2);
             }
             
             .action-btn:active {
@@ -1549,11 +1456,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-top: 24px;
               font-size: 15px;
               color: rgba(0, 0, 0, 0.5);
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .note {
-              color: rgba(255, 255, 255, 0.5);
             }
             
             /* Footer */
@@ -1568,6 +1470,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               flex-direction: column;
               align-items: center;
               gap: 8px;
+              z-index: 1;
             }
             
             .footer-row {
@@ -1579,14 +1482,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-text {
-              color: rgba(0, 0, 0, 0.4);
+              color: rgba(255, 255, 255, 0.9);
               font-size: 14px;
               font-weight: 400;
-              transition: color 0.3s ease;
-            }
-            
-            body.dark-mode .footer-text {
-              color: rgba(255, 255, 255, 0.4);
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             .footer a {
@@ -1604,44 +1503,34 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
+              filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
             }
             
             .footer-logo.dark-logo {
-              display: inline-block !important;
+              display: none !important;
             }
             
             .footer-logo.light-logo {
-              display: none !important;
-            }
-            
-            body.dark-mode .footer-logo.dark-logo {
-              display: none !important;
-            }
-            
-            body.dark-mode .footer-logo.light-logo {
               display: inline-block !important;
             }
             
             .footer-link {
-              color: rgba(0, 0, 0, 0.6);
+              color: rgba(255, 255, 255, 0.9);
               font-weight: 500;
               letter-spacing: -0.01em;
-            }
-            
-            body.dark-mode .footer-link {
-              color: rgba(255, 255, 255, 0.6);
+              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             
             .footer-link:hover {
-              color: rgba(0, 0, 0, 0.9);
-            }
-            
-            body.dark-mode .footer-link:hover {
-              color: rgba(255, 255, 255, 0.9);
+              color: rgba(255, 255, 255, 1);
             }
             
             /* Responsive Design */
             @media (max-width: 768px) {
+              .container {
+                padding: 32px;
+              }
+              
               h1 {
                 font-size: 40px;
               }
@@ -1709,6 +1598,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             @media (max-width: 480px) {
+              .container {
+                padding: 24px;
+              }
+              
               h1 {
                 font-size: 32px;
                 margin-bottom: 12px;
@@ -1787,11 +1680,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 font-size: 15px;
                 margin-bottom: 24px;
               }
-              
-              .theme-selector {
-                top: 16px;
-                right: 16px;
-              }
             }
             
             @media (max-width: 360px) {
@@ -1824,19 +1712,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </style>
         </head>
         <body>
-          <!-- Theme selector -->
-          <div class="theme-selector">
-            <button class="theme-button" onclick="toggleThemeDropdown()" aria-label="Select theme">
-              <span id="theme-label">Light</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
-            </button>
-            <div class="theme-dropdown" id="theme-dropdown">
-              <div class="theme-option" onclick="setTheme('system')" data-theme="system"><span>Use system setting</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
-              <div class="theme-option" onclick="setTheme('light')" data-theme="light"><span>Light</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
-              <div class="theme-option" onclick="setTheme('dark')" data-theme="dark"><span>Dark</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
-            </div>
-          </div>
-          
           <div class="container">
             <!-- Form Section -->
             <div id="form-section">
@@ -1895,31 +1770,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
-            function getSystemTheme() { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
-            function applyTheme(theme) { if (theme === 'system') theme = getSystemTheme(); document.body.classList.toggle('dark-mode', theme === 'dark'); }
-            function updateThemeLabel() {
-              const savedTheme = localStorage.getItem('theme') || 'system';
-              document.getElementById('theme-label').textContent = savedTheme === 'system' ? 'Use system setting' : savedTheme.charAt(0).toUpperCase() + savedTheme.slice(1);
-              document.querySelectorAll('.theme-option').forEach(opt => opt.classList.toggle('active', opt.dataset.theme === savedTheme));
-            }
-            function setTheme(theme) { localStorage.setItem('theme', theme); applyTheme(theme); updateThemeLabel(); toggleThemeDropdown(); }
-            function toggleThemeDropdown() {
-              document.getElementById('theme-dropdown').classList.toggle('show');
-              document.querySelector('.theme-button').classList.toggle('open');
-            }
-            document.addEventListener('click', (e) => {
-              const selector = document.querySelector('.theme-selector');
-              if (selector && !selector.contains(e.target)) {
-                document.getElementById('theme-dropdown').classList.remove('show');
-                document.querySelector('.theme-button').classList.remove('open');
-              }
-            });
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-              if ((localStorage.getItem('theme') || 'system') === 'system') applyTheme('system');
-            });
-            applyTheme(localStorage.getItem('theme') || 'system');
-            updateThemeLabel();
-            
             let mcpConfigData = null;
             
             // Validate Manus API key format
