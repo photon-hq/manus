@@ -438,25 +438,46 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 14px 36px;
-              background: rgba(255, 255, 255, 0.15);
+              padding: 12px 32px;
+              background: rgba(255, 255, 255, 0.025);
               color: #ffffff;
               text-decoration: none;
               font-size: 16px;
               font-weight: 500;
               border-radius: 50px;
-              transition: all 0.2s ease;
-              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+              transition: all 0.3s ease;
+              box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.75), 0 0 9px rgba(0, 0, 0, 0.2), 0 3px 8px rgba(0, 0, 0, 0.15);
               letter-spacing: -0.01em;
-              border: 1px solid rgba(255, 255, 255, 0.18);
-              backdrop-filter: blur(20px) saturate(180%);
-              -webkit-backdrop-filter: blur(20px) saturate(180%);
+              border: 1px solid rgba(255, 255, 255, 0.5);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
+              position: relative;
+              overflow: hidden;
+            }
+            
+            .connect-btn::before {
+              content: '';
+              position: absolute;
+              inset: 0;
+              border-radius: 50px;
+              background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.6), transparent, transparent);
+              opacity: 0.7;
+              pointer-events: none;
+            }
+            
+            .connect-btn::after {
+              content: '';
+              position: absolute;
+              inset: 0;
+              border-radius: 50px;
+              background: linear-gradient(to top left, rgba(255, 255, 255, 0.3), transparent, transparent);
+              opacity: 0.5;
+              pointer-events: none;
             }
             
             .connect-btn:hover { 
-              background: rgba(255, 255, 255, 0.25);
-              border-color: rgba(255, 255, 255, 0.3);
-              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+              background: rgba(255, 255, 255, 0.3);
+              box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.85), 0 0 12px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
             }
             
             .connect-btn:active {
