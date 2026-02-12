@@ -400,12 +400,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
               min-height: 100vh;
               min-height: -webkit-fill-available;
-              background: url('/assets/background.jpeg') no-repeat center center;
+              background: url('/assets/background.jpeg') no-repeat center center fixed;
               background-size: cover;
               background-position: center center;
-              background-attachment: fixed;
               position: relative;
               overflow-x: hidden;
+              overflow-y: auto;
               width: 100%;
               margin: 0;
               padding: 0;
@@ -414,13 +414,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             @supports (-webkit-touch-callout: none) {
               body {
                 min-height: -webkit-fill-available;
-                background-attachment: scroll;
-              }
-            }
-            
-            @media (max-width: 768px) {
-              body {
-                background-attachment: scroll;
               }
             }
             
@@ -443,23 +436,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Content container */
             .content {
               min-height: 100vh;
-              min-height: -webkit-fill-available;
               display: flex;
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              padding: 40px 20px 80px;
+              padding: 40px 20px;
               max-width: 900px;
               margin: 0 auto;
               text-align: center;
               position: relative;
               z-index: 1;
-            }
-            
-            @supports (-webkit-touch-callout: none) {
-              .content {
-                min-height: -webkit-fill-available;
-              }
             }
             
             /* Logo */
@@ -1313,7 +1299,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               text-align: center;
               position: relative;
               z-index: 1;
-              padding-bottom: 80px;
             }
             
             /* Form Section */
