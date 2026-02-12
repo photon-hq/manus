@@ -356,16 +356,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Open Graph / Facebook -->
           <meta property="og:type" content="website">
           <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
-          <meta property="og:title" content="Connect to Manus">
-          <meta property="og:description" content="Connect your iMessage to Manus AI assistant">
-          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          <meta property="og:title" content="Manus Connector for iMessage">
+          <meta property="og:description" content="Manus gives you superpowers. But here's the truth: You're not sitting at your computer all day. So we built the bridge.">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
           
           <!-- Twitter -->
           <meta property="twitter:card" content="summary_large_image">
           <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
-          <meta property="twitter:title" content="Connect to Manus">
-          <meta property="twitter:description" content="Connect your iMessage to Manus AI assistant">
-          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          <meta property="twitter:title" content="Manus Connector for iMessage">
+          <meta property="twitter:description" content="Manus gives you superpowers. But here's the truth: You're not sitting at your computer all day. So we built the bridge.">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
           
           <style>
             @font-face {
@@ -1135,16 +1135,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Open Graph / Facebook -->
           <meta property="og:type" content="website">
           <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
-          <meta property="og:title" content="Connect to Manus">
-          <meta property="og:description" content="Enter your Manus API key to complete the connection">
-          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          <meta property="og:title" content="Complete Manus Setup">
+          <meta property="og:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
           
           <!-- Twitter -->
           <meta property="twitter:card" content="summary_large_image">
           <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
-          <meta property="twitter:title" content="Connect to Manus">
-          <meta property="twitter:description" content="Enter your Manus API key to complete the connection">
-          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/favicon.png">
+          <meta property="twitter:title" content="Complete Manus Setup">
+          <meta property="twitter:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/screencapture-manus-photon-codes-connect-2026-02-13-04_43_46.png">
           
           <style>
             @font-face {
