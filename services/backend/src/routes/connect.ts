@@ -1337,15 +1337,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .error {
               margin-top: 16px;
-              padding: 14px 20px;
+              padding: 12px 18px;
               background: rgba(255, 59, 48, 0.2);
               backdrop-filter: blur(12px);
               color: #ffffff;
               border: 1px solid rgba(255, 59, 48, 0.5);
               border-radius: 50px;
-              font-size: 14px;
+              font-size: 13px;
               display: none;
               box-shadow: 0 4px 16px rgba(255, 59, 48, 0.2);
+              max-width: 450px;
+              margin-left: auto;
+              margin-right: auto;
             }
             
             .error.show {
