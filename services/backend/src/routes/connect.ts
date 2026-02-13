@@ -356,15 +356,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Open Graph / Facebook -->
           <meta property="og:type" content="website">
           <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
-          <meta property="og:title" content="Manus Connector for iMessage">
-          <meta property="og:description" content="Manus gives you superpowers. But here's the truth: You're not sitting at your computer all day. So we built the bridge.">
+          <meta property="og:title" content="manus, in iMessages">
+          <meta property="og:description" content="Connect Manus to iMessage">
           <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/og-preview.png">
           
           <!-- Twitter -->
           <meta property="twitter:card" content="summary_large_image">
           <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
-          <meta property="twitter:title" content="Manus Connector for iMessage">
-          <meta property="twitter:description" content="Manus gives you superpowers. But here's the truth: You're not sitting at your computer all day. So we built the bridge.">
+          <meta property="twitter:title" content="manus, in iMessages">
+          <meta property="twitter:description" content="Connect Manus to iMessage">
           <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/og-preview.png">
           
           <style>
@@ -451,36 +451,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Logo */
             .logo {
               font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 32px;
+              font-size: 56px;
               font-weight: 300;
               color: #ffffff;
-              margin-bottom: 28px;
-              letter-spacing: -0.5px;
+              margin-bottom: 40px;
+              letter-spacing: -1px;
               text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            }
-            
-            /* Message */
-            .message {
-              font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 16px;
-              color: #ffffff;
-              line-height: 1.3;
-              font-weight: 400;
-              margin-bottom: 28px;
-              max-width: 500px;
-              letter-spacing: -0.2px;
-              text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-            }
-            
-            .message p {
-              margin-bottom: 10px;
-            }
-            
-            .message .emphasis {
-              font-family: 'Manus', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-weight: 400;
-              font-size: 18px;
-              margin: 15px 0;
+              line-height: 1.2;
             }
             
             /* Liquid Glass Button */
@@ -618,11 +595,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo {
-                font-size: 30px;
-              }
-              
-              .message {
-                font-size: 15px;
+                font-size: 48px;
               }
             }
             
@@ -638,22 +611,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo {
-                font-size: 26px;
-                margin-bottom: 22px;
-              }
-              
-              .message {
-                font-size: 14px;
-                max-width: 90%;
-              }
-              
-              .message p {
-                margin-bottom: 9px;
-              }
-              
-              .message .emphasis {
-                font-size: 16px;
-                margin: 13px 0;
+                font-size: 40px;
+                margin-bottom: 32px;
               }
               
               .connect-btn {
@@ -686,22 +645,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo {
-                font-size: 22px;
-                margin-bottom: 18px;
-              }
-              
-              .message {
-                font-size: 13px;
-                max-width: 95%;
-              }
-              
-              .message p {
-                margin-bottom: 8px;
-              }
-              
-              .message .emphasis {
-                font-size: 15px;
-                margin: 12px 0;
+                font-size: 32px;
+                margin-bottom: 28px;
               }
               
               .connect-btn {
@@ -732,21 +677,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo {
-                font-size: 20px;
-                margin-bottom: 16px;
-              }
-              
-              .message {
-                font-size: 12px;
-              }
-              
-              .message p {
-                margin-bottom: 7px;
-              }
-              
-              .message .emphasis {
-                font-size: 14px;
-                margin: 10px 0;
+                font-size: 28px;
+                margin-bottom: 24px;
               }
               
               .connect-btn {
@@ -769,15 +701,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             @media (max-width: 320px) {
               .logo {
-                font-size: 18px;
-              }
-              
-              .message {
-                font-size: 11px;
-              }
-              
-              .message .emphasis {
-                font-size: 13px;
+                font-size: 24px;
               }
               
               .connect-btn {
@@ -798,18 +722,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <!-- Content -->
           <div class="content">
-            <div class="logo">manus</div>
-            
-            <div class="message">
-              <p>Manus gives you superpowers.<br>But here's the truth:</p>
-              
-              <p>You're not sitting at your computer all day.<br>
-              You're moving. Texting. Living.</p>
-              
-              <p>So we built the bridge.</p>
-              
-              <p class="emphasis">Manus Connector for iMessage.</p>
-            </div>
+            <div class="logo">manus, in iMessages</div>
             
             <a href="${smsLink}" class="connect-btn">
               <div class="glass-filter"></div>
