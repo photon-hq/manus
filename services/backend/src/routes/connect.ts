@@ -499,8 +499,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .glass-filter {
               z-index: 1;
-              backdrop-filter: blur(2px);
-              filter: url(#glass-distortion) saturate(40%) brightness(0.4);
+              backdrop-filter: blur(8px);
+              filter: url(#glass-distortion) saturate(120%) brightness(1.15);
             }
             
             .glass-overlay {
