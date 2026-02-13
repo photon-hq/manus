@@ -428,7 +428,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               height: 100%;
               min-height: 100vh;
               min-height: -webkit-fill-available;
-              background: rgba(0, 0, 0, 0.45);
+              background: transparent;
               z-index: 0;
               pointer-events: none;
             }
@@ -1202,7 +1202,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               height: 100%;
               min-height: 100vh;
               min-height: -webkit-fill-available;
-              background: rgba(0, 0, 0, 0.45);
+              background: transparent;
               z-index: 0;
               pointer-events: none;
             }
