@@ -53,10 +53,15 @@ export async function startIMessageListener() {
   // Listen for new messages
   sdk.on('new-message', async (message) => {
     try {
-      // Filter 1: Ignore our own messages
-      if (message.isFromMe) {
+      // Filter 1: Ignore our own messages (unless debug mode is enabled)
+      const allowSelfMessages = process.env.ALLOW_SELF_MESSAGES === 'true';
+      if (message.isFromMe && !allowSelfMessages) {
         console.log('⏭️  Ignoring message from self');
         return;
+      }
+      
+      if (message.isFromMe && allowSelfMessages) {
+        console.log('⚠️  Processing self-message (debug mode enabled)');
       }
 
       // Filter 2: Ignore reactions/tapbacks (they have associatedMessageGuid or associatedMessageType)

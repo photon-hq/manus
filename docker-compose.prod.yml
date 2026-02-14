@@ -45,6 +45,7 @@ services:
       CONTACT_NAME: ${CONTACT_NAME:-Manus}
       CONTACT_EMAIL: ${CONTACT_EMAIL:-manus.photon.codes}
       ALWAYS_SHARE_CONTACT_CARD: ${ALWAYS_SHARE_CONTACT_CARD:-false}
+      ALLOW_SELF_MESSAGES: ${ALLOW_SELF_MESSAGES:-false}
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-development}
       RESET_DATABASE: ${RESET_DATABASE:-false}
