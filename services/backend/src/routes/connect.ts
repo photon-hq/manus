@@ -255,7 +255,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Footer -->
           <div class="footer">
             <div class="footer-row">
-              <span class="footer-text">built by</span>
+              <span class="footer-text">powered by</span>
               <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
                 <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
                 <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
@@ -738,7 +738,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Footer -->
           <div class="footer">
             <div class="footer-row">
-              <span class="footer-text">built by</span>
+              <span class="footer-text">powered by</span>
               <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
                 <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
                 <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
@@ -1880,7 +1880,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Footer -->
           <div class="footer">
             <div class="footer-row">
-              <span class="footer-text">built by</span>
+              <span class="footer-text">powered by</span>
               <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
                 <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
                 <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
