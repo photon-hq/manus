@@ -741,17 +741,6 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     const data = await response.json() as { task_id: string };
     console.log('✅ Appended to Manus task:', data.task_id);
 
-    // Update triggering message GUID for follow-ups so webhook replies thread to this message
-    if (triggeringMessageGuid) {
-      await prisma.connection.update({
-        where: { phoneNumber },
-        data: {
-          triggeringMessageGuid: triggeringMessageGuid,
-        } as any,
-      });
-      console.log(`✅ Updated triggering message GUID for follow-up: ${triggeringMessageGuid}`);
-    }
-
     // Store reaction info so we can remove tapback when task stops
     if (triggeringMessageGuid) {
       const chatGuid = `any;-;${phoneNumber}`;
