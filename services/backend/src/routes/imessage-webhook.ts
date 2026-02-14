@@ -433,18 +433,24 @@ Your iMessage is connected to Manus AI.`;
       console.log('📎 Attachments:', processedAttachments?.length || 0);
 
       // Share contact card on first message if not already shared
-      if (!connection.contactCardShared) {
+      // OR always share if ALWAYS_SHARE_CONTACT_CARD debug mode is enabled
+      const alwaysShareContactCard = process.env.ALWAYS_SHARE_CONTACT_CARD === 'true';
+      const shouldShareContactCard = !connection.contactCardShared || alwaysShareContactCard;
+      
+      if (shouldShareContactCard) {
         try {
           const { shareContactCard } = await import('../lib/imessage.js');
           await shareContactCard(chatGuid);
           
-          // Update connection to mark contact card as shared
-          await prisma.connection.update({
-            where: { id: connection.id },
-            data: { contactCardShared: true },
-          });
+          // Update connection to mark contact card as shared (unless in debug mode)
+          if (!alwaysShareContactCard && !connection.contactCardShared) {
+            await prisma.connection.update({
+              where: { id: connection.id },
+              data: { contactCardShared: true },
+            });
+          }
           
-          console.log('✅ Contact card shared with:', handle);
+          console.log(`✅ Contact card shared with: ${handle}${alwaysShareContactCard ? ' (debug mode - always sharing)' : ''}`);
         } catch (error) {
           console.warn('⚠️  Failed to share contact card (non-blocking):', error);
           // Continue processing the message even if contact card sharing fails
