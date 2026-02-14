@@ -364,7 +364,6 @@ export async function shareContactCard(chatGuid: string): Promise<void> {
       console.warn(`Failed to clean up vCard temp file:`, cleanupError);
     }
     
-    return result.guid;
   } catch (error) {
     console.error('Failed to share contact card:', error);
     throw error;

@@ -42,6 +42,8 @@ services:
       MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.im}
       PUBLIC_URL: ${PUBLIC_URL}
       PHOTON_HANDLE: ${PHOTON_HANDLE:-+14158156704}
+      CONTACT_NAME: ${CONTACT_NAME:-Manus}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-manus.photon.codes}
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-development}
       RESET_DATABASE: ${RESET_DATABASE:-false}
