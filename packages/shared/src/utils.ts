@@ -68,11 +68,11 @@ export function isConnectionExpired(expiresAt: Date | null): boolean {
 }
 
 /**
- * Calculate expiry time (5 minutes from now)
+ * Calculate expiry time (24 hours from now)
  */
 export function getConnectionExpiry(): Date {
   const expiry = new Date();
-  expiry.setMinutes(expiry.getMinutes() + 5);
+  expiry.setHours(expiry.getHours() + 24);
   return expiry;
 }
 
