@@ -49,14 +49,29 @@ export async function startIMessageListener() {
   const sdk = await getIMessageSDK();
 
   console.log('🎧 Starting iMessage event listener...');
+  console.log('🔧 Debug configuration:', {
+    ALLOW_SELF_MESSAGES: process.env.ALLOW_SELF_MESSAGES,
+    ALWAYS_SHARE_CONTACT_CARD: process.env.ALWAYS_SHARE_CONTACT_CARD,
+    CONTACT_NAME: process.env.CONTACT_NAME,
+    CONTACT_EMAIL: process.env.CONTACT_EMAIL,
+  });
 
   // Listen for new messages
   sdk.on('new-message', async (message) => {
     try {
       // Filter 1: Ignore our own messages (unless debug mode is enabled)
       const allowSelfMessages = process.env.ALLOW_SELF_MESSAGES === 'true';
+      
+      // Debug logging for environment variables
+      console.log('🔍 Debug flags:', {
+        ALLOW_SELF_MESSAGES: process.env.ALLOW_SELF_MESSAGES,
+        allowSelfMessages,
+        ALWAYS_SHARE_CONTACT_CARD: process.env.ALWAYS_SHARE_CONTACT_CARD,
+        isFromMe: message.isFromMe,
+      });
+      
       if (message.isFromMe && !allowSelfMessages) {
-        console.log('⏭️  Ignoring message from self');
+        console.log('⏭️  Ignoring message from self (ALLOW_SELF_MESSAGES not enabled)');
         return;
       }
       
@@ -441,6 +456,13 @@ Your iMessage is connected to Manus AI.`;
       // OR always share if ALWAYS_SHARE_CONTACT_CARD debug mode is enabled
       const alwaysShareContactCard = process.env.ALWAYS_SHARE_CONTACT_CARD === 'true';
       const shouldShareContactCard = !connection.contactCardShared || alwaysShareContactCard;
+      
+      console.log('📇 Contact card check:', {
+        alwaysShareContactCard,
+        contactCardShared: connection.contactCardShared,
+        shouldShareContactCard,
+        ALWAYS_SHARE_CONTACT_CARD_env: process.env.ALWAYS_SHARE_CONTACT_CARD,
+      });
       
       if (shouldShareContactCard) {
         try {
