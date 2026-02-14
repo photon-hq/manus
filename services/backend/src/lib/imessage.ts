@@ -312,6 +312,23 @@ export async function sendIMessageWithAttachments(
 }
 
 /**
+ * Share contact card with a chat
+ * 
+ * @param chatGuid - Chat identifier (e.g. any;-;+1234567890)
+ */
+export async function shareContactCard(chatGuid: string): Promise<void> {
+  const client = await getIMessageSDK();
+  
+  try {
+    await client.contacts.shareContactCard(chatGuid);
+    console.log(`✅ Contact card shared with chat: ${chatGuid}`);
+  } catch (error) {
+    console.error('Failed to share contact card:', error);
+    throw error;
+  }
+}
+
+/**
  * Handle graceful shutdown
  */
 process.on('SIGTERM', async () => {

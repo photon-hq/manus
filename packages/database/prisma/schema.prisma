@@ -20,6 +20,7 @@ model Connection {
   currentTaskId String?   // Track the active Manus task for follow-ups
   currentTaskStartedAt DateTime? // Track when the current task started for context filtering
   triggeringMessageGuid String? // GUID of user message that triggered current task (for threaded replies)
+  contactCardShared Boolean @default(false) // Track if contact card has been shared with this user
   status        Status    @default(PENDING)
   createdAt     DateTime  @default(now())
   expiresAt     DateTime?

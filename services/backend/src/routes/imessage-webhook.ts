@@ -432,6 +432,25 @@ Your iMessage is connected to Manus AI.`;
       console.log('📝 Message text:', messageText || '(empty)');
       console.log('📎 Attachments:', processedAttachments?.length || 0);
 
+      // Share contact card on first message if not already shared
+      if (!connection.contactCardShared) {
+        try {
+          const { shareContactCard } = await import('../lib/imessage.js');
+          await shareContactCard(chatGuid);
+          
+          // Update connection to mark contact card as shared
+          await prisma.connection.update({
+            where: { id: connection.id },
+            data: { contactCardShared: true },
+          });
+          
+          console.log('✅ Contact card shared with:', handle);
+        } catch (error) {
+          console.warn('⚠️  Failed to share contact card (non-blocking):', error);
+          // Continue processing the message even if contact card sharing fails
+        }
+      }
+
       // Add to queue for worker to process
       const queue = getQueue(handle);
       await queue.add('incoming-message', {
