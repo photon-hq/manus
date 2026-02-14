@@ -167,7 +167,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             .footer a:hover { opacity: 0.7; }
             .footer-logo {
-              height: 16px;
+              height: 24px;
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
@@ -200,18 +200,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             @media (max-width: 768px) {
               .footer-logo {
-                height: 14px;
+                height: 20px;
               }
             }
             @media (max-width: 480px) {
               .theme-selector { top: 16px; right: 16px; }
               .footer-logo {
-                height: 12px;
+                height: 18px;
               }
             }
             @media (max-width: 360px) {
               .footer-logo {
-                height: 10px;
+                height: 16px;
               }
             }
           </style>
@@ -562,7 +562,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-logo {
-              height: 16px;
+              height: 24px;
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
@@ -629,7 +629,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-logo {
-                height: 13px;
+                height: 20px;
               }
             }
             
@@ -663,7 +663,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-logo {
-                height: 12px;
+                height: 18px;
               }
             }
             
@@ -695,7 +695,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-logo {
-                height: 11px;
+                height: 16px;
               }
             }
             
@@ -1553,7 +1553,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-logo {
-              height: 16px;
+              height: 24px;
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
@@ -1661,7 +1661,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-logo {
-                height: 14px;
+                height: 20px;
               }
               
               .success-title {
@@ -1749,7 +1749,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-logo {
-                height: 12px;
+                height: 18px;
               }
               
               .success-title {
@@ -1808,7 +1808,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-logo {
-                height: 10px;
+                height: 16px;
               }
             }
           </style>
