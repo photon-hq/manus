@@ -312,58 +312,17 @@ export async function sendIMessageWithAttachments(
 }
 
 /**
- * Share contact card with a chat by sending a vCard file
+ * Share contact card with a chat using iMessage "Share Name and Photo"
  * 
  * @param chatGuid - Chat identifier (e.g. any;-;+1234567890)
  */
 export async function shareContactCard(chatGuid: string): Promise<void> {
   const client = await getIMessageSDK();
-  const fs = await import('fs/promises');
-  const path = await import('path');
-  const os = await import('os');
   
   try {
-    // Get contact information from environment variables
-    const phoneNumber = process.env.PHOTON_HANDLE || '+14157918424';
-    const name = process.env.CONTACT_NAME || 'Manus';
-    const email = process.env.CONTACT_EMAIL || 'manus.photon.codes';
-    
-    // Create vCard content (version 3.0 format for better compatibility)
-    const vCardContent = [
-      'BEGIN:VCARD',
-      'VERSION:3.0',
-      `FN:${name}`,
-      `N:${name};;;;`,
-      `TEL;TYPE=CELL:${phoneNumber}`,
-      `EMAIL;TYPE=INTERNET:${email}`,
-      'END:VCARD'
-    ].join('\r\n');
-    
-    // Create temporary vCard file
-    const tempDir = os.tmpdir();
-    const vcfFileName = `${name.replace(/\s+/g, '_')}.vcf`;
-    const tempFilePath = path.join(tempDir, `manus-contact-${Date.now()}.vcf`);
-    
-    await fs.writeFile(tempFilePath, vCardContent, 'utf-8');
-    console.log(`📇 Created vCard file: ${tempFilePath}`);
-    
-    // Send vCard as attachment
-    const result = await client.attachments.sendAttachment({
-      chatGuid,
-      filePath: tempFilePath,
-      fileName: vcfFileName,
-    });
-    
-    console.log(`✅ Contact card shared with chat: ${chatGuid}`);
-    
-    // Clean up temp file
-    try {
-      await fs.unlink(tempFilePath);
-      console.log(`🧹 Cleaned up vCard temp file`);
-    } catch (cleanupError) {
-      console.warn(`Failed to clean up vCard temp file:`, cleanupError);
-    }
-    
+    console.log(`📇 Sharing contact card with chat: ${chatGuid}`);
+    await client.contacts.shareContactCard(chatGuid);
+    console.log(`✅ Contact card shared successfully`);
   } catch (error) {
     console.error('Failed to share contact card:', error);
     throw error;

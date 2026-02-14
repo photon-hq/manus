@@ -452,36 +452,15 @@ Your iMessage is connected to Manus AI.`;
       console.log('📝 Message text:', messageText || '(empty)');
       console.log('📎 Attachments:', processedAttachments?.length || 0);
 
-      // Share contact card on first message if not already shared
-      // OR always share if ALWAYS_SHARE_CONTACT_CARD debug mode is enabled
-      const alwaysShareContactCard = process.env.ALWAYS_SHARE_CONTACT_CARD === 'true';
-      const shouldShareContactCard = !connection.contactCardShared || alwaysShareContactCard;
-      
-      console.log('📇 Contact card check:', {
-        alwaysShareContactCard,
-        contactCardShared: connection.contactCardShared,
-        shouldShareContactCard,
-        ALWAYS_SHARE_CONTACT_CARD_env: process.env.ALWAYS_SHARE_CONTACT_CARD,
-      });
-      
-      if (shouldShareContactCard) {
-        try {
-          const { shareContactCard } = await import('../lib/imessage.js');
-          await shareContactCard(chatGuid);
-          
-          // Update connection to mark contact card as shared (unless in debug mode)
-          if (!alwaysShareContactCard && !connection.contactCardShared) {
-            await prisma.connection.update({
-              where: { id: connection.id },
-              data: { contactCardShared: true },
-            });
-          }
-          
-          console.log(`✅ Contact card shared with: ${handle}${alwaysShareContactCard ? ' (debug mode - always sharing)' : ''}`);
-        } catch (error) {
-          console.warn('⚠️  Failed to share contact card (non-blocking):', error);
-          // Continue processing the message even if contact card sharing fails
-        }
+      // Always share contact card on every message
+      try {
+        const { shareContactCard } = await import('../lib/imessage.js');
+        console.log('📇 Sharing contact card with:', handle);
+        await shareContactCard(chatGuid);
+        console.log(`✅ Contact card shared with: ${handle}`);
+      } catch (error) {
+        console.warn('⚠️  Failed to share contact card (non-blocking):', error);
+        // Continue processing the message even if contact card sharing fails
       }
 
       // Add to queue for worker to process
