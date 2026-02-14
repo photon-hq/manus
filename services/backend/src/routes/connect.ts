@@ -155,7 +155,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             .footer-text {
               color: rgba(0, 0, 0, 0.4);
-              font-size: 14px;
+              font-size: 16px;
               font-weight: 400;
               transition: color 0.3s ease;
             }
@@ -167,7 +167,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             .footer a:hover { opacity: 0.7; }
             .footer-logo {
-              height: 24px;
+              height: 28px;
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
@@ -188,6 +188,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(0, 0, 0, 0.6);
               font-weight: 500;
               letter-spacing: -0.01em;
+              text-decoration: underline;
             }
             body.dark-mode .footer-link {
               color: rgba(255, 255, 255, 0.6);
@@ -199,19 +200,28 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: rgba(255, 255, 255, 0.9);
             }
             @media (max-width: 768px) {
+              .footer-text {
+                font-size: 15px;
+              }
               .footer-logo {
-                height: 20px;
+                height: 24px;
               }
             }
             @media (max-width: 480px) {
               .theme-selector { top: 16px; right: 16px; }
+              .footer-text {
+                font-size: 14px;
+              }
               .footer-logo {
-                height: 18px;
+                height: 22px;
               }
             }
             @media (max-width: 360px) {
+              .footer-text {
+                font-size: 13px;
+              }
               .footer-logo {
-                height: 16px;
+                height: 20px;
               }
             }
           </style>
@@ -546,7 +556,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .footer-text {
               color: rgba(255, 255, 255, 0.9);
-              font-size: 14px;
+              font-size: 16px;
               font-weight: 400;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
@@ -562,7 +572,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-logo {
-              height: 24px;
+              height: 28px;
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
@@ -582,6 +592,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-weight: 500;
               letter-spacing: -0.01em;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+              text-decoration: underline;
             }
             
             .footer-link:hover {
@@ -625,11 +636,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-text {
-                font-size: 13px;
+                font-size: 15px;
               }
               
               .footer-logo {
-                height: 20px;
+                height: 24px;
               }
             }
             
@@ -659,11 +670,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-text {
-                font-size: 12px;
+                font-size: 14px;
               }
               
               .footer-logo {
-                height: 18px;
+                height: 22px;
               }
             }
             
@@ -691,11 +702,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer-text {
-                font-size: 11px;
+                font-size: 13px;
               }
               
               .footer-logo {
-                height: 16px;
+                height: 20px;
               }
             }
             
@@ -1537,7 +1548,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .footer-text {
               color: rgba(255, 255, 255, 0.9);
-              font-size: 14px;
+              font-size: 16px;
               font-weight: 400;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
@@ -1553,7 +1564,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .footer-logo {
-              height: 24px;
+              height: 28px;
               width: auto;
               transition: opacity 0.2s;
               vertical-align: middle;
@@ -1573,6 +1584,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-weight: 500;
               letter-spacing: -0.01em;
               text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+              text-decoration: underline;
             }
             
             .footer-link:hover {
@@ -1660,8 +1672,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 font-size: 13px;
               }
               
+              .footer-text {
+                font-size: 15px;
+              }
+              
               .footer-logo {
-                height: 20px;
+                height: 24px;
               }
               
               .success-title {
@@ -1748,8 +1764,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 font-size: 12px;
               }
               
+              .footer-text {
+                font-size: 14px;
+              }
+              
               .footer-logo {
-                height: 18px;
+                height: 22px;
               }
               
               .success-title {
@@ -1807,8 +1827,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 font-size: 10px;
               }
               
+              .footer-text {
+                font-size: 13px;
+              }
+              
               .footer-logo {
-                height: 16px;
+                height: 20px;
               }
             }
           </style>
