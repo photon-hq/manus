@@ -35,7 +35,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <head>
           <title>Revoke Manus Connection</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="icon" type="image/png" href="/favicon.png">
+          <link rel="icon" type="image/png" href="/favicon.png?v=2">
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body { 
@@ -351,7 +351,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <head>
           <title>Connect to Manus</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="icon" type="image/png" href="/favicon.png">
+          <link rel="icon" type="image/png" href="/favicon.png?v=2">
           
           <!-- Open Graph / Facebook -->
           <meta property="og:type" content="website">
@@ -1131,7 +1131,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <head>
           <title>Connect to Manus</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="icon" type="image/png" href="/favicon.png">
+          <link rel="icon" type="image/png" href="/favicon.png?v=2">
           
           <!-- Open Graph / Facebook -->
           <meta property="og:type" content="website">
