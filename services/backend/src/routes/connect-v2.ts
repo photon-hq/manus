@@ -299,14 +299,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
           <meta property="og:title" content="manus, in iMessages">
           <meta property="og:description" content="Connect Manus to iMessage">
-          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/ogBanner.png">
           
           <!-- Twitter -->
           <meta property="twitter:card" content="summary_large_image">
           <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
           <meta property="twitter:title" content="manus, in iMessages">
           <meta property="twitter:description" content="Connect Manus to iMessage">
-          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/ogBanner.png">
           
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -905,14 +905,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
           <meta property="og:title" content="Complete Manus Setup">
           <meta property="og:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
-          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/ogBanner.png">
           
           <!-- Twitter -->
           <meta property="twitter:card" content="summary_large_image">
           <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
           <meta property="twitter:title" content="Complete Manus Setup">
           <meta property="twitter:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
-          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/ogBanner.png">
           
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
