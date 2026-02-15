@@ -1,12 +1,14 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { prisma } from '@imessage-mcp/database';
-import { connectRoutes } from './routes/connect';
 import { mcpRoutes } from './routes/mcp';
 import { mcpSSERoutes } from './routes/mcp-sse';
 import { mcpHTTPRoutes } from './routes/mcp-http';
 import { webhookRoutes } from './routes/webhooks';
 import { imessageWebhookRoutes } from './routes/imessage-webhook';
+
+// UI Design Version
+const UI_DESIGN_VERSION = process.env.UI_DESIGN_VERSION || 'v1';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = '0.0.0.0';
@@ -53,8 +55,15 @@ fastify.get('/', async (request, reply) => {
   return reply.redirect(301, '/connect');
 });
 
-// Register routes
-fastify.register(connectRoutes, { prefix: '/connect' });
+// Register routes - dynamically load connect routes based on UI_DESIGN_VERSION
+const loadConnectRoutes = async () => {
+  const connectRoutesModule = UI_DESIGN_VERSION === 'v2' 
+    ? await import('./routes/connect-v2.js')
+    : await import('./routes/connect-v1.js');
+  return connectRoutesModule.connectRoutes;
+};
+
+// Register other routes immediately
 fastify.register(mcpRoutes, { prefix: '/mcp' });
 fastify.register(mcpSSERoutes, { prefix: '/mcp' });
 fastify.register(mcpHTTPRoutes, { prefix: '/mcp/http' });
@@ -275,6 +284,11 @@ process.on('SIGTERM', () => closeGracefully('SIGTERM'));
 // Start server
 const start = async () => {
   try {
+    // Log UI design version and load connect routes
+    fastify.log.info(`🎨 Using UI design version: ${UI_DESIGN_VERSION}`);
+    const connectRoutes = await loadConnectRoutes();
+    await fastify.register(connectRoutes, { prefix: '/connect' });
+    
     // Initialize iMessage connection and event listener
     try {
       const { getIMessageSDK } = await import('./lib/imessage.js');

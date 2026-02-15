@@ -1,0 +1,1511 @@
+import { FastifyPluginAsync } from 'fastify';
+import { prisma } from '@imessage-mcp/database';
+import {
+  generateConnectionId,
+  generatePhotonApiKey,
+  getConnectionExpiry,
+  normalizePhoneNumber,
+} from '@imessage-mcp/shared';
+import { z } from 'zod';
+
+const StartSchema = z.object({
+  phoneNumber: z.string(),
+});
+
+const InitiateSchema = z.object({
+  phoneNumber: z.string(),
+  message: z.string().optional(),
+});
+
+const VerifySchema = z.object({
+  connectionId: z.string(),
+  manusApiKey: z.string().startsWith('manus_'),
+});
+
+const RevokeSchema = z.object({
+  photonApiKey: z.string().regex(/^ph_(live|test)_[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{24}$/),
+});
+
+export const connectRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /revoke - Revoke connection page (Manus Brand Design)
+  fastify.get('/revoke', async (request, reply) => {
+    return reply.type('text/html').send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Revoke Manus Connection</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <link rel="icon" type="image/png" href="/favicon.png?v=2">
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { 
+              font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              min-height: 100vh;
+              background: #F8F8F8;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+              position: relative;
+              transition: background 0.3s ease;
+            }
+            
+            .container { max-width: 480px; width: 100%; text-align: center; }
+            h1 { 
+              font-family: 'Libre Baskerville', serif;
+              font-size: 32px; 
+              font-weight: 700; 
+              color: #34322D; 
+              margin-bottom: 12px; 
+            }
+            .subtitle { 
+              font-size: 17px; 
+              color: #34322D; 
+              opacity: 0.7;
+              margin-bottom: 32px; 
+              line-height: 1.5; 
+            }
+            .warning { 
+              background: rgba(255, 59, 48, 0.1); 
+              border: 1px solid rgba(255, 59, 48, 0.3);
+              border-radius: 8px;
+              padding: 16px;
+              margin-bottom: 24px;
+              color: #ff3b30;
+              font-size: 15px;
+            }
+            input {
+              width: 100%;
+              padding: 16px 20px;
+              font-size: 17px;
+              border: 1px solid #34322D;
+              border-radius: 8px;
+              background: #FFFFFF;
+              margin-bottom: 16px;
+              color: #34322D;
+              font-family: 'DM Sans', sans-serif;
+              transition: all 0.2s ease;
+            }
+            input:focus { 
+              outline: none; 
+              border-color: #34322D; 
+              box-shadow: 0 0 0 3px rgba(52, 50, 45, 0.1);
+            }
+            input::placeholder { color: rgba(52, 50, 45, 0.4); }
+            .btn {
+              width: 100%;
+              padding: 16px 48px;
+              background: #34322D;
+              color: #FFFFFF;
+              border: none;
+              font-size: 17px;
+              font-weight: 500;
+              border-radius: 8px;
+              cursor: pointer;
+              transition: all 0.2s;
+              font-family: 'DM Sans', sans-serif;
+            }
+            .btn:hover:not(:disabled) { 
+              background: #2a2823;
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(52, 50, 45, 0.2);
+            }
+            .btn:active:not(:disabled) {
+              transform: translateY(0);
+            }
+            .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            .success { 
+              background: rgba(52, 199, 89, 0.1); 
+              border: 1px solid rgba(52, 199, 89, 0.3);
+              border-radius: 8px;
+              padding: 16px;
+              color: #34c759;
+              font-size: 15px;
+              display: none;
+            }
+            .error { 
+              background: rgba(255, 59, 48, 0.1); 
+              border: 1px solid rgba(255, 59, 48, 0.3);
+              border-radius: 8px;
+              padding: 16px;
+              color: #ff3b30;
+              font-size: 15px;
+              display: none;
+              margin-top: 16px;
+            }
+            .show { display: block; }
+            .footer {
+              position: fixed;
+              bottom: 30px;
+              left: 0;
+              right: 0;
+              text-align: center;
+              padding: 0 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+            }
+            .footer-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex-wrap: wrap;
+              justify-content: center;
+            }
+            .footer-text {
+              color: #34322D;
+              opacity: 0.6;
+              font-size: 14px;
+              font-weight: 400;
+            }
+            .footer a {
+              text-decoration: none;
+              transition: opacity 0.2s;
+              display: inline-block;
+            }
+            .footer a:hover { opacity: 0.7; }
+            .footer-logo {
+              height: 24px;
+              width: auto;
+              transition: opacity 0.2s;
+              vertical-align: middle;
+            }
+            .footer-link {
+              color: #34322D;
+              opacity: 0.8;
+              font-weight: 500;
+              letter-spacing: -0.01em;
+              text-decoration: underline !important;
+            }
+            .footer-link:hover {
+              opacity: 1;
+            }
+            @media (max-width: 768px) {
+              .footer-logo {
+                height: 20px;
+              }
+            }
+            @media (max-width: 480px) {
+              .footer-logo {
+                height: 18px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Revoke Connection</h1>
+            <p class="subtitle">Disconnect your iMessage from Manus and delete all your data</p>
+            
+            <div class="warning">
+              ⚠️ This action cannot be undone. All your messages and data will be permanently deleted.
+            </div>
+            
+            <form id="revokeForm">
+              <input 
+                type="text" 
+                id="photonApiKey" 
+                placeholder="Enter your Photon API key (ph_live_...)" 
+                required 
+              />
+              <button type="submit" class="btn" id="revokeBtn">Revoke Connection</button>
+            </form>
+            
+            <div id="success" class="success"></div>
+            <div id="error" class="error"></div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            <div class="footer-row">
+              <span class="footer-text">powered by</span>
+              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+                <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo">
+              </a>
+            </div>
+            <div class="footer-text">
+              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+            </div>
+          </div>
+          
+          <script>
+            document.getElementById('revokeForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const btn = document.getElementById('revokeBtn');
+              const errorDiv = document.getElementById('error');
+              const successDiv = document.getElementById('success');
+              const photonApiKey = document.getElementById('photonApiKey').value.trim();
+              
+              btn.disabled = true;
+              btn.textContent = 'Revoking...';
+              errorDiv.classList.remove('show');
+              successDiv.classList.remove('show');
+              
+              try {
+                const response = await fetch('/connect/revoke', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ photonApiKey })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                  successDiv.textContent = '✅ Connection revoked successfully! All your data has been deleted. You will receive a confirmation via iMessage.';
+                  successDiv.classList.add('show');
+                  document.getElementById('revokeForm').style.display = 'none';
+                } else {
+                  errorDiv.textContent = data.error || 'Failed to revoke connection';
+                  errorDiv.classList.add('show');
+                  btn.disabled = false;
+                  btn.textContent = 'Revoke Connection';
+                }
+              } catch (error) {
+                errorDiv.textContent = 'Failed to revoke connection. Please try again.';
+                errorDiv.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = 'Revoke Connection';
+              }
+            });
+          </script>
+        </body>
+      </html>
+    `);
+  });
+
+  // Default SMS number when PHOTON_HANDLE is missing/empty in env (e.g. in Docker)
+  const DEFAULT_PHOTON_HANDLE = '+14158156704';
+
+  // GET / - Landing page with "Connect to Manus" button (Manus Brand Design)
+  fastify.get('/', async (request, reply) => {
+    const raw = process.env.PHOTON_HANDLE ?? '';
+    const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
+    const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
+    
+    return reply.type('text/html').send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Connect to Manus</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <link rel="icon" type="image/png" href="/favicon.png?v=2">
+          
+          <!-- Open Graph / Facebook -->
+          <meta property="og:type" content="website">
+          <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
+          <meta property="og:title" content="manus, in iMessages">
+          <meta property="og:description" content="Connect Manus to iMessage">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          
+          <!-- Twitter -->
+          <meta property="twitter:card" content="summary_large_image">
+          <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/">
+          <meta property="twitter:title" content="manus, in iMessages">
+          <meta property="twitter:description" content="Connect Manus to iMessage">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+          
+          <style>
+            * { 
+              box-sizing: border-box; 
+              margin: 0; 
+              padding: 0;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            
+            html {
+              height: 100%;
+              -webkit-text-size-adjust: 100%;
+            }
+            
+            body { 
+              font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              min-height: 100vh;
+              background: #FFFFFF;
+              position: relative;
+              overflow-x: hidden;
+              overflow-y: auto;
+              width: 100%;
+              margin: 0;
+              padding: 0;
+            }
+            
+            /* Content container */
+            .content {
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 60px 40px;
+              max-width: 800px;
+              margin: 0 auto;
+              text-align: center;
+              position: relative;
+            }
+            
+            /* Logo */
+            .logo {
+              font-family: 'Libre Baskerville', serif;
+              font-size: 64px;
+              font-weight: 400;
+              color: #34322D;
+              margin-bottom: 48px;
+              letter-spacing: -1px;
+              line-height: 1.1;
+            }
+            
+            /* CTA Button */
+            .connect-btn { 
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 18px 48px;
+              background: #34322D;
+              color: #FFFFFF;
+              text-decoration: none;
+              font-size: 17px;
+              font-weight: 500;
+              border-radius: 8px;
+              transition: all 0.2s ease;
+              letter-spacing: -0.01em;
+              border: none;
+              cursor: pointer;
+              outline: none;
+            }
+            
+            .connect-btn:hover {
+              background: #2a2823;
+              transform: translateY(-2px);
+              box-shadow: 0 8px 24px rgba(52, 50, 45, 0.2);
+            }
+            
+            .connect-btn:active {
+              transform: translateY(0);
+            }
+            
+            /* Footer */
+            .footer {
+              position: fixed;
+              bottom: 40px;
+              left: 0;
+              right: 0;
+              text-align: center;
+              padding: 0 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+            }
+            
+            .footer-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex-wrap: wrap;
+              justify-content: center;
+            }
+            
+            .footer-text {
+              color: #34322D;
+              opacity: 0.6;
+              font-size: 14px;
+              font-weight: 400;
+            }
+            
+            .footer a {
+              text-decoration: none;
+              transition: opacity 0.2s;
+              display: inline-block;
+            }
+            
+            .footer a:hover {
+              opacity: 0.7;
+            }
+            
+            .footer-logo {
+              height: 24px;
+              width: auto;
+              transition: opacity 0.2s;
+              vertical-align: middle;
+            }
+            
+            .footer-link {
+              color: #34322D;
+              opacity: 0.8;
+              font-weight: 500;
+              letter-spacing: -0.01em;
+            }
+            
+            .footer-link:hover {
+              opacity: 1;
+            }
+            
+            /* Responsive Design */
+            @media (max-width: 1024px) {
+              .content {
+                padding: 50px 30px;
+              }
+              
+              .logo {
+                font-size: 56px;
+              }
+            }
+            
+            @media (max-width: 768px) {
+              .content {
+                padding: 40px 24px;
+              }
+              
+              .logo {
+                font-size: 48px;
+                margin-bottom: 40px;
+              }
+              
+              .connect-btn {
+                padding: 16px 40px;
+                font-size: 16px;
+              }
+              
+              .footer {
+                bottom: 30px;
+              }
+              
+              .footer-text {
+                font-size: 13px;
+              }
+              
+              .footer-logo {
+                height: 20px;
+              }
+            }
+            
+            @media (max-width: 480px) {
+              .content {
+                padding: 32px 20px;
+              }
+              
+              .logo {
+                font-size: 36px;
+                margin-bottom: 32px;
+              }
+              
+              .connect-btn {
+                padding: 14px 32px;
+                font-size: 15px;
+              }
+              
+              .footer {
+                bottom: 24px;
+              }
+              
+              .footer-text {
+                font-size: 12px;
+              }
+              
+              .footer-logo {
+                height: 18px;
+              }
+            }
+            
+            @media (max-width: 375px) {
+              .logo {
+                font-size: 32px;
+                margin-bottom: 28px;
+              }
+              
+              .connect-btn {
+                padding: 12px 28px;
+                font-size: 14px;
+              }
+              
+              .footer {
+                bottom: 20px;
+              }
+              
+              .footer-logo {
+                height: 16px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Content -->
+          <div class="content">
+            <div class="logo">manus, in iMessages</div>
+            
+            <a href="${smsLink}" class="connect-btn">
+              Connect to Manus
+            </a>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            <div class="footer-row">
+              <span class="footer-text">powered by</span>
+              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+                <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo">
+              </a>
+            </div>
+            <div class="footer-text">
+              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+
+  // POST /connect - Handle initial iMessage
+  fastify.post('/', async (request, reply) => {
+    try {
+      const body = StartSchema.parse(request.body);
+      const phoneNumber = normalizePhoneNumber(body.phoneNumber);
+      const connectionId = generateConnectionId();
+      const expiresAt = getConnectionExpiry();
+
+      // Create pending connection
+      const connection = await prisma.connection.create({
+        data: {
+          connectionId,
+          phoneNumber,
+          status: 'PENDING',
+          expiresAt,
+        },
+      });
+
+      fastify.log.info({ connectionId, phoneNumber }, 'Connection started');
+
+      // Send iMessage back to user with typing indicators
+      const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
+      try {
+        const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+        
+        // [2 sec typing indicator] "Sure!"
+        await sendTypingIndicator(phoneNumber, 2000);
+        await sendIMessage(phoneNumber, 'Sure!');
+        
+        // [3 sec typing indicator] "Please input your Manus token..."
+        await sendTypingIndicator(phoneNumber, 3000);
+        await sendIMessage(phoneNumber, `Please input your Manus token in the following link:\n\n${linkUrl}`);
+      } catch (error) {
+        fastify.log.error({ error }, 'Failed to send iMessage');
+        // Continue anyway - user can still access the link
+      }
+
+      return {
+        success: true,
+        connectionId,
+        message: 'Connection started. Check your iMessage for next steps.',
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Failed to start connection');
+      return reply.code(400).send({ error: 'Invalid request' });
+    }
+  });
+
+  // Legacy endpoint removed - use POST /connect instead
+
+  // PUT /connect/:id - Submit Manus API key and activate connection
+  fastify.put('/:connectionId', async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string };
+      const body = z.object({ 
+        manusApiKey: z.string().regex(/^sk-[A-Za-z0-9_-]{70,100}$/, 'Invalid Manus API key format')
+      }).parse(request.body);
+      const { manusApiKey } = body;
+
+      // Find pending connection
+      const connection = await prisma.connection.findUnique({
+        where: { connectionId },
+      });
+
+      // Return generic error to prevent enumeration
+      if (!connection || connection.status !== 'PENDING' || (connection.expiresAt && new Date() > connection.expiresAt)) {
+        return reply.code(400).send({ error: 'Invalid or expired connection' });
+      }
+
+      // Register webhook with Manus (optional - will fail for localhost)
+      let webhookId: string | null = null;
+      try {
+        webhookId = await registerManusWebhook(manusApiKey);
+        console.log('✅ Webhook registered:', webhookId);
+      } catch (error) {
+        console.warn('⚠️  Webhook registration failed (expected for localhost):', error instanceof Error ? error.message : error);
+        // Continue without webhook - it's optional for development
+      }
+
+      // Generate Photon API key
+      const photonApiKey = generatePhotonApiKey();
+
+      // Update connection to ACTIVE
+      await prisma.connection.update({
+        where: { connectionId },
+        data: {
+          manusApiKey,
+          photonApiKey,
+          webhookId,
+          status: 'ACTIVE',
+          activatedAt: new Date(),
+        },
+      });
+
+      fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection activated');
+
+      // Notify worker to start processing for this phone number
+      try {
+        const Redis = (await import('ioredis')).default;
+        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        await redis.publish('connection-activated', connection.phoneNumber);
+        await redis.quit();
+      } catch (error) {
+        // Non-critical - worker will pick it up in the next periodic check
+        console.warn('Failed to notify worker:', error);
+      }
+
+      // MCP config for user
+      const mcpConfig = {
+        mcpServers: {
+          'photon-imessage': {
+            type: 'streamableHttp',
+            url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/mcp/http`,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json, text/event-stream',
+              Authorization: `Bearer ${photonApiKey}`,
+            },
+          },
+        },
+      };
+
+      // Send iMessage with MCP config and typing indicators
+      try {
+        const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+        const configText = JSON.stringify(mcpConfig, null, 2);
+        
+        // [1 sec typing indicator] "All set!"
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        await sendIMessage(connection.phoneNumber, "All set!");
+        
+        // [1 sec typing indicator] "Copy and paste this config into Manus:"
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        await sendIMessage(connection.phoneNumber, "Copy and paste this config into Manus:");
+        
+        // [1 sec typing indicator] Send MCP config as separate message for easy copying
+        // Disable rich link preview to show the full JSON text instead of just the URL
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        await sendIMessage(connection.phoneNumber, configText, { disableRichLink: true });
+        
+        // [1 sec typing indicator] Send link to where to paste the config
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        await sendIMessage(connection.phoneNumber, "Paste it here:\n\nhttps://manus.im/app#settings/connectors/mcp-server");
+      } catch (error) {
+        fastify.log.error({ error }, 'Failed to send iMessage');
+        // Continue anyway - user sees config on web page
+      }
+
+      return {
+        success: true,
+        photonApiKey,
+        mcpConfig,
+        message: 'Connection activated successfully!',
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Failed to verify token');
+      return reply.code(400).send({ error: 'Invalid request' });
+    }
+  });
+
+  // Legacy endpoint removed - use PUT /connect/:id instead
+
+  // POST /connect/revoke - Revoke connection by Photon API key
+  fastify.post('/revoke', async (request, reply) => {
+    try {
+      const body = RevokeSchema.parse(request.body);
+      const { photonApiKey } = body;
+
+      const connection = await prisma.connection.findUnique({
+        where: { photonApiKey },
+      });
+
+      // Return generic error to prevent enumeration
+      if (!connection) {
+        return reply.code(400).send({ error: 'Invalid API key' });
+      }
+
+      if (connection.status === 'REVOKED') {
+        return reply.code(400).send({ error: 'Connection already revoked' });
+      }
+
+      fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Starting connection revocation by API key');
+
+      // Delete webhook from Manus
+      if (connection.webhookId && connection.manusApiKey) {
+        try {
+          await deleteManusWebhook(connection.manusApiKey, connection.webhookId);
+          fastify.log.info({ webhookId: connection.webhookId }, 'Webhook deleted from Manus');
+        } catch (error) {
+          fastify.log.warn({ error }, 'Failed to delete webhook from Manus');
+        }
+      }
+
+      // Clean up all user data in a transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.messageQueue.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+
+        await tx.manusMessage.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+
+        await tx.connection.update({
+          where: { photonApiKey },
+          data: {
+            status: 'REVOKED',
+            revokedAt: new Date(),
+            manusApiKey: null,
+            currentTaskId: null,
+          },
+        });
+      });
+
+      fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Connection revoked by API key');
+
+      // Send iMessage notification
+      try {
+        const { sendIMessage } = await import('../lib/imessage.js');
+        await sendIMessage(
+          connection.phoneNumber,
+          'Your iMessage connection to Manus has been revoked. All your data has been deleted.'
+        );
+      } catch (error) {
+        fastify.log.warn({ error }, 'Failed to send revocation notification');
+      }
+
+      return {
+        success: true,
+        message: 'Connection revoked successfully',
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Failed to revoke connection');
+      return reply.code(500).send({ error: 'Failed to revoke connection' });
+    }
+  });
+
+  // DELETE /connect/:id - Revoke connection and clean up all user data
+  fastify.delete('/:connectionId', async (request, reply) => {
+    try {
+      const { connectionId } = request.params as { connectionId: string };
+
+      const connection = await prisma.connection.findUnique({
+        where: { connectionId },
+      });
+
+      // Return generic error to prevent enumeration
+      if (!connection) {
+        return reply.code(400).send({ error: 'Invalid connection' });
+      }
+
+      fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Starting connection revocation');
+
+      // Delete webhook from Manus
+      if (connection.webhookId && connection.manusApiKey) {
+        try {
+          await deleteManusWebhook(connection.manusApiKey, connection.webhookId);
+          fastify.log.info({ webhookId: connection.webhookId }, 'Webhook deleted from Manus');
+        } catch (error) {
+          fastify.log.warn({ error }, 'Failed to delete webhook from Manus');
+          // Continue with revocation even if webhook deletion fails
+        }
+      }
+
+      // Clean up all user data in a transaction to maintain consistency
+      await prisma.$transaction(async (tx) => {
+        // Delete all message queue entries for this user
+        const deletedQueueItems = await tx.messageQueue.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+        fastify.log.info({ count: deletedQueueItems.count }, 'Deleted message queue items');
+
+        // Delete all Manus messages for this user
+        const deletedManusMessages = await tx.manusMessage.deleteMany({
+          where: { phoneNumber: connection.phoneNumber },
+        });
+        fastify.log.info({ count: deletedManusMessages.count }, 'Deleted Manus messages');
+
+        // Update connection status to REVOKED
+        await tx.connection.update({
+          where: { connectionId },
+          data: {
+            status: 'REVOKED',
+            revokedAt: new Date(),
+            // Clear sensitive data
+            manusApiKey: null,
+            currentTaskId: null,
+          },
+        });
+      });
+
+      fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection revoked and data cleaned up');
+
+      // Send iMessage notification to user
+      try {
+        const { sendIMessage } = await import('../lib/imessage.js');
+        await sendIMessage(
+          connection.phoneNumber,
+          'Your iMessage connection to Manus has been revoked. All your data has been deleted.'
+        );
+      } catch (error) {
+        fastify.log.warn({ error }, 'Failed to send revocation notification');
+        // Don't fail the revocation if notification fails
+      }
+
+      return {
+        success: true,
+        message: 'Connection revoked and all data deleted successfully',
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Failed to revoke connection');
+      return reply.code(500).send({ error: 'Failed to revoke connection' });
+    }
+  });
+
+  // GET /connect/:connectionId - Token input page (Manus Brand Design)
+  fastify.get('/:connectionId', async (request, reply) => {
+    const { connectionId } = request.params as { connectionId: string };
+
+    const connection = await prisma.connection.findUnique({
+      where: { connectionId },
+    });
+
+    // Don't reveal if connection exists - always show the form
+    // Backend validation will handle invalid connections
+    const connectionExists = !!connection;
+
+    // HTML form with Manus brand design
+    return reply.type('text/html').send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Connect to Manus</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <link rel="icon" type="image/png" href="/favicon.png?v=2">
+          
+          <!-- Open Graph / Facebook -->
+          <meta property="og:type" content="website">
+          <meta property="og:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
+          <meta property="og:title" content="Complete Manus Setup">
+          <meta property="og:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
+          <meta property="og:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          
+          <!-- Twitter -->
+          <meta property="twitter:card" content="summary_large_image">
+          <meta property="twitter:url" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/${connectionId}">
+          <meta property="twitter:title" content="Complete Manus Setup">
+          <meta property="twitter:description" content="Enter your Manus API key to complete the connection and bring Manus to your iMessage">
+          <meta property="twitter:image" content="${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/assets/favicon.png">
+          
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+          
+          <style>
+            * { 
+              box-sizing: border-box; 
+              margin: 0; 
+              padding: 0;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            
+            html {
+              height: 100%;
+              -webkit-text-size-adjust: 100%;
+            }
+            
+            body { 
+              font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              min-height: 100vh;
+              background: #F8F8F8;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 40px 20px;
+              position: relative;
+              overflow: hidden;
+              width: 100%;
+              margin: 0;
+            }
+            
+            .container {
+              max-width: 520px;
+              width: 100%;
+              text-align: center;
+              position: relative;
+            }
+            
+            /* Form Section */
+            #form-section {
+              text-align: center;
+            }
+            
+            h1 {
+              font-family: 'Libre Baskerville', serif;
+              font-size: 36px;
+              font-weight: 700;
+              color: #34322D;
+              margin-bottom: 12px;
+              line-height: 1.2;
+            }
+            
+            .subtitle {
+              font-size: 16px;
+              color: #34322D;
+              opacity: 0.7;
+              margin-bottom: 16px;
+              line-height: 1.5;
+            }
+            
+            .get-key-link {
+              display: inline-block;
+              color: #34322D;
+              text-decoration: underline;
+              font-size: 14px;
+              margin-bottom: 28px;
+              transition: opacity 0.2s;
+              opacity: 0.8;
+            }
+            
+            .get-key-link:hover {
+              opacity: 1;
+            }
+            
+            .input-wrapper {
+              margin-bottom: 16px;
+              max-width: 450px;
+              margin-left: auto;
+              margin-right: auto;
+            }
+            
+            input {
+              width: 100%;
+              padding: 14px 20px;
+              font-size: 15px;
+              border: 1px solid #34322D;
+              border-radius: 8px;
+              background: #FFFFFF;
+              transition: all 0.2s;
+              font-family: 'DM Sans', sans-serif;
+              color: #34322D;
+            }
+            
+            input:focus {
+              outline: none;
+              border-color: #34322D;
+              box-shadow: 0 0 0 3px rgba(52, 50, 45, 0.1);
+            }
+            
+            input::placeholder {
+              color: rgba(52, 50, 45, 0.4);
+            }
+            
+            .submit-btn {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 14px 36px;
+              background: #34322D;
+              color: #FFFFFF;
+              border: none;
+              font-size: 15px;
+              font-weight: 500;
+              border-radius: 8px;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              letter-spacing: -0.01em;
+              font-family: 'DM Sans', sans-serif;
+            }
+            
+            .submit-btn:hover:not(:disabled) {
+              background: #2a2823;
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(52, 50, 45, 0.2);
+            }
+            
+            .submit-btn:active:not(:disabled) {
+              transform: translateY(0);
+            }
+            
+            .submit-btn:disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+            }
+            
+            .error {
+              margin-top: 16px;
+              padding: 12px 18px;
+              background: rgba(255, 59, 48, 0.1);
+              color: #ff3b30;
+              border: 1px solid rgba(255, 59, 48, 0.3);
+              border-radius: 8px;
+              font-size: 13px;
+              display: none;
+              max-width: 450px;
+              margin-left: auto;
+              margin-right: auto;
+            }
+            
+            .error.show {
+              display: block;
+            }
+            
+            /* Success Section */
+            #success-section {
+              display: none;
+              text-align: center;
+            }
+            
+            .success-title {
+              font-family: 'Libre Baskerville', serif;
+              font-size: 32px;
+              font-weight: 700;
+              color: #34322D;
+              margin-bottom: 12px;
+            }
+            
+            .success-subtitle {
+              font-size: 15px;
+              color: #34322D;
+              opacity: 0.7;
+              margin-bottom: 32px;
+              line-height: 1.5;
+            }
+            
+            .config-container {
+              background: #FFFFFF;
+              border: 1px solid #34322D;
+              border-radius: 8px;
+              padding: 20px 24px;
+              margin-bottom: 24px;
+              position: relative;
+              text-align: left;
+              max-width: 550px;
+              margin-left: auto;
+              margin-right: auto;
+            }
+            
+            .config-container pre {
+              overflow-x: auto;
+              font-size: 12px;
+              line-height: 1.5;
+              color: #34322D;
+              font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+              padding-right: 80px;
+            }
+            
+            .copy-btn {
+              position: absolute;
+              top: 16px;
+              right: 16px;
+              padding: 6px 14px;
+              background: #34322D;
+              color: #FFFFFF;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 12px;
+              font-weight: 500;
+              transition: all 0.2s;
+              font-family: 'DM Sans', sans-serif;
+            }
+            
+            .copy-btn:hover {
+              background: #2a2823;
+              transform: scale(1.05);
+            }
+            
+            .copy-btn.copied {
+              background: #34c759;
+            }
+            
+            .action-btn {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 14px 32px;
+              background: #34322D;
+              color: #FFFFFF;
+              text-decoration: none;
+              font-size: 15px;
+              font-weight: 500;
+              border-radius: 8px;
+              transition: all 0.2s ease;
+              letter-spacing: -0.01em;
+              border: none;
+              cursor: pointer;
+              font-family: 'DM Sans', sans-serif;
+            }
+            
+            .action-btn:hover {
+              background: #2a2823;
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(52, 50, 45, 0.2);
+            }
+            
+            .action-btn:active {
+              transform: translateY(0);
+            }
+            
+            .note {
+              margin-top: 20px;
+              font-size: 13px;
+              color: #34322D;
+              opacity: 0.6;
+            }
+            
+            /* Footer */
+            .footer {
+              position: fixed;
+              bottom: 30px;
+              left: 0;
+              right: 0;
+              text-align: center;
+              padding: 0 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+            }
+            
+            .footer-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex-wrap: wrap;
+              justify-content: center;
+            }
+            
+            .footer-text {
+              color: #34322D;
+              opacity: 0.6;
+              font-size: 14px;
+              font-weight: 400;
+            }
+            
+            .footer a {
+              text-decoration: none;
+              transition: opacity 0.2s;
+              display: inline-block;
+            }
+            
+            .footer a:hover {
+              opacity: 0.7;
+            }
+            
+            .footer-logo {
+              height: 24px;
+              width: auto;
+              transition: opacity 0.2s;
+              vertical-align: middle;
+            }
+            
+            .footer-link {
+              color: #34322D;
+              opacity: 0.8;
+              font-weight: 500;
+              letter-spacing: -0.01em;
+              text-decoration: underline !important;
+            }
+            
+            .footer-link:hover {
+              opacity: 1;
+            }
+            
+            /* Responsive Design */
+            @media (max-width: 768px) {
+              h1 {
+                font-size: 32px;
+              }
+              
+              .subtitle, .success-subtitle {
+                font-size: 16px;
+                margin-bottom: 28px;
+              }
+              
+              .get-key-link {
+                font-size: 15px;
+                margin-bottom: 24px;
+              }
+              
+              .config-container {
+                padding: 16px;
+              }
+              
+              .config-container pre {
+                font-size: 12px;
+              }
+              
+              .copy-btn {
+                top: 12px;
+                right: 12px;
+                padding: 6px 12px;
+                font-size: 12px;
+              }
+              
+              .note {
+                font-size: 14px;
+                margin-top: 20px;
+              }
+              
+              .footer {
+                bottom: 20px;
+              }
+              
+              .footer-logo {
+                height: 20px;
+              }
+              
+              .success-title {
+                font-size: 26px;
+              }
+            }
+            
+            @media (max-width: 480px) {
+              h1 {
+                font-size: 28px;
+                margin-bottom: 12px;
+              }
+              
+              .subtitle {
+                font-size: 15px;
+                margin-bottom: 24px;
+              }
+              
+              .get-key-link {
+                font-size: 14px;
+                margin-bottom: 20px;
+              }
+              
+              .config-container {
+                padding: 14px;
+                border-radius: 8px;
+              }
+              
+              .config-container pre {
+                font-size: 11px;
+                line-height: 1.5;
+              }
+              
+              .copy-btn {
+                top: 10px;
+                right: 10px;
+                padding: 6px 10px;
+                font-size: 11px;
+              }
+              
+              .error {
+                padding: 10px 14px;
+                font-size: 14px;
+              }
+              
+              .note {
+                font-size: 13px;
+                margin-top: 16px;
+              }
+              
+              .footer {
+                bottom: 16px;
+              }
+              
+              .footer-logo {
+                height: 18px;
+              }
+              
+              .success-title {
+                font-size: 22px;
+                margin-bottom: 10px;
+              }
+              
+              .success-subtitle {
+                font-size: 14px;
+                margin-bottom: 24px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <!-- Form Section -->
+            <div id="form-section">
+              <h1>Complete Setup</h1>
+              <p class="subtitle">Enter your Manus API key to activate the connection</p>
+              
+              <a href="https://manus.im/app#settings/integrations/api" target="_blank" class="get-key-link">Get your API key &rarr;</a>
+              
+              <form id="tokenForm">
+                <div class="input-wrapper">
+                <input 
+                  type="text" 
+                  id="manusApiKey" 
+                  placeholder="sk-..." 
+                  autocomplete="off"
+                  spellcheck="false"
+                  required 
+                />
+                </div>
+                <button type="submit" class="submit-btn" id="submitBtn">
+                  Continue
+                </button>
+              </form>
+              
+              <div id="error" class="error"></div>
+            </div>
+            
+            <!-- Success Section -->
+            <div id="success-section">
+              <h1 class="success-title">All Set!</h1>
+              <p class="success-subtitle">Copy the configuration below and paste it in Manus</p>
+              
+              <div class="config-container">
+                <button class="copy-btn" onclick="copyConfig()">Copy</button>
+                <pre id="config"></pre>
+              </div>
+              
+              <a href="https://manus.im/app#settings/connectors/mcp-server" target="_blank" class="action-btn">
+                Open Manus Settings &rarr;
+              </a>
+              
+              <p class="note">Configuration also sent to your iMessage</p>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            <div class="footer-row">
+              <span class="footer-text">powered by</span>
+              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+                <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo">
+              </a>
+            </div>
+            <div class="footer-text">
+              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+            </div>
+          </div>
+          
+          <script>
+            let mcpConfigData = null;
+            
+            // Validate Manus API key format
+            function isValidManusApiKey(key) {
+              // Manus API keys start with sk- followed by base64-like characters
+              // Format: sk-[A-Za-z0-9_-]{70,100}
+              return /^sk-[A-Za-z0-9_-]{70,100}$/.test(key);
+            }
+            
+            document.getElementById('tokenForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const submitBtn = document.getElementById('submitBtn');
+              const errorDiv = document.getElementById('error');
+              const manusApiKey = document.getElementById('manusApiKey').value.trim();
+              
+              // Validate API key format
+              if (!isValidManusApiKey(manusApiKey)) {
+                errorDiv.textContent = 'Invalid API key format. Please check your key and try again.';
+                errorDiv.classList.add('show');
+                return;
+              }
+              
+              submitBtn.disabled = true;
+              submitBtn.textContent = 'Connecting...';
+              errorDiv.classList.remove('show');
+              errorDiv.textContent = '';
+              
+              try {
+                const response = await fetch('/connect/${connectionId}', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ manusApiKey })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                  mcpConfigData = data.mcpConfig;
+                  document.getElementById('config').textContent = JSON.stringify(data.mcpConfig, null, 2);
+                  document.getElementById('form-section').style.display = 'none';
+                  document.getElementById('success-section').style.display = 'block';
+                } else {
+                  errorDiv.textContent = data.error || 'Failed to connect. Please try again.';
+                  errorDiv.classList.add('show');
+                  submitBtn.disabled = false;
+                  submitBtn.textContent = 'Continue';
+                }
+              } catch (error) {
+                errorDiv.textContent = 'Connection failed. Please check your API key and try again.';
+                errorDiv.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Continue';
+              }
+            });
+            
+            function copyConfig() {
+              const configText = JSON.stringify(mcpConfigData, null, 2);
+              navigator.clipboard.writeText(configText).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                  btn.textContent = 'Copy';
+                  btn.classList.remove('copied');
+                }, 2000);
+              });
+            }
+          </script>
+        </body>
+      </html>
+    `);
+  });
+};
+
+// Helper functions
+async function registerManusWebhook(manusApiKey: string): Promise<string> {
+  const response = await fetch('https://api.manus.im/v1/webhooks', {
+    method: 'POST',
+    headers: {
+      'API_KEY': manusApiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      webhook: {
+        url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/webhook`,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Webhook registration failed:', response.status, errorText);
+    throw new Error(`Failed to register webhook with Manus: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json() as { webhook_id?: string; id?: string };
+  return data.webhook_id || data.id || '';
+}
+
+async function deleteManusWebhook(manusApiKey: string, webhookId: string): Promise<void> {
+  await fetch(`https://api.manus.im/v1/webhooks/${webhookId}`, {
+    method: 'DELETE',
+    headers: {
+      'API_KEY': manusApiKey,
+    },
+  });
+}

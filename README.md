@@ -109,6 +109,11 @@ PUBLIC_URL=https://manus.photon.codes
 *Not Required:*
 - `PHOTON_API_KEY` - Not needed! Each user provides their own Manus API key during setup
 
+*UI Design Configuration:*
+- `UI_DESIGN_VERSION` - Choose between `v1` (glassmorphism) or `v2` (Manus brand design)
+  - `v1` (default): Current design with liquid glass buttons, background image, and Manus custom font
+  - `v2`: Clean Manus brand design with Libre Baskerville serif, DM Sans sans-serif, and minimal styling
+
 ## Architecture
 
 ```
