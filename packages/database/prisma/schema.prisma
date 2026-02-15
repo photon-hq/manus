@@ -61,14 +61,15 @@ enum MessageType {
 }
 
 model MessageQueue {
-  id           Int         @id @default(autoincrement())
-  phoneNumber  String
-  messageGuid  String
-  messageText  String      @db.Text
-  attachments  Json?       // Array of {guid, filename, mimeType}
-  status       QueueStatus @default(PENDING)
-  createdAt    DateTime    @default(now())
-  processedAt  DateTime?
+  id                    Int         @id @default(autoincrement())
+  phoneNumber           String
+  messageGuid           String
+  threadOriginatorGuid  String?     // GUID of message this is replying to (for thread detection)
+  messageText           String      @db.Text
+  attachments           Json?       // Array of {guid, filename, mimeType}
+  status                QueueStatus @default(PENDING)
+  createdAt             DateTime    @default(now())
+  processedAt           DateTime?
 
   connection Connection @relation(fields: [phoneNumber], references: [phoneNumber])
 

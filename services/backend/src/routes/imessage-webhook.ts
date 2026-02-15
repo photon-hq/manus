@@ -459,9 +459,16 @@ Your iMessage is connected to Manus AI.`;
         return;
       }
 
+      // Extract thread originator GUID (if user replied to a message)
+      const threadOriginatorGuid = (message as any).threadOriginatorGuid as string | undefined;
+
       console.log('📨 Message received from:', handle);
       console.log('📝 Message text:', messageText || '(empty)');
       console.log('📎 Attachments:', processedAttachments?.length || 0);
+      console.log('🔗 Thread info:', {
+        messageGuid: message.guid,
+        threadOriginatorGuid: threadOriginatorGuid || 'none (not a reply)'
+      });
 
       // Add to queue for worker to process
       const queue = getQueue(handle);
@@ -469,6 +476,7 @@ Your iMessage is connected to Manus AI.`;
         phoneNumber: handle,
         messageText,
         messageGuid: message.guid,
+        threadOriginatorGuid, // NEW: Pass thread info to worker
         attachments: processedAttachments,
       });
 

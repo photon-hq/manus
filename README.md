@@ -78,16 +78,13 @@ PHOTON_HANDLE=+1234567890
 # Manus API
 MANUS_API_URL=https://api.manus.im
 
-# LLM Provider
-OPENROUTER_API_KEY=your_openrouter_key
-
 # App Config
 PORT=3000
 NODE_ENV=production
 PUBLIC_URL=https://manus.photon.codes
 ```
 
-**Ports:** Backend (3000), Classifier (3001), PostgreSQL (5432), Redis (6379)
+**Ports:** Backend (3000), PostgreSQL (5432), Redis (6379)
 
 **Environment Variable Details:**
 
@@ -95,7 +92,6 @@ PUBLIC_URL=https://manus.photon.codes
 - `IMESSAGE_SERVER_URL` - Your Photon iMessage server endpoint
 - `IMESSAGE_API_KEY` - Your Photon API key for iMessage integration
 - `PHOTON_HANDLE` - Phone number or iCloud email for landing page SMS link
-- `OPENROUTER_API_KEY` - API key for LLM classification service
 - `PUBLIC_URL` - Your deployed backend URL (e.g., `https://manus.photon.codes`)
 
 *Optional (have defaults):*
@@ -218,7 +214,6 @@ manus/
 ├── packages/database/       # Prisma ORM
 ├── services/backend/        # API + SSE MCP
 ├── services/worker/         # Queue processor
-├── services/slm-classifier/ # Task classifier
 └── scripts/                 # Setup & test scripts
 ```
 
@@ -228,7 +223,6 @@ manus/
 # Check logs
 docker compose logs -f backend
 docker compose logs -f worker
-docker compose logs -f slm-classifier
 
 # Test MCP HTTP endpoint
 curl -X POST http://localhost:3000/mcp/http \

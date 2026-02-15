@@ -1,12 +1,11 @@
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
 import { prisma, QueueStatus } from '@imessage-mcp/database';
-import { TaskClassification, sanitizeHandle } from '@imessage-mcp/shared';
+import { sanitizeHandle } from '@imessage-mcp/shared';
 import { SDK } from '@photon-ai/advanced-imessage-kit';
 import { TypingIndicatorManager } from './typing-manager.js';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
 const DEBOUNCE_WINDOW = 3000; // 3 seconds
 
 // Redis key expiration for task mapping (24 hours)
@@ -106,8 +105,8 @@ function startWorker(handle: string) {
       // Handle different job types
       if (job.name === 'incoming-message') {
         // Direct message from iMessage webhook
-        const { messageText, messageGuid, attachments } = job.data;
-        await handleIncomingMessage(handle, messageText, messageGuid, attachments);
+        const { messageText, messageGuid, threadOriginatorGuid, attachments } = job.data;
+        await handleIncomingMessage(handle, messageText, messageGuid, threadOriginatorGuid, attachments);
       } else if (job.name === 'process-message') {
         // Message from queue (debounced)
         await processMessage(handle, job.data);
@@ -142,6 +141,7 @@ export async function handleIncomingMessage(
   phoneNumber: string,
   message: string,
   messageGuid: string,
+  threadOriginatorGuid?: string,
   attachments?: Array<{ guid: string; filename: string; mimeType: string }>
 ) {
   console.log(`Incoming message from ${phoneNumber}`, attachments ? `with ${attachments.length} attachment(s)` : '');
@@ -178,6 +178,7 @@ export async function handleIncomingMessage(
       data: {
         phoneNumber,
         messageGuid,
+        threadOriginatorGuid,
         messageText: message,
         attachments: attachments ? JSON.parse(JSON.stringify(attachments)) : null,
         status: QueueStatus.PENDING,
@@ -218,6 +219,7 @@ async function scheduleProcessing(phoneNumber: string) {
       messageId: msg.id,
       messageText: msg.messageText,
       messageGuid: msg.messageGuid,
+      threadOriginatorGuid: (msg as any).threadOriginatorGuid, // Pass thread info
       messageTimestamp: msg.createdAt, // Pass as Date object
       attachments: msg.attachments,
     });
@@ -234,7 +236,7 @@ async function scheduleProcessing(phoneNumber: string) {
 
 // Process a single message
 async function processMessage(phoneNumber: string, data: any) {
-  const { messageId, messageText, attachments, messageGuid, messageTimestamp } = data;
+  const { messageId, messageText, attachments, messageGuid, threadOriginatorGuid, messageTimestamp } = data;
 
   try {
     // Handle attachments if present
@@ -274,43 +276,39 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
-      // Regular message with text - use SLM classifier when we have task context
-      // Get last task context (last 20 messages), excluding the current message
-      const recentMessages = await getRecentMessages(phoneNumber, 20, messageGuid);
+      // Regular message with text - use thread detection instead of SLM classifier
+      // Get connection to check thread info and active task
+      const connection = await prisma.connection.findFirst({
+        where: { phoneNumber, status: 'ACTIVE' },
+      });
 
-      // Log context being sent to SLM
-      console.log(`📝 Context for SLM (${recentMessages.length} messages):`, 
-        recentMessages.map(m => `${m.from}: ${m.text.substring(0, 50)}`).join(' | '));
+      // Determine if this is a follow-up based on thread detection
+      // User replied to a thread if threadOriginatorGuid matches the triggeringMessageGuid we stored
+      const isFollowUp = threadOriginatorGuid && 
+                         connection?.triggeringMessageGuid && 
+                         threadOriginatorGuid === connection.triggeringMessageGuid;
 
-      // No context = no active task → create new task (don't rely on classifier with empty context)
-      if (recentMessages.length === 0) {
-        console.log(`No task context for ${phoneNumber}, creating new task`);
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
+      console.log(`🔗 Thread detection for ${phoneNumber}:`, {
+        threadOriginatorGuid: threadOriginatorGuid || 'none',
+        storedTriggeringGuid: connection?.triggeringMessageGuid || 'none',
+        isFollowUp,
+        hasActiveTask: !!connection?.currentTaskId
+      });
+
+      if (isFollowUp && connection?.currentTaskId) {
+        // User replied to the current task thread → append to task
+        console.log(`✅ Thread reply detected - appending to task ${connection.currentTaskId}`);
+        await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
-        // Classify message using SLM
-        const classification = await classifyMessage(messageText, recentMessages);
-
-        console.log(`Classification for ${phoneNumber}:`, classification);
-
-        if (classification.type === TaskClassification.NEW_TASK) {
-          // Clear previous task ID only (keep currentTaskStartedAt to preserve conversation history)
-          // This allows the new task to see recent messages for context while starting fresh
+        // Not a thread reply or no active task → create new task
+        if (connection?.currentTaskId) {
           await prisma.connection.update({
             where: { phoneNumber },
-            data: { 
-              currentTaskId: null,
-              // Keep currentTaskStartedAt - don't reset it
-              // This preserves conversation history across task boundaries
-            } as any,
+            data: { currentTaskId: null },
           });
-          console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK detected, keeping conversation history)`);
-          
-          // Create new Manus task, preserving the conversation history start time
-          await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true, messageGuid);
-        } else {
-          // Follow-up to existing task
-          await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
+          console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK - not a thread reply)`);
         }
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     }
 
@@ -426,132 +424,7 @@ async function uploadFileToManus(fileBuffer: Buffer, filename: string, manusApiK
   return fileRecord.id;
 }
 
-// Get recent messages for context (only from current task)
-async function getRecentMessages(phoneNumber: string, limit: number = 20, excludeMessageGuid?: string): Promise<any[]> {
-  try {
-    // Get connection to check if there's an active task
-    const connection = await prisma.connection.findFirst({
-      where: { phoneNumber, status: 'ACTIVE' },
-    }) as any;
-
-    // If no active task or no start time, return empty context (indicates NEW_TASK)
-    if (!connection?.currentTaskId || !connection?.currentTaskStartedAt) {
-      console.log(`No active task context for ${phoneNumber}, returning empty context`);
-      return [];
-    }
-
-    const { SDK } = await import('@photon-ai/advanced-imessage-kit');
-    const sdk = SDK({
-      serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
-      apiKey: process.env.IMESSAGE_API_KEY,
-      logLevel: 'error',
-    });
-
-    await sdk.connect();
-
-    const chatGuid = `any;-;${phoneNumber}`;
-    
-    // Small delay to ensure the incoming message has been saved to iMessage database
-    // iMessage may take a moment to persist messages
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const messages = await sdk.messages.getMessages({
-      chatGuid,
-      limit,
-      sort: 'DESC',
-    });
-
-    await sdk.close();
-
-    // Log ALL messages to debug why user messages are missing
-    console.log(`📋 All ${messages.length} messages from iMessage:`, messages.slice(0, 5).map(m => ({
-      guid: m.guid?.substring(0, 8),
-      isFromMe: m.isFromMe,
-      text: m.text?.substring(0, 30),
-      dateCreated: new Date(m.dateCreated).toISOString(),
-    })));
-
-    // Get only MANUAL message GUIDs (sent via MCP tool) to filter out
-    // Keep WEBHOOK messages (task responses) in context for SLM classifier
-    const manualMessageGuids = await prisma.manusMessage.findMany({
-      where: { 
-        phoneNumber,
-        messageType: 'MANUAL' // Only exclude manual/MCP messages
-      },
-      select: { messageGuid: true },
-    });
-
-    const guidSet = new Set(manualMessageGuids.map((m) => m.messageGuid));
-
-    // Filter messages:
-    // 1. Only messages after current task started (with 5 second buffer for timing differences)
-    // 2. Exclude MANUAL messages
-    // 3. Keep user messages and webhook responses
-    const taskStartTime = connection.currentTaskStartedAt!.getTime();
-    const bufferMs = 5000; // 5 second buffer to account for timing differences between our DB and iMessage
-    
-    console.log(`⏰ Task started at: ${connection.currentTaskStartedAt!.toISOString()} (${taskStartTime})`);
-    
-    const filteredRawMessages = messages.filter((msg) => {
-      const messageTime = new Date(msg.dateCreated).getTime();
-      // Allow messages up to 5 seconds before task start (timing buffer)
-      const passesTimeFilter = messageTime >= (taskStartTime - bufferMs);
-      const notManual = !guidSet.has(msg.guid);
-      const notCurrent = msg.guid !== excludeMessageGuid;
-      
-      console.log(`  Message ${msg.guid?.substring(0, 8)}: time=${passesTimeFilter}, notManual=${notManual}, notCurrent=${notCurrent}, isFromMe=${msg.isFromMe}`);
-      
-      // Exclude: messages before task start (with buffer), MANUAL messages, and the current message being processed
-      return passesTimeFilter && notManual && notCurrent;
-    });
-
-    console.log(`Fetched ${messages.length} total messages, ${filteredRawMessages.length} after filtering for current task context (started at ${connection.currentTaskStartedAt!.toISOString()})`);
-    console.log(`Excluding message GUID: ${excludeMessageGuid || 'none'}`);
-    console.log(`Filtered messages:`, filteredRawMessages.map(m => ({ 
-      guid: m.guid?.substring(0, 8), 
-      isFromMe: m.isFromMe,
-      text: m.text?.substring(0, 30) 
-    })));
-
-    const filteredMessages = filteredRawMessages.map((msg) => ({
-      from: msg.isFromMe ? 'me' : phoneNumber,
-      to: msg.isFromMe ? phoneNumber : 'me',
-      text: msg.text || '',
-      timestamp: new Date(msg.dateCreated).toISOString(),
-    }));
-    // Send context in chronological order (oldest first) so the classifier sees conversation flow
-    return filteredMessages.reverse();
-  } catch (error) {
-    console.error('Failed to fetch recent messages:', error);
-    return [];
-  }
-}
-
-// Classify message using SLM service
-async function classifyMessage(message: string, context: any[]): Promise<any> {
-  try {
-    const response = await fetch(`${SLM_SERVICE_URL}/classify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        latest_message: message,
-        last_task_context: context,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`SLM service error: ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Classification failed:', error);
-    // Default to NEW_TASK on error
-    return { type: TaskClassification.NEW_TASK, confidence: 0.5 };
-  }
-}
+// SLM classifier functions removed - now using thread detection instead
 
 // Create new Manus task
 async function createManusTask(

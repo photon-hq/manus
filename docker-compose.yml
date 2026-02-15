@@ -79,14 +79,11 @@ services:
       IMESSAGE_SERVER_URL: ${IMESSAGE_SERVER_URL}
       IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
       MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.im}
-      SLM_SERVICE_URL: http://slm-classifier:3001
       NODE_ENV: ${NODE_ENV:-development}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      slm-classifier:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('ioredis').default.prototype.ping.call(new (require('ioredis').default)(process.env.REDIS_URL)).then(() => process.exit(0)).catch(() => process.exit(1))"]
@@ -94,24 +91,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    networks:
-      - manus-network
-    restart: unless-stopped
-
-  slm-classifier:
-    build:
-      context: .
-      dockerfile: services/slm-classifier/Dockerfile
-    environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      PORT: 3001
-      NODE_ENV: ${NODE_ENV:-development}
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
     networks:
       - manus-network
     restart: unless-stopped
