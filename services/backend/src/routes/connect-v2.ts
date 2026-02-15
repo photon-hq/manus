@@ -103,7 +103,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               border: none;
               font-size: 17px;
               font-weight: 500;
-              border-radius: 8px;
+              border-radius: 100px;
               cursor: pointer;
               transition: all 0.2s;
               font-family: 'DM Sans', sans-serif;
@@ -374,7 +374,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               text-decoration: none;
               font-size: 17px;
               font-weight: 500;
-              border-radius: 8px;
+              border-radius: 100px;
               transition: all 0.2s ease;
               letter-spacing: -0.01em;
               border: none;
@@ -1028,7 +1028,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               border: none;
               font-size: 15px;
               font-weight: 500;
-              border-radius: 8px;
+              border-radius: 100px;
               cursor: pointer;
               transition: all 0.2s ease;
               letter-spacing: -0.01em;
@@ -1120,7 +1120,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               background: #34322D;
               color: #FFFFFF;
               border: none;
-              border-radius: 6px;
+              border-radius: 100px;
               cursor: pointer;
               font-size: 12px;
               font-weight: 500;
@@ -1147,7 +1147,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               text-decoration: none;
               font-size: 15px;
               font-weight: 500;
-              border-radius: 8px;
+              border-radius: 100px;
               transition: all 0.2s ease;
               letter-spacing: -0.01em;
               border: none;
