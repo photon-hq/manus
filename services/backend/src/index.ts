@@ -9,6 +9,8 @@ import { imessageWebhookRoutes } from './routes/imessage-webhook';
 
 // UI Design Version
 const UI_DESIGN_VERSION = process.env.UI_DESIGN_VERSION || 'v1';
+console.log('🎨 UI_DESIGN_VERSION from env:', process.env.UI_DESIGN_VERSION);
+console.log('🎨 Using UI design version:', UI_DESIGN_VERSION);
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = '0.0.0.0';
@@ -285,8 +287,10 @@ process.on('SIGTERM', () => closeGracefully('SIGTERM'));
 const start = async () => {
   try {
     // Log UI design version and load connect routes
+    console.log('🎨 Loading connect routes for version:', UI_DESIGN_VERSION);
     fastify.log.info(`🎨 Using UI design version: ${UI_DESIGN_VERSION}`);
     const connectRoutes = await loadConnectRoutes();
+    console.log('✅ Connect routes loaded successfully');
     await fastify.register(connectRoutes, { prefix: '/connect' });
     
     // Initialize iMessage connection and event listener
