@@ -944,18 +944,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               if (glassButton) {
                 // Enhanced click handler for in-app browsers (like X/Twitter)
                 glassButton.addEventListener('click', function(e) {
+                  e.preventDefault();
                   const href = this.getAttribute('href');
                   
-                  // If in-app browser, prevent default and show instructions
+                  // If in-app browser, redirect to /open endpoint
                   if (browserInfo.isInApp) {
-                    e.preventDefault();
-                    manualInstructions.style.display = 'block';
-                    // Scroll to instructions
-                    manualInstructions.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    window.location.href = '/connect/open';
                     return false;
                   }
                   
-                  // Normal browser - try to open SMS
+                  // Normal browser - try to open SMS directly
                   try {
                     window.location.href = href;
                   } catch (err) {
@@ -1002,6 +1000,156 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             });
           </script>
         </body>
+      </html>
+    `);
+  });
+
+  // GET /open - Redirect endpoint for in-app browsers to Safari
+  fastify.get('/open', async (request, reply) => {
+    const raw = process.env.PHOTON_HANDLE ?? '';
+    const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
+    const smsLink = `sms:${photonHandle}?&body=Hey%20Manus!%20Please%20connect%20my%20iMessage`;
+    const currentUrl = `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/open`;
+    
+    return reply.type('text/html').send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Opening Messages...</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+          }
+          
+          .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 400px;
+          }
+          
+          .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+          
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          
+          h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+          }
+          
+          p {
+            font-size: 16px;
+            opacity: 0.9;
+            line-height: 1.5;
+          }
+          
+          .hint {
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.7;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="spinner"></div>
+          <h2 id="status">Opening in Safari...</h2>
+          <p id="message">Tap "Open" when prompted</p>
+          <p class="hint" id="hint"></p>
+        </div>
+        
+        <script>
+          function isSafari() {
+            const ua = navigator.userAgent;
+            // Check if it's Safari but not Chrome, Firefox, Edge, etc.
+            return /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS/.test(ua);
+          }
+          
+          function isInAppBrowser() {
+            const ua = navigator.userAgent;
+            return /Twitter|FBAN|FBAV|Instagram|LinkedInApp|TikTok|Line/.test(ua);
+          }
+          
+          function getOS() {
+            const ua = navigator.userAgent;
+            if (/android/i.test(ua)) return 'android';
+            if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) return 'ios';
+            return 'other';
+          }
+          
+          // Execute redirect logic
+          const os = getOS();
+          const inApp = isInAppBrowser();
+          const safari = isSafari();
+          
+          if (safari && !inApp) {
+            // We're in Safari - trigger SMS immediately
+            document.getElementById('status').textContent = 'Opening Messages...';
+            document.getElementById('message').textContent = 'Redirecting to Messages app';
+            
+            setTimeout(function() {
+              window.location.href = '${smsLink}';
+            }, 500);
+          } else if (inApp) {
+            // We're in in-app browser - redirect to Safari
+            if (os === 'ios') {
+              // iOS: Use x-safari-https scheme
+              const safariUrl = 'x-safari-https://' + '${currentUrl}'.replace(/^https?:\\/\\//, '');
+              document.getElementById('hint').textContent = 'This will open Safari on your device';
+              
+              setTimeout(function() {
+                window.location.href = safariUrl;
+              }, 1000);
+            } else if (os === 'android') {
+              // Android: Use intent scheme
+              const intentUrl = 'intent:${currentUrl}#Intent;end';
+              document.getElementById('status').textContent = 'Opening in Browser...';
+              document.getElementById('message').textContent = 'Tap "Open" when prompted';
+              
+              setTimeout(function() {
+                window.location.href = intentUrl;
+              }, 1000);
+            } else {
+              // Unknown OS - show manual instructions
+              document.getElementById('status').textContent = 'Manual Step Required';
+              document.getElementById('message').textContent = 'Please open this page in your default browser';
+              document.querySelector('.spinner').style.display = 'none';
+            }
+          } else {
+            // Regular browser but not Safari - try SMS anyway
+            document.getElementById('status').textContent = 'Opening Messages...';
+            document.getElementById('message').textContent = 'Redirecting to Messages app';
+            
+            setTimeout(function() {
+              window.location.href = '${smsLink}';
+            }, 500);
+          }
+        </script>
+      </body>
       </html>
     `);
   });
