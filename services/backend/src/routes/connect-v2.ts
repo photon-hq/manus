@@ -26,6 +26,41 @@ const RevokeSchema = z.object({
   photonApiKey: z.string().regex(/^ph_(live|test)_[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{24}$/),
 });
 
+/**
+ * Send onboarding messages to teach users about reply threads
+ * Called after MCP config is sent, with a delay to give users time to paste the config
+ */
+async function sendOnboardingMessages(phoneNumber: string, delayMs: number = 7000) {
+  const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+  
+  // Wait for user to have time to paste the config and view the visual guide
+  await new Promise(resolve => setTimeout(resolve, delayMs));
+  
+  // Message 1: Introduction
+  await sendTypingIndicator(phoneNumber, 800);
+  await sendIMessage(phoneNumber, "Here's how to use:");
+  
+  // Message 2: Reply threads explanation
+  await sendTypingIndicator(phoneNumber, 1200);
+  await sendIMessage(phoneNumber, "Use reply threads to keep working on the same thing.");
+  
+  // Message 3: New message explanation
+  await sendTypingIndicator(phoneNumber, 1500);
+  await sendIMessage(phoneNumber, "If you want to start something new, just send a regular message (not a reply).");
+  
+  // Message 4: Email metaphor
+  await sendTypingIndicator(phoneNumber, 900);
+  await sendIMessage(phoneNumber, "Think of it as email threads.");
+  
+  // Message 5: Revoke instruction
+  await sendTypingIndicator(phoneNumber, 1000);
+  await sendIMessage(phoneNumber, "(Use \"revoke\" to revoke your connection)");
+  
+  // Message 6: Closing
+  await sendTypingIndicator(phoneNumber, 600);
+  await sendIMessage(phoneNumber, "Enjoy!");
+}
+
 export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /revoke - Revoke connection page (Manus Brand Design)
   fastify.get('/revoke', async (request, reply) => {
@@ -688,7 +723,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Send iMessage with MCP config and typing indicators
       try {
-        const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+        const { sendIMessage, sendTypingIndicator, sendIMessageWithAttachments } = await import('../lib/imessage.js');
+        const path = await import('path');
+        const fs = await import('fs/promises');
         const configText = JSON.stringify(mcpConfig, null, 2);
         
         // [1 sec typing indicator] "All set!"
@@ -704,9 +741,49 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         await sendTypingIndicator(connection.phoneNumber, 1000);
         await sendIMessage(connection.phoneNumber, configText, { disableRichLink: true });
         
-        // [1 sec typing indicator] Send link to where to paste the config
+        // [1 sec typing indicator] Send instruction text
         await sendTypingIndicator(connection.phoneNumber, 1000);
-        await sendIMessage(connection.phoneNumber, "Paste it here:\n\nhttps://manus.im/app#settings/connectors/mcp-server");
+        await sendIMessage(connection.phoneNumber, "Add custom MCP server > Import by JSON");
+        
+        // [1 sec typing indicator] Send screenshot showing the UI
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        try {
+          const imagePath = path.join(process.cwd(), 'assets', 'image.png');
+          // Read the file and create a temporary URL (we'll use the SDK's local file support)
+          const imageBuffer = await fs.readFile(imagePath);
+          const tempDir = (await import('os')).tmpdir();
+          const tempImagePath = path.join(tempDir, `mcp-guide-${Date.now()}.png`);
+          await fs.writeFile(tempImagePath, imageBuffer);
+          
+          // Send using the SDK's local file support
+          const client = await (await import('../lib/imessage.js')).getIMessageSDK();
+          const chatGuid = `any;-;${connection.phoneNumber}`;
+          await client.attachments.sendAttachment({
+            chatGuid,
+            filePath: tempImagePath,
+            fileName: 'mcp-import-guide.png',
+          });
+          
+          // Clean up temp file
+          await fs.unlink(tempImagePath);
+        } catch (imageError) {
+          fastify.log.error({ error: imageError }, 'Failed to send image, continuing without it');
+          // Continue without image - not critical
+        }
+        
+        // [1 sec typing indicator] Send link introduction
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        await sendIMessage(connection.phoneNumber, "Here's the link:");
+        
+        // [1 sec typing indicator] Send the actual link
+        await sendTypingIndicator(connection.phoneNumber, 1000);
+        await sendIMessage(connection.phoneNumber, "https://manus.im/app#settings/connectors/mcp-server");
+        
+        // Send onboarding messages after delay (non-blocking)
+        sendOnboardingMessages(connection.phoneNumber, 7000).catch(error => {
+          fastify.log.error({ error }, 'Failed to send onboarding messages');
+          // Non-critical - don't fail the connection
+        });
       } catch (error) {
         fastify.log.error({ error }, 'Failed to send iMessage');
         // Continue anyway - user sees config on web page
