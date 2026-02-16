@@ -322,7 +322,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
-    const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
+    const smsLink = `sms:${photonHandle}?&body=Hey%20Manus!%20Please%20connect%20my%20iMessage`;
     const metaPixel = getMetaPixelCode();
     
     return reply.type('text/html').send(`
@@ -600,6 +600,42 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
             </div>
           </div>
+          
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              const connectButton = document.querySelector('.connect-btn');
+              
+              if (connectButton) {
+                // Enhanced click handler for in-app browsers (like X/Twitter)
+                connectButton.addEventListener('click', function(e) {
+                  const href = this.getAttribute('href');
+                  
+                  // Try multiple approaches for better compatibility
+                  try {
+                    // Method 1: Direct window.location (works in most browsers)
+                    window.location.href = href;
+                    
+                    // Method 2: Create and click a temporary link (fallback)
+                    setTimeout(function() {
+                      const tempLink = document.createElement('a');
+                      tempLink.href = href;
+                      tempLink.style.display = 'none';
+                      document.body.appendChild(tempLink);
+                      tempLink.click();
+                      document.body.removeChild(tempLink);
+                    }, 100);
+                    
+                    // Method 3: Try to open in new window (last resort)
+                    setTimeout(function() {
+                      window.open(href, '_blank');
+                    }, 500);
+                  } catch (err) {
+                    console.error('Failed to open SMS link:', err);
+                  }
+                });
+              }
+            });
+          </script>
         </body>
       </html>
     `);
