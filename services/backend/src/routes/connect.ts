@@ -758,13 +758,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </svg>
           
           <!-- In-App Browser Warning (hidden by default) -->
-          <div id="inapp-warning" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: rgba(255, 193, 7, 0.95); color: #000; padding: 12px 20px; text-align: center; z-index: 10000; font-size: 14px; line-height: 1.5;">
+          <div id="inapp-warning" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: rgba(255, 193, 7, 0.95); color: #000; padding: 16px 20px; text-align: center; z-index: 10000; font-size: 14px; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
             <div style="max-width: 600px; margin: 0 auto;">
-              <strong>⚠️ In-App Browser Detected</strong><br>
-              <span id="inapp-message">Please open this page in your default browser (Safari/Chrome) for the SMS link to work.</span>
-              <button id="open-browser-btn" style="display: inline-block; margin: 8px auto 0; padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500;">
-                Open in Browser
-              </button>
+              <strong style="font-size: 16px;">⚠️ In-App Browser Detected</strong><br>
+              <span id="inapp-message" style="display: block; margin: 8px 0;">You're viewing this in X/Twitter. SMS links don't work here.</span>
+              <div style="margin-top: 12px;">
+                <button id="copy-url-btn" style="display: inline-block; margin: 4px; padding: 10px 20px; background: #000; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                  📋 Copy Link
+                </button>
+                <button id="open-browser-btn" style="display: inline-block; margin: 4px; padding: 10px 20px; background: #000; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                  🌐 Open in Safari
+                </button>
+              </div>
+              <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                Tap "•••" menu → "Open in Safari" or use Copy Link button
+              </div>
             </div>
           </div>
           
@@ -781,13 +789,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </div>
             </a>
             
-            <div id="manual-instructions" style="display: none; margin-top: 20px; padding: 20px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; font-size: 14px; line-height: 1.6; max-width: 400px;">
-              <p style="margin: 0 0 10px 0; font-weight: 500;">📱 Manual Steps:</p>
-              <ol style="margin: 0; padding-left: 20px; text-align: left;">
-                <li>Tap the "•••" or share button in your browser</li>
-                <li>Select "Open in Safari" or "Open in Chrome"</li>
-                <li>Then tap "Connect to Manus" again</li>
+            <div id="manual-instructions" style="display: none; margin-top: 20px; padding: 24px; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border-radius: 16px; font-size: 15px; line-height: 1.8; max-width: 420px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+              <p style="margin: 0 0 16px 0; font-weight: 600; font-size: 16px; text-align: center;">📱 How to Open in Safari</p>
+              <ol style="margin: 0; padding-left: 24px; text-align: left;">
+                <li style="margin-bottom: 12px;">Tap the <strong>"•••"</strong> menu button (top right or bottom)</li>
+                <li style="margin-bottom: 12px;">Select <strong>"Open in Safari"</strong> or <strong>"Open in Browser"</strong></li>
+                <li style="margin-bottom: 12px;">Wait for Safari to open this page</li>
+                <li>Tap <strong>"Connect to Manus"</strong> again to open Messages</li>
               </ol>
+              <div style="margin-top: 16px; padding: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; font-size: 13px; text-align: center;">
+                <strong>Alternative:</strong> Copy the link above and paste it into Safari manually
+              </div>
             </div>
           </div>
           
@@ -853,6 +865,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               const inappWarning = document.getElementById('inapp-warning');
               const inappMessage = document.getElementById('inapp-message');
               const openBrowserBtn = document.getElementById('open-browser-btn');
+              const copyUrlBtn = document.getElementById('copy-url-btn');
               const manualInstructions = document.getElementById('manual-instructions');
               const browserInfo = detectInAppBrowser();
               const os = getOS();
@@ -861,7 +874,54 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               // Show warning if in-app browser detected
               if (browserInfo.isInApp) {
                 inappWarning.style.display = 'block';
-                inappMessage.textContent = 'You are viewing this in ' + browserInfo.platform + '. Please open in your default browser for SMS to work.';
+                inappMessage.textContent = "You're viewing this in " + browserInfo.platform + ". SMS links don't work here.";
+                
+                // Always show manual instructions when in-app browser is detected
+                manualInstructions.style.display = 'block';
+                
+                // Copy URL button
+                if (copyUrlBtn) {
+                  copyUrlBtn.onclick = function() {
+                    // Try modern clipboard API first
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                      navigator.clipboard.writeText(currentUrl).then(function() {
+                        copyUrlBtn.textContent = '✅ Copied!';
+                        setTimeout(function() {
+                          copyUrlBtn.textContent = '📋 Copy Link';
+                        }, 2000);
+                      }).catch(function() {
+                        // Fallback for older browsers
+                        fallbackCopyTextToClipboard(currentUrl);
+                      });
+                    } else {
+                      // Fallback for older browsers
+                      fallbackCopyTextToClipboard(currentUrl);
+                    }
+                  };
+                }
+                
+                // Fallback copy function
+                function fallbackCopyTextToClipboard(text) {
+                  const textArea = document.createElement('textarea');
+                  textArea.value = text;
+                  textArea.style.position = 'fixed';
+                  textArea.style.top = '0';
+                  textArea.style.left = '0';
+                  textArea.style.opacity = '0';
+                  document.body.appendChild(textArea);
+                  textArea.focus();
+                  textArea.select();
+                  try {
+                    document.execCommand('copy');
+                    copyUrlBtn.textContent = '✅ Copied!';
+                    setTimeout(function() {
+                      copyUrlBtn.textContent = '📋 Copy Link';
+                    }, 2000);
+                  } catch (err) {
+                    alert('Copy failed. Please manually copy the URL from your browser address bar.');
+                  }
+                  document.body.removeChild(textArea);
+                }
                 
                 // Set up escape button
                 if (os === 'android') {
@@ -870,17 +930,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                     window.location.href = escapeUrl;
                   };
                 } else if (os === 'ios') {
+                  // For iOS, try the shortcuts trick but don't rely on it
                   const escapeUrl = getIOSEscapeUrl(currentUrl);
                   openBrowserBtn.onclick = function() {
+                    // Try shortcuts trick
                     window.location.href = escapeUrl;
-                    // Show manual instructions after a delay if escape didn't work
-                    setTimeout(function() {
-                      manualInstructions.style.display = 'block';
-                    }, 2000);
                   };
                 } else {
                   openBrowserBtn.style.display = 'none';
-                  manualInstructions.style.display = 'block';
                 }
               }
               
@@ -893,7 +950,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   if (browserInfo.isInApp) {
                     e.preventDefault();
                     manualInstructions.style.display = 'block';
-                    alert('Please open this page in Safari or Chrome first. Tap the "Open in Browser" button above.');
+                    // Scroll to instructions
+                    manualInstructions.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     return false;
                   }
                   
