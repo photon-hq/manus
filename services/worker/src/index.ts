@@ -178,10 +178,11 @@ export async function handleIncomingMessage(
       data: {
         phoneNumber,
         messageGuid,
+        threadOriginatorGuid,
         messageText: message,
         attachments: attachments ? JSON.parse(JSON.stringify(attachments)) : null,
         status: QueueStatus.PENDING,
-      },
+      } as any,
     });
     console.log(`Created new message queue entry for ${phoneNumber}`);
   }
@@ -218,7 +219,7 @@ async function scheduleProcessing(phoneNumber: string) {
       messageId: msg.id,
       messageText: msg.messageText,
       messageGuid: msg.messageGuid,
-      threadOriginatorGuid: (msg as any).threadOriginatorGuid, // Pass thread info
+      threadOriginatorGuid: (msg as any).threadOriginatorGuid,
       messageTimestamp: msg.createdAt, // Pass as Date object
       attachments: msg.attachments,
     });
