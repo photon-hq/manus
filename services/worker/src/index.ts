@@ -178,7 +178,6 @@ export async function handleIncomingMessage(
       data: {
         phoneNumber,
         messageGuid,
-        threadOriginatorGuid,
         messageText: message,
         attachments: attachments ? JSON.parse(JSON.stringify(attachments)) : null,
         status: QueueStatus.PENDING,
@@ -287,20 +286,13 @@ async function processMessage(phoneNumber: string, data: any) {
       let taskIdForThread: string | null = null;
 
       if (threadOriginatorGuid) {
-        // Search all task threads to find which one contains this message GUID
-        // Get all task thread keys for this user
-        const pattern = `task:thread:*`;
-        const allThreadKeys = await redis.keys(pattern);
+        // Direct lookup: msg:task:{messageGuid} → taskId
+        const msgTaskKey = `msg:task:${threadOriginatorGuid}`;
+        taskIdForThread = await redis.get(msgTaskKey);
         
-        // Check each thread to see if it contains the threadOriginatorGuid
-        for (const threadKey of allThreadKeys) {
-          const isMember = await redis.sismember(threadKey, threadOriginatorGuid);
-          if (isMember) {
-            // Extract task ID from key: task:thread:{taskId}
-            taskIdForThread = threadKey.replace('task:thread:', '');
-            isFollowUp = true;
-            break;
-          }
+        if (taskIdForThread) {
+          isFollowUp = true;
+          console.log(`✅ Found thread match via direct lookup: ${threadOriginatorGuid} → ${taskIdForThread}`);
         }
       }
 
@@ -545,13 +537,11 @@ async function createManusTask(
     await redis.set(taskMappingKey, phoneNumber, 'EX', TASK_MAPPING_TTL);
     console.log(`✅ Stored task mapping in Redis: ${data.task_id} → ${phoneNumber}`);
 
-    // Store the triggering message GUID in the task's thread set
-    // This allows us to detect when user replies to ANY message in this task's thread
+    // Store message GUID → task ID mapping for instant thread detection
     if (triggeringMessageGuid) {
-      const threadKey = `task:thread:${data.task_id}`;
-      await redis.sadd(threadKey, triggeringMessageGuid);
-      await redis.expire(threadKey, TASK_MAPPING_TTL);
-      console.log(`✅ Added message GUID to task thread: ${triggeringMessageGuid} → ${data.task_id}`);
+      const msgTaskKey = `msg:task:${triggeringMessageGuid}`;
+      await redis.set(msgTaskKey, data.task_id, 'EX', TASK_MAPPING_TTL);
+      console.log(`✅ Stored message→task mapping: ${triggeringMessageGuid} → ${data.task_id}`);
     }
 
     // Store reaction info so we can remove tapback when task stops

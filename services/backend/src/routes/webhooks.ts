@@ -240,13 +240,12 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   });
   console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId}, type: ${progressType})${originalMessageGuid ? ' (threaded)' : ''}`);
 
-  // Add this message GUID to the task's thread set
+  // Store message GUID → task ID mapping for instant thread detection
   try {
-    const threadKey = `task:thread:${taskId}`;
-    await redis.sadd(threadKey, messageGuid);
-    await redis.expire(threadKey, 86400); // 24 hours
+    const msgTaskKey = `msg:task:${messageGuid}`;
+    await redis.set(msgTaskKey, taskId, 'EX', 86400); // 24 hours
   } catch (error) {
-    console.warn('Failed to add message to thread set:', error);
+    console.warn('Failed to store message→task mapping:', error);
   }
 
   // Record in database
@@ -370,13 +369,12 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     messageGuids.push(messageGuid);
     console.log(`  ✅ Sent chunk ${i + 1}/${chunks.length} (guid: ${messageGuid})${originalMessageGuid ? ' (threaded)' : ''}`);
     
-    // Add this message GUID to the task's thread set
+    // Store message GUID → task ID mapping for instant thread detection
     try {
-      const threadKey = `task:thread:${taskId}`;
-      await redis.sadd(threadKey, messageGuid);
-      await redis.expire(threadKey, 86400); // 24 hours
+      const msgTaskKey = `msg:task:${messageGuid}`;
+      await redis.set(msgTaskKey, taskId, 'EX', 86400); // 24 hours
     } catch (error) {
-      console.warn('Failed to add message to thread set:', error);
+      console.warn('Failed to store message→task mapping:', error);
     }
     
     // Small delay between messages (except after last one)
@@ -411,15 +409,14 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
       messageGuids.push(...attachmentGuids);
       console.log(`✅ Sent ${attachmentGuids.length} attachment(s) successfully${originalMessageGuid ? ' (threaded)' : ''}`);
       
-      // Add attachment message GUIDs to the task's thread set
+      // Store message GUID → task ID mappings for all attachments
       try {
-        const threadKey = `task:thread:${taskId}`;
         for (const guid of attachmentGuids) {
-          await redis.sadd(threadKey, guid);
+          const msgTaskKey = `msg:task:${guid}`;
+          await redis.set(msgTaskKey, taskId, 'EX', 86400); // 24 hours
         }
-        await redis.expire(threadKey, 86400); // 24 hours
       } catch (error) {
-        console.warn('Failed to add attachment messages to thread set:', error);
+        console.warn('Failed to store attachment message→task mappings:', error);
       }
     } catch (error) {
       // Fallback: If attachment sending fails, send download links as text
@@ -439,13 +436,12 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
       messageGuids.push(fallbackGuid);
       console.log(`✅ Sent attachment links as fallback${originalMessageGuid ? ' (threaded)' : ''}`);
       
-      // Add fallback message GUID to the task's thread set
+      // Store message GUID → task ID mapping for fallback message
       try {
-        const threadKey = `task:thread:${taskId}`;
-        await redis.sadd(threadKey, fallbackGuid);
-        await redis.expire(threadKey, 86400); // 24 hours
+        const msgTaskKey = `msg:task:${fallbackGuid}`;
+        await redis.set(msgTaskKey, taskId, 'EX', 86400); // 24 hours
       } catch (error) {
-        console.warn('Failed to add fallback message to thread set:', error);
+        console.warn('Failed to store fallback message→task mapping:', error);
       }
     }
   }
