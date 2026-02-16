@@ -397,7 +397,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               font-size: 64px;
               font-weight: 400;
               color: #34322D;
-              margin-bottom: 48px;
+              margin-bottom: 24px;
               letter-spacing: -1px;
               line-height: 1.1;
             }
@@ -507,7 +507,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .logo {
                 font-size: 48px;
-                margin-bottom: 40px;
+                margin-bottom: 20px;
               }
               
               .connect-btn {
@@ -535,7 +535,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .logo {
                 font-size: 36px;
-                margin-bottom: 32px;
+                margin-bottom: 16px;
               }
               
               .connect-btn {
@@ -559,7 +559,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             @media (max-width: 375px) {
               .logo {
                 font-size: 32px;
-                margin-bottom: 28px;
+                margin-bottom: 14px;
               }
               
               .connect-btn {
