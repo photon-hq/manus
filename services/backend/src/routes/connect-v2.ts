@@ -748,7 +748,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         // [1 sec typing indicator] Send screenshot showing the UI
         await sendTypingIndicator(connection.phoneNumber, 1000);
         try {
-          const imagePath = path.join(process.cwd(), 'assets', 'image.png');
+          // Image is at workspace root, not in services/backend
+          const imagePath = path.join(process.cwd(), '..', '..', 'assets', 'image.png');
           // Read the file and create a temporary URL (we'll use the SDK's local file support)
           const imageBuffer = await fs.readFile(imagePath);
           const tempDir = (await import('os')).tmpdir();
@@ -780,7 +781,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         await sendIMessage(connection.phoneNumber, "https://manus.im/app#settings/connectors/mcp-server");
         
         // Send onboarding messages after delay (non-blocking)
-        sendOnboardingMessages(connection.phoneNumber, 7000).catch(error => {
+        sendOnboardingMessages(connection.phoneNumber, 15000).catch(error => {
           fastify.log.error({ error }, 'Failed to send onboarding messages');
           // Non-critical - don't fail the connection
         });
