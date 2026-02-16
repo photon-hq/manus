@@ -240,6 +240,15 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   });
   console.log(`✅ Progress update sent to ${phoneNumber} (task: ${taskId}, type: ${progressType})${originalMessageGuid ? ' (threaded)' : ''}`);
 
+  // Add this message GUID to the task's thread set
+  try {
+    const threadKey = `task:thread:${taskId}`;
+    await redis.sadd(threadKey, messageGuid);
+    await redis.expire(threadKey, 86400); // 24 hours
+  } catch (error) {
+    console.warn('Failed to add message to thread set:', error);
+  }
+
   // Record in database
   await prisma.manusMessage.create({
     data: {
@@ -361,6 +370,15 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     messageGuids.push(messageGuid);
     console.log(`  ✅ Sent chunk ${i + 1}/${chunks.length} (guid: ${messageGuid})${originalMessageGuid ? ' (threaded)' : ''}`);
     
+    // Add this message GUID to the task's thread set
+    try {
+      const threadKey = `task:thread:${taskId}`;
+      await redis.sadd(threadKey, messageGuid);
+      await redis.expire(threadKey, 86400); // 24 hours
+    } catch (error) {
+      console.warn('Failed to add message to thread set:', error);
+    }
+    
     // Small delay between messages (except after last one)
     if (i < chunks.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -392,6 +410,17 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
       
       messageGuids.push(...attachmentGuids);
       console.log(`✅ Sent ${attachmentGuids.length} attachment(s) successfully${originalMessageGuid ? ' (threaded)' : ''}`);
+      
+      // Add attachment message GUIDs to the task's thread set
+      try {
+        const threadKey = `task:thread:${taskId}`;
+        for (const guid of attachmentGuids) {
+          await redis.sadd(threadKey, guid);
+        }
+        await redis.expire(threadKey, 86400); // 24 hours
+      } catch (error) {
+        console.warn('Failed to add attachment messages to thread set:', error);
+      }
     } catch (error) {
       // Fallback: If attachment sending fails, send download links as text
       console.error('❌ Failed to send attachments as files, falling back to links:', error);
@@ -409,6 +438,15 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
       });
       messageGuids.push(fallbackGuid);
       console.log(`✅ Sent attachment links as fallback${originalMessageGuid ? ' (threaded)' : ''}`);
+      
+      // Add fallback message GUID to the task's thread set
+      try {
+        const threadKey = `task:thread:${taskId}`;
+        await redis.sadd(threadKey, fallbackGuid);
+        await redis.expire(threadKey, 86400); // 24 hours
+      } catch (error) {
+        console.warn('Failed to add fallback message to thread set:', error);
+      }
     }
   }
   

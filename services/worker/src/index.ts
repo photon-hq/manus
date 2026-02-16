@@ -276,28 +276,38 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
-      // Regular message with text - use thread detection instead of SLM classifier
+      // Regular message with text - use thread detection
       // Get connection to check thread info and active task
       const connection = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
-      // Determine if this is a follow-up based on thread detection
-      // User replied to a thread if threadOriginatorGuid matches the triggeringMessageGuid we stored
-      const isFollowUp = threadOriginatorGuid && 
-                         connection?.triggeringMessageGuid && 
-                         threadOriginatorGuid === connection.triggeringMessageGuid;
+      // Check if user is replying to ANY message in the current task's thread
+      let isFollowUp = false;
+      let taskIdForThread: string | null = null;
+
+      if (threadOriginatorGuid && connection?.currentTaskId) {
+        // Check if this threadOriginatorGuid belongs to the current task's thread
+        const threadKey = `task:thread:${connection.currentTaskId}`;
+        const threadGuids = await redis.smembers(threadKey);
+        
+        if (threadGuids.includes(threadOriginatorGuid)) {
+          isFollowUp = true;
+          taskIdForThread = connection.currentTaskId;
+        }
+      }
 
       console.log(`🔗 Thread detection for ${phoneNumber}:`, {
         threadOriginatorGuid: threadOriginatorGuid || 'none',
-        storedTriggeringGuid: connection?.triggeringMessageGuid || 'none',
+        currentTaskId: connection?.currentTaskId || 'none',
         isFollowUp,
+        taskIdForThread,
         hasActiveTask: !!connection?.currentTaskId
       });
 
-      if (isFollowUp && connection?.currentTaskId) {
+      if (isFollowUp && taskIdForThread) {
         // User replied to the current task thread → append to task
-        console.log(`✅ Thread reply detected - appending to task ${connection.currentTaskId}`);
+        console.log(`✅ Thread reply detected - appending to task ${taskIdForThread}`);
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
         // Not a thread reply or no active task → create new task
@@ -520,6 +530,15 @@ async function createManusTask(
     const taskMappingKey = `task:mapping:${data.task_id}`;
     await redis.set(taskMappingKey, phoneNumber, 'EX', TASK_MAPPING_TTL);
     console.log(`✅ Stored task mapping in Redis: ${data.task_id} → ${phoneNumber}`);
+
+    // Store the triggering message GUID in the task's thread set
+    // This allows us to detect when user replies to ANY message in this task's thread
+    if (triggeringMessageGuid) {
+      const threadKey = `task:thread:${data.task_id}`;
+      await redis.sadd(threadKey, triggeringMessageGuid);
+      await redis.expire(threadKey, TASK_MAPPING_TTL);
+      console.log(`✅ Added message GUID to task thread: ${triggeringMessageGuid} → ${data.task_id}`);
+    }
 
     // Store reaction info so we can remove tapback when task stops
     if (triggeringMessageGuid) {
