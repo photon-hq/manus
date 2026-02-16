@@ -7,6 +7,7 @@ import {
   normalizePhoneNumber,
 } from '@imessage-mcp/shared';
 import { z } from 'zod';
+import { getMetaPixelCode } from '../lib/meta-pixel.js';
 
 const StartSchema = z.object({
   phoneNumber: z.string(),
@@ -64,6 +65,7 @@ async function sendOnboardingMessages(phoneNumber: string, delayMs: number = 700
 export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /revoke - Revoke connection page
   fastify.get('/revoke', async (request, reply) => {
+    const metaPixel = getMetaPixelCode();
     return reply.type('text/html').send(`
       <!DOCTYPE html>
       <html>
@@ -251,6 +253,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
             }
           </style>
+          ${metaPixel}
         </head>
         <body>
           <!-- Theme selector -->
@@ -380,6 +383,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
     const smsLink = `sms:${photonHandle}&body=Hey Manus! Please connect my iMessage`;
+    const metaPixel = getMetaPixelCode();
     
     return reply.type('text/html').send(`
       <!DOCTYPE html>
@@ -747,6 +751,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
             }
           </style>
+          ${metaPixel}
         </head>
         <body>
           <!-- SVG Filter for Glass Distortion -->
@@ -1194,6 +1199,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /connect/:connectionId - Token input page
   fastify.get('/:connectionId', async (request, reply) => {
     const { connectionId } = request.params as { connectionId: string };
+    const metaPixel = getMetaPixelCode();
 
     const connection = await prisma.connection.findUnique({
       where: { connectionId },
@@ -1907,6 +1913,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
             }
           </style>
+          ${metaPixel}
         </head>
         <body>
           <!-- SVG Filter for Glass Distortion -->

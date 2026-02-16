@@ -46,6 +46,7 @@ services:
       CONTACT_EMAIL: ${CONTACT_EMAIL:-manus.photon.codes}
       ALWAYS_SHARE_CONTACT_CARD: ${ALWAYS_SHARE_CONTACT_CARD:-false}
       ALLOW_SELF_MESSAGES: ${ALLOW_SELF_MESSAGES:-false}
+      META_PIXEL_ID: ${META_PIXEL_ID:-}
       PORT: 3000
       NODE_ENV: ${NODE_ENV:-development}
       RESET_DATABASE: ${RESET_DATABASE:-false}
