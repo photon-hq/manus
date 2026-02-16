@@ -757,11 +757,22 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             </filter>
           </svg>
           
+          <!-- In-App Browser Warning (hidden by default) -->
+          <div id="inapp-warning" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: rgba(255, 193, 7, 0.95); color: #000; padding: 12px 20px; text-align: center; z-index: 10000; font-size: 14px; line-height: 1.5;">
+            <div style="max-width: 600px; margin: 0 auto;">
+              <strong>⚠️ In-App Browser Detected</strong><br>
+              <span id="inapp-message">Please open this page in your default browser (Safari/Chrome) for the SMS link to work.</span>
+              <button id="open-browser-btn" style="display: inline-block; margin: 8px auto 0; padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500;">
+                Open in Browser
+              </button>
+            </div>
+          </div>
+          
           <!-- Content -->
           <div class="content">
             <div class="logo">manus, in iMessages</div>
             
-            <a href="${smsLink}" class="connect-btn">
+            <a href="${smsLink}" class="connect-btn" id="connect-btn">
               <div class="glass-filter"></div>
               <div class="glass-overlay"></div>
               <div class="glass-specular"></div>
@@ -769,6 +780,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 <span>Connect to Manus</span>
               </div>
             </a>
+            
+            <div id="manual-instructions" style="display: none; margin-top: 20px; padding: 20px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; font-size: 14px; line-height: 1.6; max-width: 400px;">
+              <p style="margin: 0 0 10px 0; font-weight: 500;">📱 Manual Steps:</p>
+              <ol style="margin: 0; padding-left: 20px; text-align: left;">
+                <li>Tap the "•••" or share button in your browser</li>
+                <li>Select "Open in Safari" or "Open in Chrome"</li>
+                <li>Then tap "Connect to Manus" again</li>
+              </ol>
+            </div>
           </div>
           
           <!-- Footer -->
@@ -786,39 +806,106 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
+            // Detect in-app browser
+            function detectInAppBrowser() {
+              const ua = navigator.userAgent || navigator.vendor || window.opera;
+              
+              // Check for common in-app browsers
+              const isTwitter = /Twitter/i.test(ua) || /FBAN|FBAV/i.test(ua);
+              const isFacebook = /FBAN|FBAV/i.test(ua);
+              const isInstagram = /Instagram/i.test(ua);
+              const isLinkedIn = /LinkedInApp/i.test(ua);
+              const isTikTok = /TikTok/i.test(ua);
+              const isLine = /Line/i.test(ua);
+              
+              return {
+                isInApp: isTwitter || isFacebook || isInstagram || isLinkedIn || isTikTok || isLine,
+                platform: isTwitter ? 'X/Twitter' : isFacebook ? 'Facebook' : isInstagram ? 'Instagram' : 
+                         isLinkedIn ? 'LinkedIn' : isTikTok ? 'TikTok' : isLine ? 'Line' : 'In-App Browser'
+              };
+            }
+            
+            // Detect OS
+            function getOS() {
+              const ua = navigator.userAgent;
+              if (/android/i.test(ua)) return 'android';
+              if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) return 'ios';
+              return 'other';
+            }
+            
+            // Generate escape URL for Android
+            function getAndroidEscapeUrl(targetUrl) {
+              return 'intent:' + targetUrl + '#Intent;end';
+            }
+            
+            // Generate escape URL for iOS (Shortcuts fallback)
+            function getIOSEscapeUrl(targetUrl) {
+              const randomUUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+              });
+              return 'shortcuts://x-callback-url/run-shortcut?name=' + randomUUID + '&x-error=' + encodeURIComponent(targetUrl);
+            }
+            
             document.addEventListener('DOMContentLoaded', function() {
-              // Liquid Glass Button Mouse Effect
-              const glassButton = document.querySelector('.connect-btn');
+              const glassButton = document.getElementById('connect-btn');
+              const inappWarning = document.getElementById('inapp-warning');
+              const inappMessage = document.getElementById('inapp-message');
+              const openBrowserBtn = document.getElementById('open-browser-btn');
+              const manualInstructions = document.getElementById('manual-instructions');
+              const browserInfo = detectInAppBrowser();
+              const os = getOS();
+              const currentUrl = window.location.href;
+              
+              // Show warning if in-app browser detected
+              if (browserInfo.isInApp) {
+                inappWarning.style.display = 'block';
+                inappMessage.textContent = 'You are viewing this in ' + browserInfo.platform + '. Please open in your default browser for SMS to work.';
+                
+                // Set up escape button
+                if (os === 'android') {
+                  const escapeUrl = getAndroidEscapeUrl(currentUrl);
+                  openBrowserBtn.onclick = function() {
+                    window.location.href = escapeUrl;
+                  };
+                } else if (os === 'ios') {
+                  const escapeUrl = getIOSEscapeUrl(currentUrl);
+                  openBrowserBtn.onclick = function() {
+                    window.location.href = escapeUrl;
+                    // Show manual instructions after a delay if escape didn't work
+                    setTimeout(function() {
+                      manualInstructions.style.display = 'block';
+                    }, 2000);
+                  };
+                } else {
+                  openBrowserBtn.style.display = 'none';
+                  manualInstructions.style.display = 'block';
+                }
+              }
               
               if (glassButton) {
                 // Enhanced click handler for in-app browsers (like X/Twitter)
                 glassButton.addEventListener('click', function(e) {
                   const href = this.getAttribute('href');
                   
-                  // Try multiple approaches for better compatibility
+                  // If in-app browser, prevent default and show instructions
+                  if (browserInfo.isInApp) {
+                    e.preventDefault();
+                    manualInstructions.style.display = 'block';
+                    alert('Please open this page in Safari or Chrome first. Tap the "Open in Browser" button above.');
+                    return false;
+                  }
+                  
+                  // Normal browser - try to open SMS
                   try {
-                    // Method 1: Direct window.location (works in most browsers)
                     window.location.href = href;
-                    
-                    // Method 2: Create and click a temporary link (fallback)
-                    setTimeout(function() {
-                      const tempLink = document.createElement('a');
-                      tempLink.href = href;
-                      tempLink.style.display = 'none';
-                      document.body.appendChild(tempLink);
-                      tempLink.click();
-                      document.body.removeChild(tempLink);
-                    }, 100);
-                    
-                    // Method 3: Try to open in new window (last resort)
-                    setTimeout(function() {
-                      window.open(href, '_blank');
-                    }, 500);
                   } catch (err) {
                     console.error('Failed to open SMS link:', err);
                   }
                 });
                 
+                // Liquid Glass Button Mouse Effect
                 glassButton.addEventListener('mousemove', function(e) {
                   const rect = this.getBoundingClientRect();
                   const x = e.clientX - rect.left;
