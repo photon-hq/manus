@@ -775,6 +775,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </div>
             </a>
             
+            <!-- Fallback UI for in-app browsers -->
+            <div id="fallback-ui" style="display: none; margin-top: 32px; max-width: 420px;">
+              <h2 style="font-family: 'Libre Baskerville', serif; font-size: 28px; font-weight: 700; color: rgba(255, 255, 255, 0.95); margin-bottom: 16px; line-height: 1.3;">Opening iMessage...</h2>
+              <p style="font-size: 16px; color: rgba(255, 255, 255, 0.8); line-height: 1.6; margin-bottom: 32px;">Sometimes, browsers or apps may block iMessage from opening iMessage directly. However, you can open it manually and text the following number to start a chat.</p>
+              <button id="copy-phone-btn" style="width: 100%; padding: 16px 24px; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; color: white; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; letter-spacing: 0.5px;">
+                ${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}
+              </button>
+            </div>
           </div>
           
           <!-- Footer -->
@@ -793,10 +801,40 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <script>
             document.addEventListener('DOMContentLoaded', function() {
-              // Liquid Glass Button Mouse Effect
               const glassButton = document.querySelector('.connect-btn');
+              const fallbackUI = document.getElementById('fallback-ui');
+              const copyPhoneBtn = document.getElementById('copy-phone-btn');
               
+              // Detect in-app browser
+              function isInAppBrowser() {
+                const ua = navigator.userAgent || navigator.vendor || window.opera;
+                return /Twitter|FBAN|FBAV|Instagram|LinkedInApp|TikTok|Line/i.test(ua);
+              }
+              
+              // Handle connect button click
               if (glassButton) {
+                glassButton.addEventListener('click', function(e) {
+                  const href = this.getAttribute('href');
+                  
+                  // If in-app browser, show fallback immediately
+                  if (isInAppBrowser()) {
+                    e.preventDefault();
+                    glassButton.style.display = 'none';
+                    fallbackUI.style.display = 'block';
+                    return;
+                  }
+                  
+                  // Try to open SMS, show fallback after delay if still on page
+                  setTimeout(function() {
+                    // If user is still on page after 1.5s, SMS likely didn't open
+                    if (document.hasFocus()) {
+                      glassButton.style.display = 'none';
+                      fallbackUI.style.display = 'block';
+                    }
+                  }, 1500);
+                });
+                
+                // Liquid Glass Button Mouse Effect
                 glassButton.addEventListener('mousemove', function(e) {
                   const rect = this.getBoundingClientRect();
                   const x = e.clientX - rect.left;
@@ -819,6 +857,51 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                     specular.style.background = 'none';
                   }
                 });
+              }
+              
+              // Copy phone number to clipboard
+              if (copyPhoneBtn) {
+                copyPhoneBtn.addEventListener('click', function() {
+                  const phoneNumber = '${photonHandle}';
+                  
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(phoneNumber).then(function() {
+                      const originalText = copyPhoneBtn.textContent;
+                      copyPhoneBtn.textContent = '✓ Copied!';
+                      copyPhoneBtn.style.background = 'rgba(52, 199, 89, 0.3)';
+                      setTimeout(function() {
+                        copyPhoneBtn.textContent = originalText;
+                        copyPhoneBtn.style.background = 'rgba(255, 255, 255, 0.15)';
+                      }, 2000);
+                    }).catch(function() {
+                      fallbackCopy(phoneNumber);
+                    });
+                  } else {
+                    fallbackCopy(phoneNumber);
+                  }
+                });
+              }
+              
+              function fallbackCopy(text) {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                  document.execCommand('copy');
+                  const originalText = copyPhoneBtn.textContent;
+                  copyPhoneBtn.textContent = '✓ Copied!';
+                  copyPhoneBtn.style.background = 'rgba(52, 199, 89, 0.3)';
+                  setTimeout(function() {
+                    copyPhoneBtn.textContent = originalText;
+                    copyPhoneBtn.style.background = 'rgba(255, 255, 255, 0.15)';
+                  }, 2000);
+                } catch (err) {
+                  alert('Please copy the number manually: ${photonHandle}');
+                }
+                document.body.removeChild(textArea);
               }
               
               // Subtle Background Parallax Effect (opposite to mouse direction)

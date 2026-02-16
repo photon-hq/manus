@@ -586,6 +586,15 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             <a href="${smsLink}" class="connect-btn" id="connect-btn">
               Connect to Manus
             </a>
+            
+            <!-- Fallback UI for in-app browsers -->
+            <div id="fallback-ui" style="display: none; margin-top: 32px; max-width: 420px;">
+              <h2 style="font-family: 'Libre Baskerville', serif; font-size: 28px; font-weight: 700; color: #34322D; margin-bottom: 16px; line-height: 1.3;">Opening iMessage...</h2>
+              <p style="font-size: 16px; color: #34322D; opacity: 0.7; line-height: 1.6; margin-bottom: 32px;">Sometimes, browsers or apps may block iMessage from opening iMessage directly. However, you can open it manually and text the following number to start a chat.</p>
+              <button id="copy-phone-btn" style="width: 100%; padding: 16px 24px; background: #FFFFFF; border: 1px solid #34322D; border-radius: 8px; color: #34322D; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; letter-spacing: 0.5px;">
+                ${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}
+              </button>
+            </div>
           </div>
           
           <!-- Footer -->
@@ -600,6 +609,97 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
             </div>
           </div>
+          
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              const connectButton = document.getElementById('connect-btn');
+              const fallbackUI = document.getElementById('fallback-ui');
+              const copyPhoneBtn = document.getElementById('copy-phone-btn');
+              
+              // Detect in-app browser
+              function isInAppBrowser() {
+                const ua = navigator.userAgent || navigator.vendor || window.opera;
+                return /Twitter|FBAN|FBAV|Instagram|LinkedInApp|TikTok|Line/i.test(ua);
+              }
+              
+              // Handle connect button click
+              if (connectButton) {
+                connectButton.addEventListener('click', function(e) {
+                  const href = this.getAttribute('href');
+                  
+                  // If in-app browser, show fallback immediately
+                  if (isInAppBrowser()) {
+                    e.preventDefault();
+                    connectButton.style.display = 'none';
+                    fallbackUI.style.display = 'block';
+                    return;
+                  }
+                  
+                  // Try to open SMS, show fallback after delay if still on page
+                  setTimeout(function() {
+                    // If user is still on page after 1.5s, SMS likely didn't open
+                    if (document.hasFocus()) {
+                      connectButton.style.display = 'none';
+                      fallbackUI.style.display = 'block';
+                    }
+                  }, 1500);
+                });
+              }
+              
+              // Copy phone number to clipboard
+              if (copyPhoneBtn) {
+                copyPhoneBtn.addEventListener('click', function() {
+                  const phoneNumber = '${photonHandle}';
+                  
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(phoneNumber).then(function() {
+                      const originalText = copyPhoneBtn.textContent;
+                      copyPhoneBtn.textContent = '✓ Copied!';
+                      copyPhoneBtn.style.background = '#34c759';
+                      copyPhoneBtn.style.color = '#FFFFFF';
+                      copyPhoneBtn.style.borderColor = '#34c759';
+                      setTimeout(function() {
+                        copyPhoneBtn.textContent = originalText;
+                        copyPhoneBtn.style.background = '#FFFFFF';
+                        copyPhoneBtn.style.color = '#34322D';
+                        copyPhoneBtn.style.borderColor = '#34322D';
+                      }, 2000);
+                    }).catch(function() {
+                      fallbackCopy(phoneNumber);
+                    });
+                  } else {
+                    fallbackCopy(phoneNumber);
+                  }
+                });
+              }
+              
+              function fallbackCopy(text) {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                  document.execCommand('copy');
+                  const originalText = copyPhoneBtn.textContent;
+                  copyPhoneBtn.textContent = '✓ Copied!';
+                  copyPhoneBtn.style.background = '#34c759';
+                  copyPhoneBtn.style.color = '#FFFFFF';
+                  copyPhoneBtn.style.borderColor = '#34c759';
+                  setTimeout(function() {
+                    copyPhoneBtn.textContent = originalText;
+                    copyPhoneBtn.style.background = '#FFFFFF';
+                    copyPhoneBtn.style.color = '#34322D';
+                    copyPhoneBtn.style.borderColor = '#34322D';
+                  }, 2000);
+                } catch (err) {
+                  alert('Please copy the number manually: ${photonHandle}');
+                }
+                document.body.removeChild(textArea);
+              }
+            });
+          </script>
         </body>
       </html>
     `);
