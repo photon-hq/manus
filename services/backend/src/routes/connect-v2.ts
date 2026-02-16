@@ -663,7 +663,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               <h2 style="font-family: 'Libre Baskerville', serif; font-size: 22px; font-weight: 700; color: #34322D; margin-bottom: 12px; line-height: 1.3;">Opening iMessage...</h2>
               <p style="font-size: 14px; color: #34322D; opacity: 0.7; line-height: 1.5; margin-bottom: 24px;">Sometimes, browsers or apps may block iMessage from opening directly. You can open it manually and text the following number.</p>
               <button id="copy-phone-btn" style="width: 100%; padding: 14px 20px; background: #FFFFFF; border: 1.5px solid #34322D; border-radius: 8px; color: #34322D; font-size: 17px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(52, 50, 45, 0.08);">
-                ${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}
+                +1 ${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}
               </button>
             </div>
           </div>
@@ -720,14 +720,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               // Copy phone number to clipboard
               if (copyPhoneBtn) {
                 const phoneNumber = '${photonHandle}';
-                const formattedPhone = '${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}';
+                const formattedPhone = '+1 ${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}';
                 
                 copyPhoneBtn.addEventListener('click', function(e) {
                   e.preventDefault();
                   
                   if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(phoneNumber).then(function() {
-                      copyPhoneBtn.textContent = '✓ Copied!';
+                      copyPhoneBtn.textContent = 'Copied!';
                       copyPhoneBtn.style.background = '#34c759';
                       copyPhoneBtn.style.color = '#FFFFFF';
                       copyPhoneBtn.style.borderColor = '#34c759';
@@ -755,7 +755,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 textArea.select();
                 try {
                   document.execCommand('copy');
-                  copyPhoneBtn.textContent = '✓ Copied!';
+                  copyPhoneBtn.textContent = 'Copied!';
                   copyPhoneBtn.style.background = '#34c759';
                   copyPhoneBtn.style.color = '#FFFFFF';
                   copyPhoneBtn.style.borderColor = '#34c759';
