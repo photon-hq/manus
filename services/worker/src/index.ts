@@ -282,18 +282,25 @@ async function processMessage(phoneNumber: string, data: any) {
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
-      // Check if user is replying to ANY message in the current task's thread
+      // Check if user is replying to ANY message in ANY task's thread
       let isFollowUp = false;
       let taskIdForThread: string | null = null;
 
-      if (threadOriginatorGuid && connection?.currentTaskId) {
-        // Check if this threadOriginatorGuid belongs to the current task's thread
-        const threadKey = `task:thread:${connection.currentTaskId}`;
-        const threadGuids = await redis.smembers(threadKey);
+      if (threadOriginatorGuid) {
+        // Search all task threads to find which one contains this message GUID
+        // Get all task thread keys for this user
+        const pattern = `task:thread:*`;
+        const allThreadKeys = await redis.keys(pattern);
         
-        if (threadGuids.includes(threadOriginatorGuid)) {
-          isFollowUp = true;
-          taskIdForThread = connection.currentTaskId;
+        // Check each thread to see if it contains the threadOriginatorGuid
+        for (const threadKey of allThreadKeys) {
+          const isMember = await redis.sismember(threadKey, threadOriginatorGuid);
+          if (isMember) {
+            // Extract task ID from key: task:thread:{taskId}
+            taskIdForThread = threadKey.replace('task:thread:', '');
+            isFollowUp = true;
+            break;
+          }
         }
       }
 
@@ -306,8 +313,15 @@ async function processMessage(phoneNumber: string, data: any) {
       });
 
       if (isFollowUp && taskIdForThread) {
-        // User replied to the current task thread → append to task
-        console.log(`✅ Thread reply detected - appending to task ${taskIdForThread}`);
+        // User replied to a task thread → switch to that task and append
+        console.log(`✅ Thread reply detected - switching to task ${taskIdForThread}`);
+        
+        // Update connection to point to the task being replied to
+        await prisma.connection.update({
+          where: { phoneNumber },
+          data: { currentTaskId: taskIdForThread },
+        });
+        
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
         // Not a thread reply or no active task → create new task
