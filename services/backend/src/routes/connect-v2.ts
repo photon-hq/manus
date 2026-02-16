@@ -783,12 +783,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     `);
   });
 
-  // GET /open - Redirect endpoint for in-app browsers to Safari
+  // GET /open - Simple SMS instruction page for in-app browsers
   fastify.get('/open', async (request, reply) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
+    const phoneDisplay = photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
     const smsLink = `sms:${photonHandle}?&body=Hey%20Manus!%20Please%20connect%20my%20iMessage`;
-    const currentUrl = `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/connect/open`;
+    const message = "Hey Manus! Please connect my iMessage";
     
     return reply.type('text/html').send(`
       <!DOCTYPE html>
@@ -796,7 +797,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Opening Messages...</title>
+        <title>Send Message to Manus</title>
         <style>
           * {
             margin: 0;
@@ -806,36 +807,33 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            padding: 20px;
           }
           
           .container {
             text-align: center;
-            padding: 40px;
-            max-width: 400px;
+            padding: 40px 30px;
+            max-width: 450px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
           }
           
-          .spinner {
-            width: 50px;
-            height: 50px;
-            margin: 0 auto 30px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+          .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
           }
           
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          
-          h2 {
-            font-size: 24px;
+          h1 {
+            font-size: 28px;
             margin-bottom: 12px;
             font-weight: 600;
           }
@@ -843,89 +841,200 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           p {
             font-size: 16px;
             opacity: 0.9;
-            line-height: 1.5;
+            line-height: 1.6;
+            margin-bottom: 30px;
           }
           
-          .hint {
-            margin-top: 20px;
-            font-size: 14px;
+          .copy-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+          }
+          
+          .copy-label {
+            font-size: 13px;
             opacity: 0.7;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          .copy-value {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            word-break: break-all;
+          }
+          
+          .copy-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 8px;
+          }
+          
+          .copy-btn:active {
+            transform: scale(0.98);
+          }
+          
+          .copy-btn.copied {
+            background: #10b981;
+            color: white;
+          }
+          
+          .steps {
+            text-align: left;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+          }
+          
+          .steps h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            text-align: center;
+          }
+          
+          .steps ol {
+            padding-left: 20px;
+            line-height: 1.8;
+          }
+          
+          .steps li {
+            margin-bottom: 8px;
+          }
+          
+          .try-link {
+            display: none;
+            margin-top: 20px;
+            padding: 14px 28px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s;
+          }
+          
+          .try-link:hover {
+            background: rgba(255, 255, 255, 0.25);
           }
         </style>
       </head>
       <body>
         <div class="container">
-          <div class="spinner"></div>
-          <h2 id="status">Opening in Safari...</h2>
-          <p id="message">Tap "Open" when prompted</p>
-          <p class="hint" id="hint"></p>
+          <div class="icon">💬</div>
+          <h1>Send a Message to Connect</h1>
+          <p>Copy the phone number and message below, then send it via iMessage</p>
+          
+          <div class="copy-section">
+            <div class="copy-label">Phone Number</div>
+            <div class="copy-value" id="phone">${phoneDisplay}</div>
+            <button class="copy-btn" id="copy-phone" onclick="copyPhone()">
+              Copy Phone Number
+            </button>
+          </div>
+          
+          <div class="copy-section">
+            <div class="copy-label">Message</div>
+            <div class="copy-value" id="message">${message}</div>
+            <button class="copy-btn" id="copy-message" onclick="copyMessage()">
+              Copy Message
+            </button>
+          </div>
+          
+          <a href="${smsLink}" class="try-link" id="try-link">
+            Or Try Opening Messages Directly
+          </a>
+          
+          <div class="steps">
+            <h3>📱 Quick Steps</h3>
+            <ol>
+              <li>Copy the phone number above</li>
+              <li>Open Messages app</li>
+              <li>Paste the number and send the message</li>
+              <li>Wait for Manus to reply with setup link</li>
+            </ol>
+          </div>
         </div>
         
         <script>
-          function isSafari() {
-            const ua = navigator.userAgent;
-            // Check if it's Safari but not Chrome, Firefox, Edge, etc.
-            return /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS/.test(ua);
+          function copyPhone() {
+            const phone = '${photonHandle}';
+            const btn = document.getElementById('copy-phone');
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(phone).then(function() {
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                  btn.textContent = 'Copy Phone Number';
+                  btn.classList.remove('copied');
+                }, 2000);
+              });
+            } else {
+              fallbackCopy(phone, btn);
+            }
           }
           
+          function copyMessage() {
+            const message = '${message}';
+            const btn = document.getElementById('copy-message');
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(message).then(function() {
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                  btn.textContent = 'Copy Message';
+                  btn.classList.remove('copied');
+                }, 2000);
+              });
+            } else {
+              fallbackCopy(message, btn);
+            }
+          }
+          
+          function fallbackCopy(text, btn) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+              document.execCommand('copy');
+              btn.textContent = '✓ Copied!';
+              btn.classList.add('copied');
+              setTimeout(function() {
+                btn.textContent = btn.id === 'copy-phone' ? 'Copy Phone Number' : 'Copy Message';
+                btn.classList.remove('copied');
+              }, 2000);
+            } catch (err) {
+              alert('Copy failed. Please select and copy manually.');
+            }
+            document.body.removeChild(textArea);
+          }
+          
+          // Show "Try opening directly" link only if not in in-app browser
           function isInAppBrowser() {
             const ua = navigator.userAgent;
             return /Twitter|FBAN|FBAV|Instagram|LinkedInApp|TikTok|Line/.test(ua);
           }
           
-          function getOS() {
-            const ua = navigator.userAgent;
-            if (/android/i.test(ua)) return 'android';
-            if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) return 'ios';
-            return 'other';
-          }
-          
-          // Execute redirect logic
-          const os = getOS();
-          const inApp = isInAppBrowser();
-          const safari = isSafari();
-          
-          if (safari && !inApp) {
-            // We're in Safari - trigger SMS immediately
-            document.getElementById('status').textContent = 'Opening Messages...';
-            document.getElementById('message').textContent = 'Redirecting to Messages app';
-            
-            setTimeout(function() {
-              window.location.href = '${smsLink}';
-            }, 500);
-          } else if (inApp) {
-            // We're in in-app browser - redirect to Safari
-            if (os === 'ios') {
-              // iOS: Use x-safari-https scheme
-              const safariUrl = 'x-safari-https://' + '${currentUrl}'.replace(/^https?:\\/\\//, '');
-              document.getElementById('hint').textContent = 'This will open Safari on your device';
-              
-              setTimeout(function() {
-                window.location.href = safariUrl;
-              }, 1000);
-            } else if (os === 'android') {
-              // Android: Use intent scheme
-              const intentUrl = 'intent:${currentUrl}#Intent;end';
-              document.getElementById('status').textContent = 'Opening in Browser...';
-              document.getElementById('message').textContent = 'Tap "Open" when prompted';
-              
-              setTimeout(function() {
-                window.location.href = intentUrl;
-              }, 1000);
-            } else {
-              // Unknown OS - show manual instructions
-              document.getElementById('status').textContent = 'Manual Step Required';
-              document.getElementById('message').textContent = 'Please open this page in your default browser';
-              document.querySelector('.spinner').style.display = 'none';
-            }
-          } else {
-            // Regular browser but not Safari - try SMS anyway
-            document.getElementById('status').textContent = 'Opening Messages...';
-            document.getElementById('message').textContent = 'Redirecting to Messages app';
-            
-            setTimeout(function() {
-              window.location.href = '${smsLink}';
-            }, 500);
+          if (!isInAppBrowser()) {
+            document.getElementById('try-link').style.display = 'inline-block';
           }
         </script>
       </body>
