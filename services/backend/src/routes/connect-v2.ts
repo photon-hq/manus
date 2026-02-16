@@ -625,13 +625,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       try {
         const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
         
-        // [2 sec typing indicator] "Sure!"
-        await sendTypingIndicator(phoneNumber, 2000);
-        await sendIMessage(phoneNumber, 'Sure!');
-        
-        // [3 sec typing indicator] "Please input your Manus token..."
-        await sendTypingIndicator(phoneNumber, 3000);
-        await sendIMessage(phoneNumber, `Please input your Manus token in the following link:\n\n${linkUrl}`);
+        // [1.5 sec typing indicator] "Sure! Please input your Manus token..."
+        await sendTypingIndicator(phoneNumber, 1500);
+        await sendIMessage(phoneNumber, `Sure! Please input your Manus token in the following link:\n\n${linkUrl}`);
       } catch (error) {
         fastify.log.error({ error }, 'Failed to send iMessage');
         // Continue anyway - user can still access the link
