@@ -478,6 +478,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               opacity: 0.8;
               font-weight: 500;
               letter-spacing: -0.01em;
+              text-decoration: underline !important;
             }
             
             .footer-link:hover {
@@ -968,6 +969,22 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     // Don't reveal if connection exists - always show the form
     // Backend validation will handle invalid connections
     const connectionExists = !!connection;
+    
+    // If connection is already ACTIVE, show the MCP config page directly
+    const isActive = connection?.status === 'ACTIVE';
+    const mcpConfig = isActive && connection?.photonApiKey ? {
+      mcpServers: {
+        'photon-imessage': {
+          type: 'streamableHttp',
+          url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/mcp/http`,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/event-stream',
+            Authorization: `Bearer ${connection.photonApiKey}`,
+          },
+        },
+      },
+    } : null;
 
     // HTML form with Manus brand design
     return reply.type('text/html').send(`
@@ -1547,6 +1564,19 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 }, 2000);
               });
             }
+            
+            // Check if connection is already active and show success page
+            (function() {
+              const isActive = ${isActive ? 'true' : 'false'};
+              const existingConfig = ${mcpConfig ? JSON.stringify(mcpConfig) : 'null'};
+              
+              if (isActive && existingConfig) {
+                mcpConfigData = existingConfig;
+                document.getElementById('config').textContent = JSON.stringify(existingConfig, null, 2);
+                document.getElementById('form-section').style.display = 'none';
+                document.getElementById('success-section').style.display = 'block';
+              }
+            })();
           </script>
         </body>
       </html>
