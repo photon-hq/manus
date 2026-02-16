@@ -250,6 +250,77 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 height: 16px;
               }
             }
+            
+            /* Fallback UI styles */
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+                transform: translateY(10px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            
+            #fallback-ui h2 {
+              font-size: 22px;
+            }
+            
+            #fallback-ui p {
+              font-size: 14px;
+            }
+            
+            #copy-phone-btn {
+              font-size: 17px;
+            }
+            
+            #copy-phone-btn:hover {
+              background: rgba(255, 255, 255, 0.25);
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            
+            #copy-phone-btn:active {
+              transform: translateY(0);
+            }
+            
+            @media (max-width: 480px) {
+              #fallback-ui {
+                margin-top: 20px;
+                max-width: 100%;
+              }
+              
+              #fallback-ui h2 {
+                font-size: 20px;
+                margin-bottom: 10px;
+              }
+              
+              #fallback-ui p {
+                font-size: 13px;
+                margin-bottom: 20px;
+              }
+              
+              #copy-phone-btn {
+                padding: 13px 18px;
+                font-size: 16px;
+              }
+            }
+            
+            @media (max-width: 360px) {
+              #fallback-ui h2 {
+                font-size: 18px;
+              }
+              
+              #fallback-ui p {
+                font-size: 12px;
+              }
+              
+              #copy-phone-btn {
+                padding: 12px 16px;
+                font-size: 15px;
+              }
+            }
           </style>
         </head>
         <body>
@@ -771,10 +842,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             </a>
             
             <!-- Fallback UI for in-app browsers -->
-            <div id="fallback-ui" style="display: none; margin-top: 32px; max-width: 420px;">
-              <h2 style="font-family: 'Libre Baskerville', serif; font-size: 28px; font-weight: 700; color: rgba(255, 255, 255, 0.95); margin-bottom: 16px; line-height: 1.3;">Opening iMessage...</h2>
-              <p style="font-size: 16px; color: rgba(255, 255, 255, 0.8); line-height: 1.6; margin-bottom: 32px;">Sometimes, browsers or apps may block iMessage from opening iMessage directly. However, you can open it manually and text the following number to start a chat.</p>
-              <button id="copy-phone-btn" style="width: 100%; padding: 16px 24px; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; color: white; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; letter-spacing: 0.5px;">
+            <div id="fallback-ui" style="display: none; margin-top: 24px; max-width: 380px; width: 100%; animation: fadeIn 0.3s ease-in;">
+              <h2 style="font-family: 'Libre Baskerville', serif; font-size: 22px; font-weight: 700; color: rgba(255, 255, 255, 0.95); margin-bottom: 12px; line-height: 1.3;">Opening iMessage...</h2>
+              <p style="font-size: 14px; color: rgba(255, 255, 255, 0.75); line-height: 1.5; margin-bottom: 24px;">Sometimes, browsers or apps may block iMessage from opening directly. You can open it manually and text the following number.</p>
+              <button id="copy-phone-btn" style="width: 100%; padding: 14px 20px; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 12px; color: white; font-size: 17px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
                 ${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}
               </button>
             </div>
