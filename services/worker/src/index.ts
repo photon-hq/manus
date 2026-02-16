@@ -309,10 +309,23 @@ async function processMessage(phoneNumber: string, data: any) {
         // User replied to a task thread → switch to that task and append
         console.log(`✅ Thread reply detected - switching to task ${taskIdForThread}`);
         
-        // Update connection to point to the task being replied to
+        // Restore the original triggeringMessageGuid for this task to maintain proper threading
+        const taskTriggerKey = `task:trigger:${taskIdForThread}`;
+        const originalTriggeringGuid = await redis.get(taskTriggerKey);
+        
+        if (originalTriggeringGuid) {
+          console.log(`✅ Restored original trigger GUID for task ${taskIdForThread}: ${originalTriggeringGuid}`);
+        } else {
+          console.log(`⚠️  No stored trigger GUID found for task ${taskIdForThread}, using current message GUID as fallback`);
+        }
+        
+        // Update connection to point to the task being replied to AND restore its original trigger
         await prisma.connection.update({
           where: { phoneNumber },
-          data: { currentTaskId: taskIdForThread },
+          data: { 
+            currentTaskId: taskIdForThread,
+            triggeringMessageGuid: originalTriggeringGuid || threadOriginatorGuid || messageGuid,
+          },
         });
         
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
@@ -545,6 +558,13 @@ async function createManusTask(
       console.log(`✅ Stored message→task mapping: ${triggeringMessageGuid} → ${data.task_id}`);
     }
 
+    // Store task's original triggeringMessageGuid for thread restoration when switching tasks
+    if (triggeringMessageGuid) {
+      const taskTriggerKey = `task:trigger:${data.task_id}`;
+      await redis.set(taskTriggerKey, triggeringMessageGuid, 'EX', TASK_MAPPING_TTL);
+      console.log(`✅ Stored task→trigger mapping: ${data.task_id} → ${triggeringMessageGuid}`);
+    }
+
     // Store reaction info so we can remove tapback when task stops
     if (triggeringMessageGuid) {
       const chatGuid = `any;-;${phoneNumber}`;
@@ -647,6 +667,15 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
         'EX',
         TASK_MAPPING_TTL
       );
+      
+      // Also update the task's trigger GUID in case it wasn't set initially
+      // This ensures the trigger GUID is preserved even when appending to a task
+      const taskTriggerKey = `task:trigger:${data.task_id}`;
+      const existingTrigger = await redis.get(taskTriggerKey);
+      if (!existingTrigger) {
+        await redis.set(taskTriggerKey, triggeringMessageGuid, 'EX', TASK_MAPPING_TTL);
+        console.log(`✅ Stored task→trigger mapping (append): ${data.task_id} → ${triggeringMessageGuid}`);
+      }
     }
 
     return data.task_id;
