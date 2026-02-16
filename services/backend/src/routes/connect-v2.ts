@@ -719,32 +719,34 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               // Copy phone number to clipboard
               if (copyPhoneBtn) {
-                copyPhoneBtn.addEventListener('click', function() {
-                  const phoneNumber = '${photonHandle}';
+                const phoneNumber = '${photonHandle}';
+                const formattedPhone = '${photonHandle.replace(/^\+1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}';
+                
+                copyPhoneBtn.addEventListener('click', function(e) {
+                  e.preventDefault();
                   
                   if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(phoneNumber).then(function() {
-                      const originalText = copyPhoneBtn.textContent;
                       copyPhoneBtn.textContent = '✓ Copied!';
                       copyPhoneBtn.style.background = '#34c759';
                       copyPhoneBtn.style.color = '#FFFFFF';
                       copyPhoneBtn.style.borderColor = '#34c759';
                       setTimeout(function() {
-                        copyPhoneBtn.textContent = originalText;
+                        copyPhoneBtn.textContent = formattedPhone;
                         copyPhoneBtn.style.background = '#FFFFFF';
                         copyPhoneBtn.style.color = '#34322D';
                         copyPhoneBtn.style.borderColor = '#34322D';
                       }, 2000);
                     }).catch(function() {
-                      fallbackCopy(phoneNumber);
+                      fallbackCopy(phoneNumber, formattedPhone);
                     });
                   } else {
-                    fallbackCopy(phoneNumber);
+                    fallbackCopy(phoneNumber, formattedPhone);
                   }
                 });
               }
               
-              function fallbackCopy(text) {
+              function fallbackCopy(text, formattedText) {
                 const textArea = document.createElement('textarea');
                 textArea.value = text;
                 textArea.style.position = 'fixed';
@@ -753,19 +755,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 textArea.select();
                 try {
                   document.execCommand('copy');
-                  const originalText = copyPhoneBtn.textContent;
                   copyPhoneBtn.textContent = '✓ Copied!';
                   copyPhoneBtn.style.background = '#34c759';
                   copyPhoneBtn.style.color = '#FFFFFF';
                   copyPhoneBtn.style.borderColor = '#34c759';
                   setTimeout(function() {
-                    copyPhoneBtn.textContent = originalText;
+                    copyPhoneBtn.textContent = formattedText;
                     copyPhoneBtn.style.background = '#FFFFFF';
                     copyPhoneBtn.style.color = '#34322D';
                     copyPhoneBtn.style.borderColor = '#34322D';
                   }, 2000);
                 } catch (err) {
-                  alert('Please copy the number manually: ${photonHandle}');
+                  alert('Please copy the number manually: ' + text);
                 }
                 document.body.removeChild(textArea);
               }
