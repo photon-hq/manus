@@ -96,9 +96,38 @@ fastify.get('/debug/proxy', async (request, reply) => {
   };
 });
 
-// Admin endpoint to reconnect iMessage SDK
+// Admin endpoint to reconnect iMessage SDK (requires admin token)
 fastify.post('/admin/reconnect-imessage', async (request, reply) => {
   try {
+    // Check for admin token in Authorization header
+    const authHeader = request.headers.authorization;
+    const adminToken = process.env.ADMIN_TOKEN;
+    
+    if (!adminToken) {
+      console.error('❌ ADMIN_TOKEN not configured in environment');
+      return reply.code(500).send({ 
+        status: 'error',
+        message: 'Admin endpoint not configured',
+      });
+    }
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.code(401).send({ 
+        status: 'error',
+        message: 'Missing or invalid authorization header',
+      });
+    }
+    
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    
+    if (token !== adminToken) {
+      console.warn('⚠️  Invalid admin token attempt');
+      return reply.code(403).send({ 
+        status: 'error',
+        message: 'Invalid admin token',
+      });
+    }
+    
     console.log('🔄 Manual iMessage SDK reconnection requested...');
     
     // Import the disconnect and connect functions
