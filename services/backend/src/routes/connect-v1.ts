@@ -301,7 +301,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
             </div>
           </div>
           
@@ -866,7 +866,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
             </div>
           </div>
           
@@ -2145,7 +2145,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://dub.sh/photon-discord" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
             </div>
           </div>
           
