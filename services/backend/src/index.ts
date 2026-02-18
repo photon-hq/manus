@@ -96,38 +96,9 @@ fastify.get('/debug/proxy', async (request, reply) => {
   };
 });
 
-// Admin endpoint to reconnect iMessage SDK (requires admin token)
+// Admin endpoint to reconnect iMessage SDK
 fastify.post('/admin/reconnect-imessage', async (request, reply) => {
   try {
-    // Check for admin token in Authorization header
-    const authHeader = request.headers.authorization;
-    const adminToken = process.env.ADMIN_TOKEN;
-    
-    if (!adminToken) {
-      console.error('❌ ADMIN_TOKEN not configured in environment');
-      return reply.code(500).send({ 
-        status: 'error',
-        message: 'Admin endpoint not configured',
-      });
-    }
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return reply.code(401).send({ 
-        status: 'error',
-        message: 'Missing or invalid authorization header',
-      });
-    }
-    
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    if (token !== adminToken) {
-      console.warn('⚠️  Invalid admin token attempt');
-      return reply.code(403).send({ 
-        status: 'error',
-        message: 'Invalid admin token',
-      });
-    }
-    
     console.log('🔄 Manual iMessage SDK reconnection requested...');
     
     // Import the disconnect and connect functions
@@ -369,12 +340,23 @@ const start = async () => {
     
     // Initialize iMessage connection and event listener
     try {
-      const { getIMessageSDK } = await import('./lib/imessage.js');
+      const { getIMessageSDK, disconnectIMessage } = await import('./lib/imessage.js');
+      const { startIMessageListener } = await import('./routes/imessage-webhook.js');
+      
+      // Perform a fresh reconnection on startup to ensure clean state
+      fastify.log.info('🔄 Performing fresh iMessage reconnection on startup...');
+      try {
+        await disconnectIMessage();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (disconnectError) {
+        // Ignore disconnect errors on first startup
+        fastify.log.debug('Disconnect skipped (likely first startup)');
+      }
+      
       await getIMessageSDK();
       fastify.log.info('✅ Connected to Photon iMessage infrastructure');
       
       // Start event listener for incoming messages
-      const { startIMessageListener } = await import('./routes/imessage-webhook.js');
       await startIMessageListener();
       fastify.log.info('✅ iMessage event listener started');
     } catch (error) {
