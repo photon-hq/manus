@@ -96,6 +96,51 @@ fastify.get('/debug/proxy', async (request, reply) => {
   };
 });
 
+// Admin endpoint to reconnect iMessage SDK
+fastify.post('/admin/reconnect-imessage', async (request, reply) => {
+  try {
+    console.log('🔄 Manual iMessage SDK reconnection requested...');
+    
+    // Import the disconnect and connect functions
+    const { disconnectIMessage, getIMessageSDK } = await import('./lib/imessage.js');
+    const { stopIMessageListener, startIMessageListener } = await import('./routes/imessage-webhook.js');
+    
+    // Stop the event listener
+    console.log('⏸️  Stopping iMessage event listener...');
+    await stopIMessageListener();
+    
+    // Disconnect the SDK
+    console.log('🔌 Disconnecting from Photon iMessage server...');
+    await disconnectIMessage();
+    
+    // Wait a moment
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Reconnect the SDK
+    console.log('🔌 Reconnecting to Photon iMessage server...');
+    await getIMessageSDK();
+    
+    // Restart the event listener
+    console.log('▶️  Restarting iMessage event listener...');
+    await startIMessageListener();
+    
+    console.log('✅ iMessage SDK reconnection complete');
+    
+    return reply.code(200).send({ 
+      status: 'success',
+      message: 'iMessage SDK reconnected successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Failed to reconnect iMessage SDK:', error);
+    return reply.code(500).send({ 
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Test SSE endpoint (no auth required) - for debugging proxy issues
 fastify.get('/debug/sse', async (request, reply) => {
   reply.raw.writeHead(200, {
