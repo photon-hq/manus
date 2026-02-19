@@ -85,7 +85,8 @@ export function getOpenPanelScriptTag(): string {
  */
 export async function trackEvent(
   eventName: string,
-  properties?: Record<string, any>
+  properties?: Record<string, any>,
+  profileId?: string
 ): Promise<void> {
   const client = getOpenPanelClient();
   if (!client) {
@@ -94,12 +95,29 @@ export async function trackEvent(
   }
 
   try {
-    console.log(`📊 [TRACKING] Event: ${eventName}`, properties);
-    await client.track(eventName, properties);
-    console.log(`✅ [SUCCESS] Event tracked: ${eventName}`);
+    console.log(`📊 [TRACKING] Event: ${eventName}`, { profileId, properties });
+    
+    // OpenPanel SDK requires profileId for tracking
+    const trackingData: any = {
+      name: eventName,
+      properties: properties || {},
+    };
+    
+    if (profileId) {
+      trackingData.profileId = profileId;
+    }
+    
+    const result = await client.track(trackingData);
+    console.log(`✅ [SUCCESS] Event tracked: ${eventName}`, result);
   } catch (error) {
     // Log error but don't throw - analytics failures shouldn't break the app
     console.error(`❌ [ERROR] OpenPanel tracking failed for event: ${eventName}`, error);
+    if (error instanceof Error) {
+      console.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+      });
+    }
   }
 }
 

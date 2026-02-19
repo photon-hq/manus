@@ -877,12 +877,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ connectionId, phoneNumber }, 'Connection started');
       
-      // Track backend event
-      const { trackEvent } = await import('../lib/openpanel.js');
+      // Track backend event and identify user
+      const { trackEvent, identifyUser } = await import('../lib/openpanel.js');
+      
+      // Identify user with phone number
+      await identifyUser(phoneNumber, {
+        connectionId,
+        phoneNumber,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+      });
+      
       await trackEvent('connection_initiated', {
         connectionId,
         phoneNumber: phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
-      });
+      }, phoneNumber);
 
       // Send iMessage back to user with typing indicators
       const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
@@ -956,12 +965,22 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection activated');
       
-      // Track backend event
-      const { trackEvent } = await import('../lib/openpanel.js');
+      // Track backend event and update user profile
+      const { trackEvent, identifyUser } = await import('../lib/openpanel.js');
+      
+      // Update user profile with activation status
+      await identifyUser(connection.phoneNumber, {
+        connectionId,
+        phoneNumber: connection.phoneNumber,
+        status: 'ACTIVE',
+        activatedAt: new Date().toISOString(),
+        hasManusApiKey: true,
+      });
+      
       await trackEvent('connection_activated', {
         connectionId,
         phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
-      });
+      }, connection.phoneNumber);
 
       // Notify worker to start processing for this phone number
       try {
@@ -1126,12 +1145,21 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Connection revoked by API key');
       
-      // Track backend event
-      const { trackEvent } = await import('../lib/openpanel.js');
+      // Track backend event and update user profile
+      const { trackEvent, identifyUser } = await import('../lib/openpanel.js');
+      
+      // Update user profile with revoked status
+      await identifyUser(connection.phoneNumber, {
+        connectionId: connection.connectionId,
+        phoneNumber: connection.phoneNumber,
+        status: 'REVOKED',
+        revokedAt: new Date().toISOString(),
+      });
+      
       await trackEvent('connection_revoked_backend', {
         connectionId: connection.connectionId,
         phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
-      });
+      }, connection.phoneNumber);
 
       // Send iMessage notification
       try {
@@ -1241,6 +1269,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     const connection = await prisma.connection.findUnique({
       where: { connectionId },
     });
+
+    // Identify user in OpenPanel when they reach the setup page
+    if (connection?.phoneNumber) {
+      const { identifyUser } = await import('../lib/openpanel.js');
+      await identifyUser(connection.phoneNumber, {
+        connectionId,
+        phoneNumber: connection.phoneNumber,
+        status: connection.status,
+        createdAt: connection.createdAt.toISOString(),
+      });
+    }
 
     // Don't reveal if connection exists - always show the form
     // Backend validation will handle invalid connections
@@ -1775,6 +1814,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
+            // Identify user in OpenPanel
+            ${connection?.phoneNumber ? `
+            if (window.op) {
+              window.op('identify', {
+                profileId: '${connection.phoneNumber}',
+                connectionId: '${connectionId}',
+                status: '${connection.status}',
+              });
+            }
+            ` : ''}
+            
             // Track page visit
             if (window.op) {
               window.op('track', 'setup_page_visited', { connectionId: '${connectionId}' });
