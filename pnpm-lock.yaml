@@ -57,6 +57,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.26.0(zod@3.25.76)
+      '@openpanel/sdk':
+        specifier: ^1.0.4
+        version: 1.0.4
       '@photon-ai/advanced-imessage-kit':
         specifier: ^1.13.0
         version: 1.13.0(typescript@5.9.3)
@@ -369,6 +372,9 @@ packages:
     resolution: {integrity: sha512-x0fWaQtYp4E6sktbsdAqnehxDgEc/VwM7uLsRCYWaiGu0ykYdZPiS8zCWdnjHwyiumousxfBm4SO31eXqwEZhQ==}
     cpu: [x64]
     os: [win32]
+
+  '@openpanel/sdk@1.0.4':
+    resolution: {integrity: sha512-F4XocyiaUwUnNRre9LNa9RyTiX/fXcttR4rfFAmMxx6FrbcaemDzMYIg+mH3Hv7lwZqBSo1t2/jObkjpbqjW0g==}
 
   '@photon-ai/advanced-imessage-kit@1.13.0':
     resolution: {integrity: sha512-RXKrDwxQUebwslbspEV1JHcKqLzdzQ+ugzMNQ5124azQ2p1L1khXZMyr1SL9zOER8qLrBBGtt25ijTMPyQUpmA==}
@@ -1298,6 +1304,8 @@ snapshots:
 
   '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
     optional: true
+
+  '@openpanel/sdk@1.0.4': {}
 
   '@photon-ai/advanced-imessage-kit@1.13.0(typescript@5.9.3)':
     dependencies:

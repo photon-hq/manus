@@ -17,6 +17,7 @@
     "@imessage-mcp/database": "workspace:*",
     "@imessage-mcp/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "@openpanel/sdk": "^1.0.4",
     "@photon-ai/advanced-imessage-kit": "^1.13.0",
     "bullmq": "^5.1.0",
     "dotenv": "^17.2.3",

@@ -6,6 +6,7 @@ import { mcpSSERoutes } from './routes/mcp-sse';
 import { mcpHTTPRoutes } from './routes/mcp-http';
 import { webhookRoutes } from './routes/webhooks';
 import { imessageWebhookRoutes } from './routes/imessage-webhook';
+import { getOpenPanelClient } from './lib/openpanel.js';
 
 // UI Design Version
 const UI_DESIGN_VERSION = process.env.UI_DESIGN_VERSION || 'v1';
@@ -50,6 +51,59 @@ fastify.register(cors, {
     process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : null,
   ].filter(Boolean) as string[],
   credentials: true,
+});
+
+// OpenPanel analytics tracking hook - store request start times
+const requestStartTimes = new Map<string, number>();
+
+fastify.addHook('onRequest', async (request, reply) => {
+  const opClient = getOpenPanelClient();
+  if (!opClient) {
+    return; // Skip if OpenPanel is not configured
+  }
+
+  // Filter out paths we don't want to track
+  const pathsToSkip = ['/health', '/favicon.ico', '/favicon.png', '/assets/', '/debug/'];
+  const shouldSkip = pathsToSkip.some(path => request.url.startsWith(path));
+  
+  if (shouldSkip) {
+    return;
+  }
+
+  // Store start time for this request
+  const requestId = `${request.id}-${Date.now()}`;
+  requestStartTimes.set(requestId, Date.now());
+  (request as any).opRequestId = requestId;
+});
+
+fastify.addHook('onResponse', async (request, reply) => {
+  const opClient = getOpenPanelClient();
+  if (!opClient) {
+    return;
+  }
+
+  const requestId = (request as any).opRequestId;
+  if (!requestId) {
+    return;
+  }
+
+  const startTime = requestStartTimes.get(requestId);
+  if (startTime) {
+    const duration = Date.now() - startTime;
+    requestStartTimes.delete(requestId);
+    
+    // Track request event asynchronously
+    opClient.track('http_request', {
+      method: request.method,
+      path: request.url,
+      statusCode: reply.statusCode,
+      duration,
+      userAgent: request.headers['user-agent'],
+    }).catch(err => {
+      // Log error but don't throw - analytics failures shouldn't break the app
+      console.error('OpenPanel tracking error:', err);
+    });
+  }
 });
 
 // Root redirect to /connect landing page

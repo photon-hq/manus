@@ -8,6 +8,7 @@ import {
 } from '@imessage-mcp/shared';
 import { z } from 'zod';
 import { getMetaPixelCode } from '../lib/meta-pixel.js';
+import { getOpenPanelScriptTag } from '../lib/openpanel.js';
 
 const StartSchema = z.object({
   phoneNumber: z.string(),
@@ -66,6 +67,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /revoke - Revoke connection page
   fastify.get('/revoke', async (request, reply) => {
     const metaPixel = getMetaPixelCode();
+    const openPanel = getOpenPanelScriptTag();
     return reply.type('text/html').send(`
       <!DOCTYPE html>
       <html>
@@ -254,6 +256,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
           </style>
           ${metaPixel}
+          ${openPanel}
         </head>
         <body>
           <!-- Theme selector -->
@@ -295,13 +298,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="footer">
             <div class="footer-row">
               <span class="footer-text">powered by</span>
-              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer" data-track="photon_link_clicked">
                 <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
                 <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link" data-track="discord_link_clicked">Discord</a>
             </div>
           </div>
           
@@ -384,6 +387,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
     const smsLink = `sms:${photonHandle}?body=Hey%20Manus!%20Please%20connect%20my%20iMessage`;
     const metaPixel = getMetaPixelCode();
+    const openPanel = getOpenPanelScriptTag();
     
     return reply.type('text/html').send(`
       <!DOCTYPE html>
@@ -823,6 +827,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
           </style>
           ${metaPixel}
+          ${openPanel}
         </head>
         <body>
           <!-- SVG Filter for Glass Distortion -->
@@ -837,7 +842,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="content">
             <div class="logo">manus, in iMessages</div>
             
-            <a href="${smsLink}" class="connect-btn" id="connect-btn">
+            <a href="${smsLink}" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked">
               <div class="glass-filter"></div>
               <div class="glass-overlay"></div>
               <div class="glass-specular"></div>
@@ -860,13 +865,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="footer">
             <div class="footer-row">
               <span class="footer-text">powered by</span>
-              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer" data-track="photon_link_clicked">
                 <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
                 <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link" data-track="discord_link_clicked">Discord</a>
             </div>
           </div>
           
@@ -1356,6 +1361,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/:connectionId', async (request, reply) => {
     const { connectionId } = request.params as { connectionId: string };
     const metaPixel = getMetaPixelCode();
+    const openPanel = getOpenPanelScriptTag();
 
     const connection = await prisma.connection.findUnique({
       where: { connectionId },
@@ -2070,6 +2076,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
           </style>
           ${metaPixel}
+          ${openPanel}
         </head>
         <body>
           <!-- SVG Filter for Glass Distortion -->
@@ -2139,13 +2146,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="footer">
             <div class="footer-row">
               <span class="footer-text">powered by</span>
-              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer">
+              <a href="https://photon.codes" target="_blank" rel="noopener noreferrer" data-track="photon_link_clicked">
                 <img src="/photon-logo-dark.png" alt="Photon" class="footer-logo dark-logo">
                 <img src="/photon-logo-light.png" alt="Photon" class="footer-logo light-logo">
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link" data-track="discord_link_clicked">Discord</a>
             </div>
           </div>
           
