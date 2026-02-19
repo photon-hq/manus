@@ -39,12 +39,22 @@ export function getOpenPanelClient(): OpenPanel | null {
     return openpanelClient;
   }
 
-  // Create new instance
+  // Create new instance with debugging
   console.log('🆕 Creating new OpenPanel client instance');
   openpanelClient = new OpenPanel({
     clientId,
     clientSecret,
     apiUrl,
+    // Add filter to debug what's being sent
+    filter: (event) => {
+      console.log('📤 [OPENPANEL] Sending event to API:', {
+        type: event.type,
+        name: event.name || event.type,
+        profileId: event.profileId,
+        timestamp: new Date().toISOString(),
+      });
+      return true; // Return true to send the event
+    },
   });
 
   return openpanelClient;
