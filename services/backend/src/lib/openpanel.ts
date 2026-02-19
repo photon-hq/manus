@@ -4,6 +4,7 @@ import { OpenPanel } from '@openpanel/sdk';
  * Singleton OpenPanel client instance for backend tracking
  */
 let openpanelClient: OpenPanel | null = null;
+let configLogged = false;
 
 /**
  * Get or create the OpenPanel client instance for backend tracking
@@ -14,23 +15,27 @@ export function getOpenPanelClient(): OpenPanel | null {
   const clientSecret = process.env.OPENPANEL_CLIENT_SECRET;
   const apiUrl = process.env.OPENPANEL_API_URL;
 
-  // Log configuration status
-  console.log('📊 OpenPanel Backend Configuration:', {
-    clientId: clientId ? `${clientId.substring(0, 8)}...` : 'NOT SET',
-    clientSecret: clientSecret ? '***SET***' : 'NOT SET',
-    apiUrl: apiUrl || 'NOT SET',
-    configured: !!(clientId && clientSecret && apiUrl),
-  });
+  // Log configuration status only once
+  if (!configLogged) {
+    console.log('📊 OpenPanel Backend Configuration:', {
+      clientId: clientId ? `${clientId.substring(0, 8)}...` : 'NOT SET',
+      clientSecret: clientSecret ? '***SET***' : 'NOT SET',
+      apiUrl: apiUrl || 'NOT SET',
+      configured: !!(clientId && clientSecret && apiUrl),
+    });
+    configLogged = true;
+  }
 
   // Return null if credentials are not configured
   if (!clientId || clientId.trim() === '' || !clientSecret || clientSecret.trim() === '' || !apiUrl || apiUrl.trim() === '') {
-    console.warn('⚠️  OpenPanel backend tracking disabled - credentials not configured');
+    if (!openpanelClient && !configLogged) {
+      console.warn('⚠️  OpenPanel backend tracking disabled - credentials not configured');
+    }
     return null;
   }
 
   // Return existing instance if already created
   if (openpanelClient) {
-    console.log('✅ Using existing OpenPanel client instance');
     return openpanelClient;
   }
 
@@ -53,18 +58,10 @@ export function getOpenPanelScriptTag(): string {
   const clientId = process.env.OPENPANEL_CLIENT_ID;
   const apiUrl = process.env.OPENPANEL_API_URL;
 
-  console.log('📊 OpenPanel Frontend Configuration:', {
-    clientId: clientId ? `${clientId.substring(0, 8)}...` : 'NOT SET',
-    apiUrl: apiUrl || 'NOT SET',
-    configured: !!(clientId && apiUrl),
-  });
-
   if (!clientId || clientId.trim() === '' || !apiUrl || apiUrl.trim() === '') {
-    console.warn('⚠️  OpenPanel frontend tracking disabled - credentials not configured');
     return '';
   }
 
-  console.log('✅ OpenPanel frontend script tag generated');
   return `
     <!-- OpenPanel Analytics -->
     <script>
