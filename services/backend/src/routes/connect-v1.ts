@@ -1137,16 +1137,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection activated');
-      
-      // Update user profile with activation status
-      const { identifyUser } = await import('../lib/openpanel.js');
-      await identifyUser(connection.phoneNumber, {
-        connectionId,
-        phoneNumber: connection.phoneNumber,
-        status: 'ACTIVE',
-        activatedAt: new Date().toISOString(),
-        hasManusApiKey: true,
-      });
 
       // Notify worker to start processing for this phone number
       try {
@@ -1310,15 +1300,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Connection revoked by API key');
-      
-      // Update user profile with revoked status
-      const { identifyUser } = await import('../lib/openpanel.js');
-      await identifyUser(connection.phoneNumber, {
-        connectionId: connection.connectionId,
-        phoneNumber: connection.phoneNumber,
-        status: 'REVOKED',
-        revokedAt: new Date().toISOString(),
-      });
 
       // Send iMessage notification
       try {
@@ -1428,17 +1409,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     const connection = await prisma.connection.findUnique({
       where: { connectionId },
     });
-
-    // Identify user in OpenPanel when they reach the setup page
-    if (connection?.phoneNumber) {
-      const { identifyUser } = await import('../lib/openpanel.js');
-      await identifyUser(connection.phoneNumber, {
-        connectionId,
-        phoneNumber: connection.phoneNumber,
-        status: connection.status,
-        createdAt: connection.createdAt.toISOString(),
-      });
-    }
 
     // Don't reveal if connection exists - always show the form
     // Backend validation will handle invalid connections
@@ -2230,17 +2200,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
-            // Identify user in OpenPanel
-            ${connection?.phoneNumber ? `
-            if (window.op) {
-              window.op('identify', {
-                profileId: '${connection.phoneNumber}',
-                connectionId: '${connectionId}',
-                status: '${connection.status}',
-              });
-            }
-            ` : ''}
-            
             let mcpConfigData = null;
             
             // Validate Manus API key format
