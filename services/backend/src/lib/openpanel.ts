@@ -14,17 +14,28 @@ export function getOpenPanelClient(): OpenPanel | null {
   const clientSecret = process.env.OPENPANEL_CLIENT_SECRET;
   const apiUrl = process.env.OPENPANEL_API_URL;
 
+  // Log configuration status
+  console.log('📊 OpenPanel Backend Configuration:', {
+    clientId: clientId ? `${clientId.substring(0, 8)}...` : 'NOT SET',
+    clientSecret: clientSecret ? '***SET***' : 'NOT SET',
+    apiUrl: apiUrl || 'NOT SET',
+    configured: !!(clientId && clientSecret && apiUrl),
+  });
+
   // Return null if credentials are not configured
   if (!clientId || clientId.trim() === '' || !clientSecret || clientSecret.trim() === '' || !apiUrl || apiUrl.trim() === '') {
+    console.warn('⚠️  OpenPanel backend tracking disabled - credentials not configured');
     return null;
   }
 
   // Return existing instance if already created
   if (openpanelClient) {
+    console.log('✅ Using existing OpenPanel client instance');
     return openpanelClient;
   }
 
   // Create new instance
+  console.log('🆕 Creating new OpenPanel client instance');
   openpanelClient = new OpenPanel({
     clientId,
     clientSecret,
@@ -42,10 +53,18 @@ export function getOpenPanelScriptTag(): string {
   const clientId = process.env.OPENPANEL_CLIENT_ID;
   const apiUrl = process.env.OPENPANEL_API_URL;
 
+  console.log('📊 OpenPanel Frontend Configuration:', {
+    clientId: clientId ? `${clientId.substring(0, 8)}...` : 'NOT SET',
+    apiUrl: apiUrl || 'NOT SET',
+    configured: !!(clientId && apiUrl),
+  });
+
   if (!clientId || clientId.trim() === '' || !apiUrl || apiUrl.trim() === '') {
+    console.warn('⚠️  OpenPanel frontend tracking disabled - credentials not configured');
     return '';
   }
 
+  console.log('✅ OpenPanel frontend script tag generated');
   return `
     <!-- OpenPanel Analytics -->
     <script>
@@ -57,6 +76,7 @@ export function getOpenPanelScriptTag(): string {
         trackOutgoingLinks: true,
         trackAttributes: true,
       });
+      console.log('📊 OpenPanel initialized:', { clientId: '${clientId.substring(0, 8)}...', apiUrl: '${apiUrl}' });
     </script>
     <script src="https://openpanel.dev/op1.js" defer async></script>
     <!-- End OpenPanel Analytics -->
@@ -72,14 +92,17 @@ export async function trackEvent(
 ): Promise<void> {
   const client = getOpenPanelClient();
   if (!client) {
+    console.log(`📊 [SKIPPED] Event not tracked (OpenPanel not configured): ${eventName}`, properties);
     return; // Silently skip if not configured
   }
 
   try {
+    console.log(`📊 [TRACKING] Event: ${eventName}`, properties);
     await client.track(eventName, properties);
+    console.log(`✅ [SUCCESS] Event tracked: ${eventName}`);
   } catch (error) {
     // Log error but don't throw - analytics failures shouldn't break the app
-    console.error('OpenPanel tracking error:', error);
+    console.error(`❌ [ERROR] OpenPanel tracking failed for event: ${eventName}`, error);
   }
 }
 
@@ -92,15 +115,18 @@ export async function identifyUser(
 ): Promise<void> {
   const client = getOpenPanelClient();
   if (!client) {
+    console.log(`📊 [SKIPPED] User identify not tracked (OpenPanel not configured): ${profileId}`);
     return; // Silently skip if not configured
   }
 
   try {
+    console.log(`📊 [IDENTIFYING] User: ${profileId}`, properties);
     await client.identify({
       profileId,
       ...properties,
     });
+    console.log(`✅ [SUCCESS] User identified: ${profileId}`);
   } catch (error) {
-    console.error('OpenPanel identify error:', error);
+    console.error(`❌ [ERROR] OpenPanel identify failed for user: ${profileId}`, error);
   }
 }
