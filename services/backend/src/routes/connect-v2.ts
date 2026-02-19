@@ -274,12 +274,22 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
+            // Track page visit
+            if (window.op) {
+              window.op('track', 'revoke_page_visited');
+            }
+            
             document.getElementById('revokeForm').addEventListener('submit', async (e) => {
               e.preventDefault();
               const btn = document.getElementById('revokeBtn');
               const errorDiv = document.getElementById('error');
               const successDiv = document.getElementById('success');
               const photonApiKey = document.getElementById('photonApiKey').value.trim();
+              
+              // Track revoke attempt
+              if (window.op) {
+                window.op('track', 'revoke_attempted');
+              }
               
               btn.disabled = true;
               btn.textContent = 'Revoking...';
@@ -296,21 +306,57 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 const data = await response.json();
                 
                 if (data.success) {
+                  // Track successful revoke
+                  if (window.op) {
+                    window.op('track', 'connection_revoked');
+                  }
+                  
                   successDiv.textContent = '✅ Connection revoked successfully! All your data has been deleted. You will receive a confirmation via iMessage.';
                   successDiv.classList.add('show');
                   document.getElementById('revokeForm').style.display = 'none';
                 } else {
+                  // Track revoke failure
+                  if (window.op) {
+                    window.op('track', 'revoke_failed', { error: data.error || 'Unknown error' });
+                  }
+                  
                   errorDiv.textContent = data.error || 'Failed to revoke connection';
                   errorDiv.classList.add('show');
                   btn.disabled = false;
                   btn.textContent = 'Revoke Connection';
                 }
               } catch (error) {
+                // Track revoke error
+                if (window.op) {
+                  window.op('track', 'revoke_error', { error: error.message || 'Network error' });
+                }
+                
                 errorDiv.textContent = 'Failed to revoke connection. Please try again.';
                 errorDiv.classList.add('show');
                 btn.disabled = false;
                 btn.textContent = 'Revoke Connection';
               }
+            });
+            
+            // Track link clicks for Photon and Discord
+            document.addEventListener('DOMContentLoaded', function() {
+              const photonLinks = document.querySelectorAll('[data-track="photon_link_clicked"]');
+              photonLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                  if (window.op) {
+                    window.op('track', 'photon_link_clicked', { page: 'revoke' });
+                  }
+                });
+              });
+              
+              const discordLinks = document.querySelectorAll('[data-track="discord_link_clicked"]');
+              discordLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                  if (window.op) {
+                    window.op('track', 'discord_link_clicked', { page: 'revoke' });
+                  }
+                });
+              });
             });
           </script>
         </body>
@@ -830,6 +876,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ connectionId, phoneNumber }, 'Connection started');
+      
+      // Track backend event
+      const { trackEvent } = await import('../lib/openpanel.js');
+      await trackEvent('connection_initiated', {
+        connectionId,
+        phoneNumber: phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
+      });
 
       // Send iMessage back to user with typing indicators
       const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
@@ -902,6 +955,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection activated');
+      
+      // Track backend event
+      const { trackEvent } = await import('../lib/openpanel.js');
+      await trackEvent('connection_activated', {
+        connectionId,
+        phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
+      });
 
       // Notify worker to start processing for this phone number
       try {
@@ -1065,6 +1125,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Connection revoked by API key');
+      
+      // Track backend event
+      const { trackEvent } = await import('../lib/openpanel.js');
+      await trackEvent('connection_revoked_backend', {
+        connectionId: connection.connectionId,
+        phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
+      });
 
       // Send iMessage notification
       try {

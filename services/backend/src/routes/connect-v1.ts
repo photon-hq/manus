@@ -334,12 +334,41 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             applyTheme(localStorage.getItem('theme') || 'system');
             updateThemeLabel();
             
+            // Track page visit
+            if (window.op) {
+              window.op('track', 'revoke_page_visited');
+            }
+            
+            // Track link clicks for Photon and Discord
+            const photonLinks = document.querySelectorAll('[data-track="photon_link_clicked"]');
+            photonLinks.forEach(function(link) {
+              link.addEventListener('click', function() {
+                if (window.op) {
+                  window.op('track', 'photon_link_clicked', { page: 'revoke' });
+                }
+              });
+            });
+            
+            const discordLinks = document.querySelectorAll('[data-track="discord_link_clicked"]');
+            discordLinks.forEach(function(link) {
+              link.addEventListener('click', function() {
+                if (window.op) {
+                  window.op('track', 'discord_link_clicked', { page: 'revoke' });
+                }
+              });
+            });
+            
             document.getElementById('revokeForm').addEventListener('submit', async (e) => {
               e.preventDefault();
               const btn = document.getElementById('revokeBtn');
               const errorDiv = document.getElementById('error');
               const successDiv = document.getElementById('success');
               const photonApiKey = document.getElementById('photonApiKey').value.trim();
+              
+              // Track revoke attempt
+              if (window.op) {
+                window.op('track', 'revoke_attempted');
+              }
               
               btn.disabled = true;
               btn.textContent = 'Revoking...';
@@ -356,16 +385,31 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 const data = await response.json();
                 
                 if (data.success) {
+                  // Track successful revoke
+                  if (window.op) {
+                    window.op('track', 'connection_revoked');
+                  }
+                  
                   successDiv.textContent = '✅ Connection revoked successfully! All your data has been deleted. You will receive a confirmation via iMessage.';
                   successDiv.classList.add('show');
                   document.getElementById('revokeForm').style.display = 'none';
                 } else {
+                  // Track revoke failure
+                  if (window.op) {
+                    window.op('track', 'revoke_failed', { error: data.error || 'Unknown error' });
+                  }
+                  
                   errorDiv.textContent = data.error || 'Failed to revoke connection';
                   errorDiv.classList.add('show');
                   btn.disabled = false;
                   btn.textContent = 'Revoke Connection';
                 }
               } catch (error) {
+                // Track revoke error
+                if (window.op) {
+                  window.op('track', 'revoke_error', { error: error.message || 'Network error' });
+                }
+                
                 errorDiv.textContent = 'Failed to revoke connection. Please try again.';
                 errorDiv.classList.add('show');
                 btn.disabled = false;
@@ -877,6 +921,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <script>
             document.addEventListener('DOMContentLoaded', function() {
+              // Track page visit
+              if (window.op) {
+                window.op('track', 'landing_page_visited');
+              }
+              
               const glassButton = document.querySelector('.connect-btn');
               const fallbackUI = document.getElementById('fallback-ui');
               const copyPhoneBtn = document.getElementById('copy-phone-btn');
@@ -890,6 +939,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               // Handle connect button click
               if (glassButton) {
                 glassButton.addEventListener('click', function(e) {
+                  // Track button click
+                  if (window.op) {
+                    window.op('track', 'connect_to_manus_clicked');
+                  }
+                  
                   const href = this.getAttribute('href');
                   
                   // If in-app browser, show fallback immediately
@@ -934,6 +988,25 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   }
                 });
               }
+              
+              // Track link clicks for Photon and Discord
+              const photonLinks = document.querySelectorAll('[data-track="photon_link_clicked"]');
+              photonLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                  if (window.op) {
+                    window.op('track', 'photon_link_clicked');
+                  }
+                });
+              });
+              
+              const discordLinks = document.querySelectorAll('[data-track="discord_link_clicked"]');
+              discordLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                  if (window.op) {
+                    window.op('track', 'discord_link_clicked');
+                  }
+                });
+              });
               
               // Copy phone number to clipboard
               if (copyPhoneBtn) {
@@ -1018,6 +1091,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ connectionId, phoneNumber }, 'Connection started');
+      
+      // Track backend event
+      const { trackEvent } = await import('../lib/openpanel.js');
+      await trackEvent('connection_initiated', {
+        connectionId,
+        phoneNumber: phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
+      });
 
       // Send iMessage back to user with typing indicators
       const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
@@ -1094,6 +1174,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection activated');
+      
+      // Track backend event
+      const { trackEvent } = await import('../lib/openpanel.js');
+      await trackEvent('connection_activated', {
+        connectionId,
+        phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
+      });
 
       // Notify worker to start processing for this phone number
       try {
@@ -1257,6 +1344,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Connection revoked by API key');
+      
+      // Track backend event
+      const { trackEvent } = await import('../lib/openpanel.js');
+      await trackEvent('connection_revoked_backend', {
+        connectionId: connection.connectionId,
+        phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
+      });
 
       // Send iMessage notification
       try {
@@ -2157,6 +2251,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           </div>
           
           <script>
+            // Track page visit
+            if (window.op) {
+              window.op('track', 'setup_page_visited', { connectionId: '${connectionId}' });
+            }
+            
             let mcpConfigData = null;
             
             // Validate Manus API key format
@@ -2185,6 +2284,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               errorDiv.classList.remove('show');
               errorDiv.textContent = '';
               
+              // Track API key submission
+              if (window.op) {
+                window.op('track', 'api_key_submitted', { connectionId: '${connectionId}' });
+              }
+              
               try {
                 const response = await fetch('/connect/${connectionId}', {
                   method: 'PUT',
@@ -2195,17 +2299,38 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 const data = await response.json();
                 
                 if (data.success) {
+                  // Track successful connection
+                  if (window.op) {
+                    window.op('track', 'connection_completed', { connectionId: '${connectionId}' });
+                  }
+                  
                   mcpConfigData = data.mcpConfig;
                   document.getElementById('config').textContent = JSON.stringify(data.mcpConfig, null, 2);
                   document.getElementById('form-section').style.display = 'none';
                   document.getElementById('success-section').style.display = 'block';
                 } else {
+                  // Track connection failure
+                  if (window.op) {
+                    window.op('track', 'connection_failed', { 
+                      connectionId: '${connectionId}',
+                      error: data.error || 'Unknown error'
+                    });
+                  }
+                  
                   errorDiv.textContent = data.error || 'Failed to connect. Please try again.';
                   errorDiv.classList.add('show');
                   submitBtn.disabled = false;
                   submitBtnText.textContent = 'Continue';
                 }
               } catch (error) {
+                // Track connection error
+                if (window.op) {
+                  window.op('track', 'connection_error', { 
+                    connectionId: '${connectionId}',
+                    error: error.message || 'Network error'
+                  });
+                }
+                
                 errorDiv.textContent = 'Connection failed. Please check your API key and try again.';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;
@@ -2214,6 +2339,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             });
             
             function copyConfig() {
+              // Track config copy
+              if (window.op) {
+                window.op('track', 'config_copied', { connectionId: '${connectionId}' });
+              }
+              
               const configText = JSON.stringify(mcpConfigData, null, 2);
               navigator.clipboard.writeText(configText).then(() => {
                 const btn = document.querySelector('.copy-btn');
@@ -2226,12 +2356,48 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               });
             }
             
+            // Track link clicks for Photon and Discord on success page
+            document.addEventListener('DOMContentLoaded', function() {
+              const photonLinks = document.querySelectorAll('[data-track="photon_link_clicked"]');
+              photonLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                  if (window.op) {
+                    window.op('track', 'photon_link_clicked', { page: 'setup' });
+                  }
+                });
+              });
+              
+              const discordLinks = document.querySelectorAll('[data-track="discord_link_clicked"]');
+              discordLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                  if (window.op) {
+                    window.op('track', 'discord_link_clicked', { page: 'setup' });
+                  }
+                });
+              });
+              
+              // Track "Open Manus Settings" button click
+              const manusSettingsLink = document.querySelector('a[href*="manus.im/app#settings"]');
+              if (manusSettingsLink) {
+                manusSettingsLink.addEventListener('click', function() {
+                  if (window.op) {
+                    window.op('track', 'manus_settings_opened', { connectionId: '${connectionId}' });
+                  }
+                });
+              }
+            });
+            
             // Check if connection is already active and show success page
             (function() {
               const isActive = ${isActive ? 'true' : 'false'};
               const existingConfig = ${mcpConfig ? JSON.stringify(mcpConfig) : 'null'};
               
               if (isActive && existingConfig) {
+                // Track returning user viewing success page
+                if (window.op) {
+                  window.op('track', 'success_page_revisited', { connectionId: '${connectionId}' });
+                }
+                
                 mcpConfigData = existingConfig;
                 document.getElementById('config').textContent = JSON.stringify(existingConfig, null, 2);
                 document.getElementById('form-section').style.display = 'none';
