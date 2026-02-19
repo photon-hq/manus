@@ -334,17 +334,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             applyTheme(localStorage.getItem('theme') || 'system');
             updateThemeLabel();
             
-            // Track page visit
-            if (window.op) {
-              window.op('track', 'revoke_page_visited');
-            }
-            
             // Track link clicks for Photon and Discord
             const photonLinks = document.querySelectorAll('[data-track="photon_link_clicked"]');
             photonLinks.forEach(function(link) {
               link.addEventListener('click', function() {
                 if (window.op) {
-                  window.op('track', 'photon_link_clicked', { page: 'revoke' });
+                  window.op('track', 'photon_link_clicked');
                 }
               });
             });
@@ -353,7 +348,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             discordLinks.forEach(function(link) {
               link.addEventListener('click', function() {
                 if (window.op) {
-                  window.op('track', 'discord_link_clicked', { page: 'revoke' });
+                  window.op('track', 'discord_link_clicked');
                 }
               });
             });
@@ -364,11 +359,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               const errorDiv = document.getElementById('error');
               const successDiv = document.getElementById('success');
               const photonApiKey = document.getElementById('photonApiKey').value.trim();
-              
-              // Track revoke attempt
-              if (window.op) {
-                window.op('track', 'revoke_attempted');
-              }
               
               btn.disabled = true;
               btn.textContent = 'Revoking...';
@@ -385,31 +375,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 const data = await response.json();
                 
                 if (data.success) {
-                  // Track successful revoke
-                  if (window.op) {
-                    window.op('track', 'connection_revoked');
-                  }
-                  
                   successDiv.textContent = '✅ Connection revoked successfully! All your data has been deleted. You will receive a confirmation via iMessage.';
                   successDiv.classList.add('show');
                   document.getElementById('revokeForm').style.display = 'none';
                 } else {
-                  // Track revoke failure
-                  if (window.op) {
-                    window.op('track', 'revoke_failed', { error: data.error || 'Unknown error' });
-                  }
-                  
                   errorDiv.textContent = data.error || 'Failed to revoke connection';
                   errorDiv.classList.add('show');
                   btn.disabled = false;
                   btn.textContent = 'Revoke Connection';
                 }
               } catch (error) {
-                // Track revoke error
-                if (window.op) {
-                  window.op('track', 'revoke_error', { error: error.message || 'Network error' });
-                }
-                
                 errorDiv.textContent = 'Failed to revoke connection. Please try again.';
                 errorDiv.classList.add('show');
                 btn.disabled = false;
@@ -921,27 +896,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <script>
             document.addEventListener('DOMContentLoaded', function() {
-              // Wait for OpenPanel to be ready before tracking
-              function waitForOpenPanel(callback, maxAttempts = 50) {
-                let attempts = 0;
-                const checkInterval = setInterval(function() {
-                  attempts++;
-                  if (window.op && typeof window.op === 'function') {
-                    clearInterval(checkInterval);
-                    callback();
-                  } else if (attempts >= maxAttempts) {
-                    clearInterval(checkInterval);
-                    console.warn('OpenPanel SDK not loaded after', maxAttempts * 100, 'ms');
-                  }
-                }, 100);
-              }
-              
-              // Track page visit once OpenPanel is ready
-              waitForOpenPanel(function() {
-                console.log('📊 OpenPanel ready, tracking landing_page_visited');
-                window.op('track', 'landing_page_visited');
-              });
-              
               const glassButton = document.querySelector('.connect-btn');
               const fallbackUI = document.getElementById('fallback-ui');
               const copyPhoneBtn = document.getElementById('copy-phone-btn');
@@ -1107,22 +1061,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       fastify.log.info({ connectionId, phoneNumber }, 'Connection started');
-      
-      // Track backend event and identify user
-      const { trackEvent, identifyUser } = await import('../lib/openpanel.js');
-      
-      // Identify user with phone number
-      await identifyUser(phoneNumber, {
-        connectionId,
-        phoneNumber,
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
-      });
-      
-      await trackEvent('connection_initiated', {
-        connectionId,
-        phoneNumber: phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
-      }, phoneNumber);
 
       // Send iMessage back to user with typing indicators
       const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
@@ -1200,10 +1138,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Connection activated');
       
-      // Track backend event and update user profile
-      const { trackEvent, identifyUser } = await import('../lib/openpanel.js');
-      
       // Update user profile with activation status
+      const { identifyUser } = await import('../lib/openpanel.js');
       await identifyUser(connection.phoneNumber, {
         connectionId,
         phoneNumber: connection.phoneNumber,
@@ -1211,11 +1147,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         activatedAt: new Date().toISOString(),
         hasManusApiKey: true,
       });
-      
-      await trackEvent('connection_activated', {
-        connectionId,
-        phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
-      }, connection.phoneNumber);
 
       // Notify worker to start processing for this phone number
       try {
@@ -1380,21 +1311,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
       fastify.log.info({ photonApiKey, phoneNumber: connection.phoneNumber }, 'Connection revoked by API key');
       
-      // Track backend event and update user profile
-      const { trackEvent, identifyUser } = await import('../lib/openpanel.js');
-      
       // Update user profile with revoked status
+      const { identifyUser } = await import('../lib/openpanel.js');
       await identifyUser(connection.phoneNumber, {
         connectionId: connection.connectionId,
         phoneNumber: connection.phoneNumber,
         status: 'REVOKED',
         revokedAt: new Date().toISOString(),
       });
-      
-      await trackEvent('connection_revoked_backend', {
-        connectionId: connection.connectionId,
-        phoneNumber: connection.phoneNumber.substring(0, 5) + '***', // Partial phone for privacy
-      }, connection.phoneNumber);
 
       // Send iMessage notification
       try {
@@ -2317,11 +2241,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             ` : ''}
             
-            // Track page visit
-            if (window.op) {
-              window.op('track', 'setup_page_visited', { connectionId: '${connectionId}' });
-            }
-            
             let mcpConfigData = null;
             
             // Validate Manus API key format
@@ -2330,6 +2249,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               // Format: sk-[A-Za-z0-9_-]{70,100}
               return /^sk-[A-Za-z0-9_-]{70,100}$/.test(key);
             }
+            
+            // Track when user pastes API key
+            document.getElementById('manusApiKey').addEventListener('paste', function() {
+              if (window.op) {
+                window.op('track', 'manus_api_key_pasted', { connectionId: '${connectionId}' });
+              }
+            });
             
             document.getElementById('tokenForm').addEventListener('submit', async (e) => {
               e.preventDefault();
@@ -2350,11 +2276,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               errorDiv.classList.remove('show');
               errorDiv.textContent = '';
               
-              // Track API key submission
-              if (window.op) {
-                window.op('track', 'api_key_submitted', { connectionId: '${connectionId}' });
-              }
-              
               try {
                 const response = await fetch('/connect/${connectionId}', {
                   method: 'PUT',
@@ -2365,38 +2286,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 const data = await response.json();
                 
                 if (data.success) {
-                  // Track successful connection
-                  if (window.op) {
-                    window.op('track', 'connection_completed', { connectionId: '${connectionId}' });
-                  }
-                  
                   mcpConfigData = data.mcpConfig;
                   document.getElementById('config').textContent = JSON.stringify(data.mcpConfig, null, 2);
                   document.getElementById('form-section').style.display = 'none';
                   document.getElementById('success-section').style.display = 'block';
                 } else {
-                  // Track connection failure
-                  if (window.op) {
-                    window.op('track', 'connection_failed', { 
-                      connectionId: '${connectionId}',
-                      error: data.error || 'Unknown error'
-                    });
-                  }
-                  
                   errorDiv.textContent = data.error || 'Failed to connect. Please try again.';
                   errorDiv.classList.add('show');
                   submitBtn.disabled = false;
                   submitBtnText.textContent = 'Continue';
                 }
               } catch (error) {
-                // Track connection error
-                if (window.op) {
-                  window.op('track', 'connection_error', { 
-                    connectionId: '${connectionId}',
-                    error: error.message || 'Network error'
-                  });
-                }
-                
                 errorDiv.textContent = 'Connection failed. Please check your API key and try again.';
                 errorDiv.classList.add('show');
                 submitBtn.disabled = false;
@@ -2405,11 +2305,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             });
             
             function copyConfig() {
-              // Track config copy
-              if (window.op) {
-                window.op('track', 'config_copied', { connectionId: '${connectionId}' });
-              }
-              
               const configText = JSON.stringify(mcpConfigData, null, 2);
               navigator.clipboard.writeText(configText).then(() => {
                 const btn = document.querySelector('.copy-btn');
@@ -2422,13 +2317,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               });
             }
             
-            // Track link clicks for Photon and Discord on success page
+            // Track link clicks for Photon and Discord
             document.addEventListener('DOMContentLoaded', function() {
               const photonLinks = document.querySelectorAll('[data-track="photon_link_clicked"]');
               photonLinks.forEach(function(link) {
                 link.addEventListener('click', function() {
                   if (window.op) {
-                    window.op('track', 'photon_link_clicked', { page: 'setup' });
+                    window.op('track', 'photon_link_clicked');
                   }
                 });
               });
@@ -2437,20 +2332,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               discordLinks.forEach(function(link) {
                 link.addEventListener('click', function() {
                   if (window.op) {
-                    window.op('track', 'discord_link_clicked', { page: 'setup' });
+                    window.op('track', 'discord_link_clicked');
                   }
                 });
               });
-              
-              // Track "Open Manus Settings" button click
-              const manusSettingsLink = document.querySelector('a[href*="manus.im/app#settings"]');
-              if (manusSettingsLink) {
-                manusSettingsLink.addEventListener('click', function() {
-                  if (window.op) {
-                    window.op('track', 'manus_settings_opened', { connectionId: '${connectionId}' });
-                  }
-                });
-              }
             });
             
             // Check if connection is already active and show success page
@@ -2459,11 +2344,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               const existingConfig = ${mcpConfig ? JSON.stringify(mcpConfig) : 'null'};
               
               if (isActive && existingConfig) {
-                // Track returning user viewing success page
-                if (window.op) {
-                  window.op('track', 'success_page_revisited', { connectionId: '${connectionId}' });
-                }
-                
                 mcpConfigData = existingConfig;
                 document.getElementById('config').textContent = JSON.stringify(existingConfig, null, 2);
                 document.getElementById('form-section').style.display = 'none';
