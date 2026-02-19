@@ -369,7 +369,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link"><img src="/assets/discord-icon.png" alt="Discord" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;">Discord</a>
             </div>
           </div>
           
@@ -861,7 +861,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link"><img src="/assets/discord-icon.png" alt="Discord" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;">Discord</a>
             </div>
           </div>
           
@@ -2138,7 +2138,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               </a>
             </div>
             <div class="footer-text">
-              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link">Discord</a>
+              join community at <a href="https://discord.com/invite/4yXmmFPadR" target="_blank" rel="noopener noreferrer" class="footer-link"><img src="/assets/discord-icon.png" alt="Discord" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;">Discord</a>
             </div>
           </div>
           
