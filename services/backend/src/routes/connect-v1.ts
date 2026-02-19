@@ -921,10 +921,26 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           
           <script>
             document.addEventListener('DOMContentLoaded', function() {
-              // Track page visit
-              if (window.op) {
-                window.op('track', 'landing_page_visited');
+              // Wait for OpenPanel to be ready before tracking
+              function waitForOpenPanel(callback, maxAttempts = 50) {
+                let attempts = 0;
+                const checkInterval = setInterval(function() {
+                  attempts++;
+                  if (window.op && typeof window.op === 'function') {
+                    clearInterval(checkInterval);
+                    callback();
+                  } else if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    console.warn('OpenPanel SDK not loaded after', maxAttempts * 100, 'ms');
+                  }
+                }, 100);
               }
+              
+              // Track page visit once OpenPanel is ready
+              waitForOpenPanel(function() {
+                console.log('📊 OpenPanel ready, tracking landing_page_visited');
+                window.op('track', 'landing_page_visited');
+              });
               
               const glassButton = document.querySelector('.connect-btn');
               const fallbackUI = document.getElementById('fallback-ui');
