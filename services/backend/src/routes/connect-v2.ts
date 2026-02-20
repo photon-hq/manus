@@ -440,7 +440,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .brand-logo img {
-              height: 32px;
+              height: 40px;
               width: auto;
             }
             
@@ -615,7 +615,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .brand-logo img {
-                height: 28px;
+                height: 36px;
               }
               
               .content {
@@ -665,7 +665,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             @media (max-width: 480px) {
               .brand-logo img {
-                height: 24px;
+                height: 32px;
               }
               
               .content {
@@ -807,11 +807,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="top-bar">
             <div class="brand-logo">
               <img src="/assets/Manus-Logo-Lockup-Inline-Black.svg" alt="Manus from Meta">
-            </div>
-            
-            <div class="available-badge">
-              <img src="/assets/imessage_logo.png" alt="iMessage">
-              <span>Available on iMessage</span>
             </div>
           </div>
           
