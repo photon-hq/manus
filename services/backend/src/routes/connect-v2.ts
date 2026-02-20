@@ -487,6 +487,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               width: auto;
               display: block;
               margin: 0 auto;
+              transform: translateX(-5%);
             }
             
             .tagline {
