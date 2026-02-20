@@ -436,24 +436,38 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Logo */
             .logo {
-              margin-bottom: 20px;
+              margin-bottom: 32px;
             }
             
             .logo img {
-              height: 40px;
+              height: 60px;
               width: auto;
               display: block;
               margin: 0 auto;
             }
             
             .tagline {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 12px;
               font-family: 'Libre Baskerville', serif;
-              font-size: 24px;
+              font-size: 20px;
               font-weight: 400;
               color: #34322D;
               margin-bottom: 24px;
-              letter-spacing: -0.5px;
+              letter-spacing: -0.3px;
               line-height: 1.3;
+            }
+            
+            .tagline-text {
+              opacity: 0.9;
+            }
+            
+            .imessage-logo {
+              height: 32px;
+              width: auto;
+              vertical-align: middle;
             }
             
             /* CTA Button */
@@ -560,12 +574,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo img {
-                height: 36px;
+                height: 48px;
               }
               
               .tagline {
-                font-size: 20px;
+                font-size: 18px;
+                gap: 10px;
                 margin-bottom: 20px;
+              }
+              
+              .imessage-logo {
+                height: 28px;
               }
               
               .connect-btn {
@@ -592,12 +611,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo img {
-                height: 32px;
+                height: 42px;
               }
               
               .tagline {
-                font-size: 18px;
+                font-size: 16px;
+                gap: 8px;
                 margin-bottom: 16px;
+              }
+              
+              .imessage-logo {
+                height: 24px;
               }
               
               .connect-btn {
@@ -620,12 +644,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             @media (max-width: 375px) {
               .logo img {
-                height: 28px;
+                height: 38px;
               }
               
               .tagline {
-                font-size: 16px;
+                font-size: 14px;
+                gap: 6px;
                 margin-bottom: 14px;
+              }
+              
+              .imessage-logo {
+                height: 20px;
               }
               
               .connect-btn {
@@ -722,7 +751,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             <div class="logo">
               <img src="/assets/Manus-Logo-Lockup-Inline-Black.svg" alt="Manus from Meta">
             </div>
-            <div class="tagline">in iMessages</div>
+            <div class="tagline">
+              <span class="tagline-text">now in</span>
+              <img src="/assets/imessage_logo.png" alt="iMessage" class="imessage-logo">
+            </div>
             
             <a href="${smsLink}" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked">
               Connect to Manus
