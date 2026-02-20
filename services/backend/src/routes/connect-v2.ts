@@ -818,7 +818,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Content -->
           <div class="content">
             <div class="logo">
-              <img src="/assets/Manus-Logo-Black.svg?v=2" alt="Manus">
+              <img src="/assets/Manus-Logo-Black.png" alt="Manus">
             </div>
             <div class="tagline">now in iMessage</div>
             
