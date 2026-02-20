@@ -480,23 +480,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Logo */
             .logo {
               margin-bottom: 8px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 12px;
             }
             
             .logo img {
               height: 70px;
               width: auto;
-            }
-            
-            .logo-text {
-              font-family: 'Libre Baskerville', serif;
-              font-size: 64px;
-              font-weight: 400;
-              color: #34322D;
-              letter-spacing: -1px;
+              display: block;
+              margin: 0 auto;
             }
             
             .tagline {
@@ -645,10 +635,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 height: 56px;
               }
               
-              .logo-text {
-                font-size: 50px;
-              }
-              
               .tagline {
                 font-size: 20px;
                 margin-bottom: 18px;
@@ -688,10 +674,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .logo img {
                 height: 48px;
-              }
-              
-              .logo-text {
-                font-size: 42px;
               }
               
               .tagline {
@@ -836,8 +818,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <!-- Content -->
           <div class="content">
             <div class="logo">
-              <img src="/assets/manus-icon.png" alt="Manus">
-              <span class="logo-text">manus</span>
+              <img src="/assets/Manus-Logo-Black.svg" alt="Manus">
             </div>
             <div class="tagline">now in iMessage</div>
             
