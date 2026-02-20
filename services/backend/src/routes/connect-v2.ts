@@ -450,7 +450,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: flex;
               align-items: center;
               justify-content: center;
-              gap: 8px;
+              gap: 6px;
               font-family: 'Libre Baskerville', serif;
               font-size: 26px;
               font-weight: 400;
@@ -587,7 +587,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .tagline {
                 font-size: 22px;
-                gap: 7px;
+                gap: 5px;
                 margin-bottom: 20px;
               }
               
