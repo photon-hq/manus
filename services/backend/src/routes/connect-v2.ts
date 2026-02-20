@@ -436,7 +436,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Logo */
             .logo {
-              margin-bottom: 32px;
+              margin-bottom: 16px;
             }
             
             .logo img {
@@ -450,7 +450,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: flex;
               align-items: center;
               justify-content: center;
-              gap: 12px;
+              gap: 10px;
               font-family: 'Libre Baskerville', serif;
               font-size: 20px;
               font-weight: 400;
@@ -465,9 +465,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .imessage-logo {
-              height: 32px;
+              height: 28px;
               width: auto;
               vertical-align: middle;
+            }
+            
+            .imessage-text {
+              font-weight: 400;
+              opacity: 0.95;
             }
             
             /* CTA Button */
@@ -579,12 +584,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .tagline {
                 font-size: 18px;
-                gap: 10px;
+                gap: 8px;
                 margin-bottom: 20px;
               }
               
               .imessage-logo {
-                height: 28px;
+                height: 24px;
               }
               
               .connect-btn {
@@ -754,6 +759,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             <div class="tagline">
               <span class="tagline-text">now in</span>
               <img src="/assets/imessage_logo.png" alt="iMessage" class="imessage-logo">
+              <span class="imessage-text">iMessage</span>
             </div>
             
             <a href="${smsLink}" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked">
