@@ -346,7 +346,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
-    const smsLink = `sms:${photonHandle}?body=Hey+Manus!+Please+connect+my+iMessage`;
     const metaPixel = getMetaPixelCode();
     const openPanel = getOpenPanelScriptTag();
     
@@ -680,7 +679,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="content">
             <div class="logo">manus, in iMessages</div>
             
-            <a href="${smsLink}" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked">
+            <a href="#" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked" data-phone="${photonHandle}">
               Connect to Manus
             </a>
             
@@ -722,10 +721,20 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               // Handle connect button click
               if (connectButton) {
                 connectButton.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  
                   // Track button click
                   if (window.op) {
                     window.op('track', 'connect_to_manus_clicked');
                   }
+                  
+                  // Construct SMS link dynamically to avoid Instagram double-encoding
+                  const phoneNumber = this.getAttribute('data-phone');
+                  const message = 'Hey Manus! Please connect my iMessage';
+                  const smsLink = 'sms:' + phoneNumber + '?body=' + encodeURIComponent(message);
+                  
+                  // Open SMS app
+                  window.location.href = smsLink;
                   
                   const href = this.getAttribute('href');
                   

@@ -450,7 +450,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
-    const smsLink = `sms:${photonHandle}?body=Hey+Manus!+Please+connect+my+iMessage`;
     
     return reply.type('text/html').send(`
       <!DOCTYPE html>
@@ -832,7 +831,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           <div class="content">
             <div class="logo">manus, in iMessages</div>
             
-            <a href="${smsLink}" class="connect-btn" id="connect-btn">
+            <a href="#" class="connect-btn" id="connect-btn" data-phone="${photonHandle}">
               <div class="glass-filter"></div>
               <div class="glass-overlay"></div>
               <div class="glass-specular"></div>
@@ -880,15 +879,22 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               // Handle connect button click
               if (glassButton) {
                 glassButton.addEventListener('click', function(e) {
-                  const href = this.getAttribute('href');
+                  e.preventDefault();
+                  
+                  // Construct SMS link dynamically to avoid Instagram double-encoding
+                  const phoneNumber = this.getAttribute('data-phone');
+                  const message = 'Hey Manus! Please connect my iMessage';
+                  const smsLink = 'sms:' + phoneNumber + '?body=' + encodeURIComponent(message);
                   
                   // If in-app browser, show fallback immediately
                   if (isInAppBrowser()) {
-                    e.preventDefault();
                     glassButton.style.display = 'none';
                     fallbackUI.style.display = 'block';
                     return;
                   }
+                  
+                  // Open SMS app
+                  window.location.href = smsLink;
                   
                   // Try to open SMS, show fallback after delay if still on page
                   setTimeout(function() {
