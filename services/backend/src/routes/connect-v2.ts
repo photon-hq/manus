@@ -420,6 +420,30 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               padding: 0;
             }
             
+            /* Top Bar */
+            .top-bar {
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 24px 40px;
+              z-index: 10;
+            }
+            
+            .brand-logo {
+              position: absolute;
+              left: 40px;
+              top: 24px;
+            }
+            
+            .brand-logo img {
+              height: 32px;
+              width: auto;
+            }
+            
             /* Content container */
             .content {
               min-height: 100vh;
@@ -443,7 +467,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               border: 1px solid #34322D;
               border-radius: 50px;
               padding: 8px 16px;
-              margin-bottom: 24px;
               font-size: 14px;
               color: #34322D;
               font-weight: 400;
@@ -457,13 +480,23 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Logo */
             .logo {
               margin-bottom: 16px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 12px;
             }
             
             .logo img {
               height: 80px;
               width: auto;
-              display: block;
-              margin: 0 auto;
+            }
+            
+            .logo-text {
+              font-family: 'Libre Baskerville', serif;
+              font-size: 72px;
+              font-weight: 400;
+              color: #34322D;
+              letter-spacing: -1px;
             }
             
             .tagline {
@@ -582,6 +615,19 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             @media (max-width: 768px) {
+              .top-bar {
+                padding: 20px 24px;
+              }
+              
+              .brand-logo {
+                left: 24px;
+                top: 20px;
+              }
+              
+              .brand-logo img {
+                height: 28px;
+              }
+              
               .content {
                 padding: 40px 24px;
               }
@@ -589,7 +635,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               .available-badge {
                 font-size: 13px;
                 padding: 7px 14px;
-                margin-bottom: 20px;
               }
               
               .available-badge img {
@@ -598,6 +643,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               
               .logo img {
                 height: 64px;
+              }
+              
+              .logo-text {
+                font-size: 56px;
               }
               
               .tagline {
@@ -629,6 +678,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             @media (max-width: 480px) {
+              .brand-logo img {
+                height: 24px;
+              }
+              
               .content {
                 padding: 32px 20px;
               }
@@ -637,14 +690,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 height: 54px;
               }
               
-              .tagline {
-                font-size: 18px;
-                gap: 8px;
-                margin-bottom: 16px;
+              .logo-text {
+                font-size: 48px;
               }
               
-              .imessage-logo {
-                height: 26px;
+              .tagline {
+                font-size: 18px;
+                margin-bottom: 16px;
               }
               
               .connect-btn {
@@ -769,21 +821,29 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
           ${openPanel}
         </head>
         <body>
-          <!-- Content -->
-          <div class="content">
+          <!-- Top Bar -->
+          <div class="top-bar">
+            <div class="brand-logo">
+              <img src="/assets/Manus-Logo-Lockup-Inline-Black.svg" alt="Manus from Meta">
+            </div>
+            
             <div class="available-badge">
               <img src="/assets/imessage_logo.png" alt="iMessage">
               <span>Available on iMessage</span>
             </div>
-
+          </div>
+          
+          <!-- Content -->
+          <div class="content">
             <div class="logo">
-              <img src="/assets/Manus-Logo-Lockup-Inline-Black.svg" alt="Manus from Meta">
+              <img src="/assets/manus-icon.png" alt="Manus">
+              <span class="logo-text">manus</span>
             </div>
             <div class="tagline">now in iMessage</div>
             
             <a href="${smsLink}" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked">
               <img src="/assets/imessage_logo.png" alt="iMessage">
-              <span>Connect to Manus</span>
+              <span>Start Connecting</span>
             </a>
             
             <!-- Fallback UI for in-app browsers -->

@@ -58,6 +58,28 @@
             padding: 60px 40px;
         }
 
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 40px;
+        }
+
+        .brand-logo {
+            position: absolute;
+            left: 40px;
+            top: 24px;
+        }
+
+        .brand-logo img {
+            height: 32px;
+            width: auto;
+        }
+
         .background {
             position: absolute;
             top: 0;
@@ -97,7 +119,6 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 50px;
             padding: 8px 16px;
-            margin-bottom: 24px;
             font-size: 14px;
             color: white;
             font-weight: 400;
@@ -110,13 +131,23 @@
 
         .logo {
             margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
         }
 
         .logo img {
             height: 80px;
             width: auto;
-            display: block;
-            margin: 0 auto;
+        }
+
+        .logo-text {
+            font-family: 'Libre Baskerville', serif;
+            font-size: 72px;
+            font-weight: 400;
+            color: white;
+            letter-spacing: -1px;
         }
 
         .cta-button {
@@ -158,10 +189,22 @@
         }
 
         @media (max-width: 768px) {
+            .top-bar {
+                padding: 20px 24px;
+            }
+
+            .brand-logo {
+                left: 24px;
+                top: 20px;
+            }
+
+            .brand-logo img {
+                height: 28px;
+            }
+
             .available-badge {
                 font-size: 13px;
                 padding: 7px 14px;
-                margin-bottom: 20px;
             }
 
             .available-badge img {
@@ -170,6 +213,10 @@
 
             .logo img {
                 height: 64px;
+            }
+
+            .logo-text {
+                font-size: 56px;
             }
 
             .tagline {
@@ -186,6 +233,20 @@
                 height: 18px;
             }
         }
+
+        @media (max-width: 480px) {
+            .brand-logo img {
+                height: 24px;
+            }
+
+            .logo img {
+                height: 54px;
+            }
+
+            .logo-text {
+                font-size: 48px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -193,21 +254,28 @@
         <div class="background">
             <img src="assets/_ (38).jpeg" alt="Background">
         </div>
-        
-        <div class="content">
+
+        <div class="top-bar">
+            <div class="brand-logo">
+                <img src="assets/Manus-Logo-Lockup-Inline-White.svg" alt="Manus from Meta">
+            </div>
+            
             <div class="available-badge">
                 <img src="assets/imessage_logo.png" alt="iMessage">
                 <span>Available on iMessage</span>
             </div>
-
+        </div>
+        
+        <div class="content">
             <div class="logo">
-                <img src="assets/Manus-Logo-Lockup-Inline-White.svg" alt="Manus from Meta">
+                <img src="assets/manus-icon.png" alt="Manus">
+                <span class="logo-text">manus</span>
             </div>
             <div class="tagline">now in iMessage</div>
             
             <a href="#" class="cta-button">
                 <img src="assets/imessage_logo.png" alt="iMessage">
-                <span>Connect to Manus</span>
+                <span>Start Connecting</span>
             </a>
         </div>
     </div>
