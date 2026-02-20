@@ -479,7 +479,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Logo */
             .logo {
-              margin-bottom: 16px;
+              margin-bottom: 8px;
               display: flex;
               align-items: center;
               justify-content: center;
@@ -487,13 +487,13 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .logo img {
-              height: 80px;
+              height: 70px;
               width: auto;
             }
             
             .logo-text {
               font-family: 'Libre Baskerville', serif;
-              font-size: 72px;
+              font-size: 64px;
               font-weight: 400;
               color: #34322D;
               letter-spacing: -1px;
@@ -501,10 +501,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             .tagline {
               font-family: 'Libre Baskerville', serif;
-              font-size: 26px;
+              font-size: 24px;
               font-weight: 400;
               color: #34322D;
-              margin-bottom: 24px;
+              margin-bottom: 20px;
               letter-spacing: -0.3px;
               line-height: 1;
               opacity: 0.9;
@@ -642,16 +642,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo img {
-                height: 64px;
+                height: 56px;
               }
               
               .logo-text {
-                font-size: 56px;
+                font-size: 50px;
               }
               
               .tagline {
-                font-size: 22px;
-                margin-bottom: 20px;
+                font-size: 20px;
+                margin-bottom: 18px;
               }
               
               .connect-btn {
@@ -687,11 +687,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo img {
-                height: 54px;
+                height: 48px;
               }
               
               .logo-text {
-                font-size: 48px;
+                font-size: 42px;
               }
               
               .tagline {
