@@ -450,7 +450,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
-    const smsLink = `sms:${photonHandle}?body=Hey%20Manus!%20Please%20connect%20my%20iMessage`;
+    const smsLink = `sms:${photonHandle}?body=Hey+Manus!+Please+connect+my+iMessage`;
     
     return reply.type('text/html').send(`
       <!DOCTYPE html>
