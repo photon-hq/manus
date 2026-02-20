@@ -243,6 +243,7 @@ fastify.get('/assets/:filename', async (request, reply) => {
     const contentType = ext === '.jpeg' || ext === '.jpg' ? 'image/jpeg' : 
                        ext === '.png' ? 'image/png' : 
                        ext === '.gif' ? 'image/gif' :
+                       ext === '.svg' ? 'image/svg+xml' :
                        ext === '.woff2' ? 'font/woff2' :
                        ext === '.woff' ? 'font/woff' : 'application/octet-stream';
     
