@@ -436,13 +436,24 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Logo */
             .logo {
+              margin-bottom: 20px;
+            }
+            
+            .logo img {
+              height: 40px;
+              width: auto;
+              display: block;
+              margin: 0 auto;
+            }
+            
+            .tagline {
               font-family: 'Libre Baskerville', serif;
-              font-size: 64px;
+              font-size: 24px;
               font-weight: 400;
               color: #34322D;
               margin-bottom: 24px;
-              letter-spacing: -1px;
-              line-height: 1.1;
+              letter-spacing: -0.5px;
+              line-height: 1.3;
             }
             
             /* CTA Button */
@@ -538,8 +549,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 padding: 50px 30px;
               }
               
-              .logo {
-                font-size: 56px;
+              .tagline {
+                font-size: 22px;
               }
             }
             
@@ -548,8 +559,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 padding: 40px 24px;
               }
               
-              .logo {
-                font-size: 48px;
+              .logo img {
+                height: 36px;
+              }
+              
+              .tagline {
+                font-size: 20px;
                 margin-bottom: 20px;
               }
               
@@ -576,8 +591,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 padding: 32px 20px;
               }
               
-              .logo {
-                font-size: 36px;
+              .logo img {
+                height: 32px;
+              }
+              
+              .tagline {
+                font-size: 18px;
                 margin-bottom: 16px;
               }
               
@@ -600,8 +619,12 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             @media (max-width: 375px) {
-              .logo {
-                font-size: 32px;
+              .logo img {
+                height: 28px;
+              }
+              
+              .tagline {
+                font-size: 16px;
                 margin-bottom: 14px;
               }
               
@@ -696,7 +719,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <body>
           <!-- Content -->
           <div class="content">
-            <div class="logo">manus, in iMessages</div>
+            <div class="logo">
+              <img src="/assets/Manus-Logo-Lockup-Inline-Black.svg" alt="Manus from Meta">
+            </div>
+            <div class="tagline">in iMessages</div>
             
             <a href="${smsLink}" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked">
               Connect to Manus

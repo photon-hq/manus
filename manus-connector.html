@@ -89,11 +89,14 @@
         }
 
         .logo {
-            font-size: 72px;
-            font-weight: 300;
-            color: white;
-            letter-spacing: -1.5px;
-            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            height: 40px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
         }
 
         .cta-button {
@@ -117,9 +120,21 @@
             transform: translateY(-2px);
         }
 
+        .tagline {
+            font-size: 24px;
+            font-weight: 300;
+            color: white;
+            letter-spacing: -0.5px;
+            margin-top: 8px;
+        }
+
         @media (max-width: 768px) {
-            .logo {
-                font-size: 48px;
+            .logo img {
+                height: 32px;
+            }
+
+            .tagline {
+                font-size: 20px;
             }
 
             .cta-button {
@@ -136,7 +151,10 @@
         </div>
         
         <div class="content">
-            <div class="logo">manus, in iMessages</div>
+            <div class="logo">
+                <img src="assets/Manus-Logo-Lockup-Inline-White.svg" alt="Manus from Meta">
+            </div>
+            <div class="tagline">in iMessages</div>
             
             <a href="#" class="cta-button">Connect to Manus</a>
         </div>
