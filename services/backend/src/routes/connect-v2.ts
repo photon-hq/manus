@@ -434,6 +434,26 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               position: relative;
             }
             
+            /* Available Badge */
+            .available-badge {
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+              background: #FFFFFF;
+              border: 1px solid #34322D;
+              border-radius: 50px;
+              padding: 8px 16px;
+              margin-bottom: 24px;
+              font-size: 14px;
+              color: #34322D;
+              font-weight: 400;
+            }
+            
+            .available-badge img {
+              height: 20px;
+              width: auto;
+            }
+            
             /* Logo */
             .logo {
               margin-bottom: 16px;
@@ -447,10 +467,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .tagline {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
               font-family: 'Libre Baskerville', serif;
               font-size: 26px;
               font-weight: 400;
@@ -458,24 +474,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               margin-bottom: 24px;
               letter-spacing: -0.3px;
               line-height: 1;
-            }
-            
-            .tagline-text {
               opacity: 0.9;
-              line-height: 1;
-            }
-            
-            .imessage-logo {
-              height: 36px;
-              width: auto;
-              display: inline-block;
-              margin: 0;
-            }
-            
-            .imessage-text {
-              font-weight: 400;
-              opacity: 0.95;
-              line-height: 1;
             }
             
             /* CTA Button */
@@ -483,6 +482,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: inline-flex;
               align-items: center;
               justify-content: center;
+              gap: 10px;
               padding: 18px 48px;
               background: #34322D;
               color: #FFFFFF;
@@ -495,6 +495,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               border: none;
               cursor: pointer;
               outline: none;
+            }
+            
+            .connect-btn img {
+              height: 20px;
+              width: auto;
             }
             
             .connect-btn:hover {
@@ -581,23 +586,33 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                 padding: 40px 24px;
               }
               
+              .available-badge {
+                font-size: 13px;
+                padding: 7px 14px;
+                margin-bottom: 20px;
+              }
+              
+              .available-badge img {
+                height: 18px;
+              }
+              
               .logo img {
                 height: 64px;
               }
               
               .tagline {
                 font-size: 22px;
-                gap: 5px;
                 margin-bottom: 20px;
-              }
-              
-              .imessage-logo {
-                height: 30px;
               }
               
               .connect-btn {
                 padding: 16px 40px;
                 font-size: 16px;
+                gap: 8px;
+              }
+              
+              .connect-btn img {
+                height: 18px;
               }
               
               .footer {
@@ -756,17 +771,19 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
         <body>
           <!-- Content -->
           <div class="content">
+            <div class="available-badge">
+              <img src="/assets/imessage_logo.png" alt="iMessage">
+              <span>Available on iMessage</span>
+            </div>
+
             <div class="logo">
               <img src="/assets/Manus-Logo-Lockup-Inline-Black.svg" alt="Manus from Meta">
             </div>
-            <div class="tagline">
-              <span class="tagline-text">now in</span>
-              <img src="/assets/imessage_logo.png" alt="iMessage" class="imessage-logo">
-              <span class="imessage-text">iMessage</span>
-            </div>
+            <div class="tagline">now in iMessage</div>
             
             <a href="${smsLink}" class="connect-btn" id="connect-btn" data-track="connect_to_manus_clicked">
-              Connect to Manus
+              <img src="/assets/imessage_logo.png" alt="iMessage">
+              <span>Connect to Manus</span>
             </a>
             
             <!-- Fallback UI for in-app browsers -->

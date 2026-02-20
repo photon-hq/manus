@@ -88,6 +88,26 @@
             z-index: 1;
         }
 
+        .available-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50px;
+            padding: 8px 16px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            color: white;
+            font-weight: 400;
+        }
+
+        .available-badge img {
+            height: 20px;
+            width: auto;
+        }
+
         .logo {
             margin-bottom: 16px;
         }
@@ -100,7 +120,9 @@
         }
 
         .cta-button {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
             padding: 14px 40px;
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(10px);
@@ -114,6 +136,11 @@
             margin-top: 8px;
         }
 
+        .cta-button img {
+            height: 20px;
+            width: auto;
+        }
+
         .cta-button:hover {
             background: rgba(255, 255, 255, 0.25);
             border-color: rgba(255, 255, 255, 0.5);
@@ -121,53 +148,42 @@
         }
 
         .tagline {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
             font-size: 26px;
             font-weight: 300;
             color: white;
             letter-spacing: -0.3px;
             margin-top: 8px;
             line-height: 1;
-        }
-
-        .tagline-text {
             opacity: 0.9;
-            line-height: 1;
-        }
-
-        .imessage-logo {
-            height: 36px;
-            width: auto;
-            display: inline-block;
-            margin: 0;
-        }
-
-        .imessage-text {
-            font-weight: 400;
-            opacity: 0.95;
-            line-height: 1;
         }
 
         @media (max-width: 768px) {
+            .available-badge {
+                font-size: 13px;
+                padding: 7px 14px;
+                margin-bottom: 20px;
+            }
+
+            .available-badge img {
+                height: 18px;
+            }
+
             .logo img {
                 height: 64px;
             }
 
             .tagline {
                 font-size: 22px;
-                gap: 5px;
-            }
-
-            .imessage-logo {
-                height: 30px;
             }
 
             .cta-button {
                 font-size: 15px;
                 padding: 12px 35px;
+                gap: 8px;
+            }
+
+            .cta-button img {
+                height: 18px;
             }
         }
     </style>
@@ -179,16 +195,20 @@
         </div>
         
         <div class="content">
+            <div class="available-badge">
+                <img src="assets/imessage_logo.png" alt="iMessage">
+                <span>Available on iMessage</span>
+            </div>
+
             <div class="logo">
                 <img src="assets/Manus-Logo-Lockup-Inline-White.svg" alt="Manus from Meta">
             </div>
-            <div class="tagline">
-                <span class="tagline-text">now in</span>
-                <img src="assets/imessage_logo.png" alt="iMessage" class="imessage-logo">
-                <span class="imessage-text">iMessage</span>
-            </div>
+            <div class="tagline">now in iMessage</div>
             
-            <a href="#" class="cta-button">Connect to Manus</a>
+            <a href="#" class="cta-button">
+                <img src="assets/imessage_logo.png" alt="iMessage">
+                <span>Connect to Manus</span>
+            </a>
         </div>
     </div>
 </body>
