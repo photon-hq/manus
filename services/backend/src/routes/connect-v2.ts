@@ -342,6 +342,24 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   // Default SMS number when PHOTON_HANDLE is missing/empty in env (e.g. in Docker)
   const DEFAULT_PHOTON_HANDLE = '+14158156704';
 
+  // GET /go - Redirect route for Instagram iOS in-app browser workaround
+  fastify.get('/go', async (request, reply) => {
+    const raw = process.env.PHOTON_HANDLE ?? '';
+    const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
+    const smsLink = `sms:${photonHandle}?body=Hey%20Manus!%20Please%20connect%20my%20iMessage`;
+    return reply.type('text/html').send(`
+      <!DOCTYPE html><html><head>
+      <meta http-equiv="refresh" content="0;url=${smsLink}">
+      <script>window.location.href = '${smsLink}';</script>
+      </head>
+      <body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+        <a href="${smsLink}" style="font-size:18px;padding:16px 32px;background:#34322D;color:#fff;border-radius:100px;text-decoration:none">
+          Open iMessage
+        </a>
+      </body></html>
+    `);
+  });
+
   // GET / - Landing page with "Connect to Manus" button (Manus Brand Design)
   fastify.get('/', async (request, reply) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
@@ -711,12 +729,18 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             document.addEventListener('DOMContentLoaded', function() {
               const connectButton = document.getElementById('connect-btn');
               const fallbackUI = document.getElementById('fallback-ui');
-              const copyPhoneBtn = document.getEl<script>ementById('copy-phone-btn');
+              const copyPhoneBtn = document.getElementById('copy-phone-btn');
               
               // Detect in-app browser
               function isInAppBrowser() {
                 const ua = navigator.userAgent || navigator.vendor || window.opera;
                 return /Twitter|FBAN|FBAV|Instagram|LinkedInApp|TikTok|Line/i.test(ua);
+              }
+              
+              // Detect Instagram iOS specifically
+              function isInstagramIOS() {
+                const ua = navigator.userAgent || '';
+                return /Instagram/i.test(ua) && /iPhone|iPad|iPod/i.test(ua);
               }
               
               // Handle connect button click
@@ -728,6 +752,16 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   }
                   
                   const href = this.getAttribute('href');
+                  
+                  // Instagram iOS in-app browser workaround: escape to Safari via x-safari-https scheme
+                  if (isInstagramIOS()) {
+                    e.preventDefault();
+                    const publicUrl = '${process.env.PUBLIC_URL || 'https://manus.photon.codes'}';
+                    // Escape Instagram's broken WebView by opening the URL in Safari via x-safari-https scheme.
+                    // Safari then hits /go which immediately redirects to the sms: link with correct %20 decoding.
+                    window.location.href = 'x-safari-' + publicUrl + '/go';
+                    return;
+                  }
                   
                   // If in-app browser, show fallback immediately
                   if (isInAppBrowser()) {
