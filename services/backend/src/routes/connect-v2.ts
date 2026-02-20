@@ -758,8 +758,8 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                     e.preventDefault();
                     const publicUrl = '${process.env.PUBLIC_URL || 'https://manus.photon.codes'}';
                     // Escape Instagram's broken WebView by opening the URL in Safari via x-safari-https scheme.
-                    // Safari then hits /go which immediately redirects to the sms: link with correct %20 decoding.
-                    window.location.href = 'x-safari-' + publicUrl + '/go';
+                    // Safari then hits /connect/go which immediately redirects to the sms: link with correct %20 decoding.
+                    window.location.href = 'x-safari-' + publicUrl + '/connect/go';
                     return;
                   }
                   
