@@ -878,9 +878,23 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
                   if (isInstagramIOS()) {
                     e.preventDefault();
                     const publicUrl = '${process.env.PUBLIC_URL || 'https://manus.photon.codes'}';
-                    // Escape Instagram's broken WebView by opening the URL in Safari via x-safari-https scheme.
-                    // Safari then hits /connect/go which immediately redirects to the sms: link with correct %20 decoding.
-                    window.location.href = 'x-safari-' + publicUrl + '/connect/go';
+                    const goUrl = publicUrl + '/connect/go';
+                    
+                    // Try to escape Instagram's WebView by opening in Safari
+                    // The x-safari- prefix tells iOS to open the URL in Safari
+                    const safariUrl = goUrl.replace(/^https:\/\//, 'x-safari-https://').replace(/^http:\/\//, 'x-safari-http://');
+                    
+                    // Attempt to open in Safari
+                    window.location.href = safariUrl;
+                    
+                    // Fallback: If Safari doesn't open after 2 seconds, show manual fallback UI
+                    setTimeout(function() {
+                      if (document.hasFocus()) {
+                        // Safari didn't open (maybe not default browser), show fallback
+                        connectButton.style.display = 'none';
+                        fallbackUI.style.display = 'block';
+                      }
+                    }, 2000);
                     return;
                   }
                   
