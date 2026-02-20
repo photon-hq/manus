@@ -440,7 +440,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .logo img {
-              height: 60px;
+              height: 80px;
               width: auto;
               display: block;
               margin: 0 auto;
@@ -450,9 +450,9 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: flex;
               align-items: center;
               justify-content: center;
-              gap: 10px;
+              gap: 8px;
               font-family: 'Libre Baskerville', serif;
-              font-size: 20px;
+              font-size: 26px;
               font-weight: 400;
               color: #34322D;
               margin-bottom: 24px;
@@ -465,7 +465,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             }
             
             .imessage-logo {
-              height: 28px;
+              height: 36px;
               width: auto;
               vertical-align: middle;
             }
@@ -579,17 +579,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo img {
-                height: 48px;
+                height: 64px;
               }
               
               .tagline {
-                font-size: 18px;
-                gap: 8px;
+                font-size: 22px;
+                gap: 7px;
                 margin-bottom: 20px;
               }
               
               .imessage-logo {
-                height: 24px;
+                height: 30px;
               }
               
               .connect-btn {
@@ -616,17 +616,17 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .logo img {
-                height: 42px;
+                height: 54px;
               }
               
               .tagline {
-                font-size: 16px;
+                font-size: 18px;
                 gap: 8px;
                 margin-bottom: 16px;
               }
               
               .imessage-logo {
-                height: 24px;
+                height: 26px;
               }
               
               .connect-btn {
