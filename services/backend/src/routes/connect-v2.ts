@@ -457,22 +457,25 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               color: #34322D;
               margin-bottom: 24px;
               letter-spacing: -0.3px;
-              line-height: 1.3;
+              line-height: 1;
             }
             
             .tagline-text {
               opacity: 0.9;
+              line-height: 1;
             }
             
             .imessage-logo {
               height: 36px;
               width: auto;
-              vertical-align: middle;
+              display: inline-block;
+              margin: 0;
             }
             
             .imessage-text {
               font-weight: 400;
               opacity: 0.95;
+              line-height: 1;
             }
             
             /* CTA Button */
