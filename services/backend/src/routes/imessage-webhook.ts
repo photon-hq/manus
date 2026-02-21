@@ -482,12 +482,12 @@ Your iMessage is connected to Manus AI.`;
 
       console.log('✅ Message queued for processing');
 
-      // React to the message so user sees we received it (tapback removed when response stream ends)
+      // React to the message with thumbs up to acknowledge receipt (will be changed to heart when task completes)
       // Send reaction after 1 second delay (non-blocking)
       setTimeout(async () => {
         try {
           const { sendReaction } = await import('../lib/imessage.js');
-          await sendReaction(chatGuid, message.guid, 'love');
+          await sendReaction(chatGuid, message.guid, 'like');
         } catch (error) {
           console.warn('Failed to send reaction (non-blocking):', error);
         }

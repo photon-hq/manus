@@ -459,6 +459,18 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   });
   
   console.log(`✅ All ${chunks.length} message chunk(s) sent successfully (tracked as 1 DB record)`);
+  
+  // Change reaction from thumbs up to heart to indicate task completion
+  if (originalMessageGuid && stopReason === 'finish') {
+    try {
+      const { sendReaction } = await import('../lib/imessage.js');
+      const chatGuid = `any;-;${phoneNumber}`;
+      await sendReaction(chatGuid, originalMessageGuid, 'love');
+      console.log(`❤️ Changed reaction to love on original message (task completed)`);
+    } catch (error) {
+      console.warn('Failed to change reaction to love:', error);
+    }
+  }
 }
 
 // Helper function to get the original message GUID that triggered the current task

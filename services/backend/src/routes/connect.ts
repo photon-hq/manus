@@ -52,11 +52,15 @@ async function sendOnboardingMessages(phoneNumber: string, delayMs: number = 700
   await sendTypingIndicator(phoneNumber, 900);
   await sendIMessage(phoneNumber, "Think of it as email threads.");
   
-  // Message 5: Revoke instruction
+  // Message 5: Task acknowledgment
+  await sendTypingIndicator(phoneNumber, 1200);
+  await sendIMessage(phoneNumber, "If you give me a task, I'll react with 👍 to acknowledge it and ❤️ when it's been completed.");
+  
+  // Message 6: Revoke instruction
   await sendTypingIndicator(phoneNumber, 1000);
   await sendIMessage(phoneNumber, "(Use \"revoke\" to revoke your connection)");
   
-  // Message 6: Closing
+  // Message 7: Closing
   await sendTypingIndicator(phoneNumber, 600);
   await sendIMessage(phoneNumber, "Enjoy!");
 }
