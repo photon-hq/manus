@@ -44,11 +44,11 @@ async function sendOnboardingMessages(phoneNumber: string, delayMs: number = 700
   
   // Message 2: Reply threads explanation
   await sendTypingIndicator(phoneNumber, 1200);
-  await sendIMessage(phoneNumber, "Use reply threads to keep working on the same thing.");
+  await sendIMessage(phoneNumber, "Reply to a message to continue that conversation (manus will remember everything in that thread)");
   
   // Message 3: New message explanation
   await sendTypingIndicator(phoneNumber, 1500);
-  await sendIMessage(phoneNumber, "If you want to start something new, just send a regular message (not a reply).");
+  await sendIMessage(phoneNumber, "Send a new message (not a reply) to start fresh on a new topic");
   
   // Message 4: Email metaphor
   await sendTypingIndicator(phoneNumber, 900);
