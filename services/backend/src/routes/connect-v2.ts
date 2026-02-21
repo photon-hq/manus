@@ -480,7 +480,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             
             /* Logo */
             .logo {
-              margin-bottom: 8px;
+              margin-bottom: 4px;
             }
             
             .logo img {
