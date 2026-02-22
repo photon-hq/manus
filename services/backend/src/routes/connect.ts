@@ -28,6 +28,7 @@ const RevokeSchema = z.object({
 
 // Detection mode from environment variable
 const DETECTION_MODE = process.env.DETECTION_MODE || 'thread';
+console.log(`🔧 Backend detection mode: ${DETECTION_MODE}`);
 
 /**
  * Send onboarding messages to teach users how to use the service
