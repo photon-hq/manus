@@ -192,7 +192,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             .show { display: block; }
             .footer {
               position: fixed;
-              bottom: 48px;
+              bottom: 30px;
               left: 0;
               right: 0;
               text-align: center;
@@ -554,7 +554,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Footer */
             .footer {
               position: fixed;
-              bottom: 56px;
+              bottom: 20px;
               left: 0;
               right: 0;
               text-align: center;
@@ -667,7 +667,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer {
-                bottom: 40px;
+                bottom: 16px;
               }
               
               .footer-text {
@@ -703,7 +703,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer {
-                bottom: 32px;
+                bottom: 14px;
               }
               
               .footer-text {
@@ -736,7 +736,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer {
-                bottom: 28px;
+                bottom: 12px;
               }
               
               .footer-logo {
@@ -1676,7 +1676,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
             /* Footer */
             .footer {
               position: fixed;
-              bottom: 48px;
+              bottom: 30px;
               left: 0;
               right: 0;
               text-align: center;
@@ -1768,7 +1768,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer {
-                bottom: 36px;
+                bottom: 20px;
               }
               
               .footer-logo {
@@ -1824,7 +1824,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               }
               
               .footer {
-                bottom: 24px;
+                bottom: 16px;
               }
               
               .footer-logo {
