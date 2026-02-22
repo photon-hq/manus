@@ -300,32 +300,17 @@ async function processMessage(phoneNumber: string, data: any) {
         // Follow-up detected → switch to that task and append
         console.log(`✅ Follow-up detected - switching to task ${taskIdForThread}`);
         
-        // Thread mode: Restore the original triggeringMessageGuid for proper threading
-        if (DETECTION_MODE === 'thread') {
-          const taskTriggerKey = `task:trigger:${taskIdForThread}`;
-          const originalTriggeringGuid = await redis.get(taskTriggerKey);
-          
-          if (originalTriggeringGuid) {
-            console.log(`✅ Restored original trigger GUID for task ${taskIdForThread}: ${originalTriggeringGuid}`);
-          } else {
-            console.log(`⚠️  No stored trigger GUID found for task ${taskIdForThread}, using current message GUID as fallback`);
-          }
-          
-          // Update connection to point to the task being replied to AND restore its original trigger
-          await prisma.connection.update({
-            where: { phoneNumber },
-            data: { 
-              currentTaskId: taskIdForThread,
-              triggeringMessageGuid: originalTriggeringGuid || threadOriginatorGuid || messageGuid,
-            },
-          });
-        } else {
-          // SLM mode: Just update currentTaskId
-          await prisma.connection.update({
-            where: { phoneNumber },
-            data: { currentTaskId: taskIdForThread },
-          });
-        }
+        // Update connection to point to the task being replied to
+        // IMPORTANT: Set triggeringMessageGuid to the CURRENT message (messageGuid), not the original
+        // This ensures the love reaction goes to the follow-up message that was just thumbed-up
+        await prisma.connection.update({
+          where: { phoneNumber },
+          data: { 
+            currentTaskId: taskIdForThread,
+            triggeringMessageGuid: messageGuid, // Always use current message for reaction tracking
+          },
+        });
+        console.log(`✅ Updated triggeringMessageGuid to current message: ${messageGuid}`);
         
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {

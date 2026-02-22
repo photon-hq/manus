@@ -467,8 +467,9 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
     try {
       const { sendReaction } = await import('../lib/imessage.js');
       const chatGuid = `any;-;${phoneNumber}`;
+      console.log(`❤️ Applying love reaction to message: ${originalMessageGuid}`);
       await sendReaction(chatGuid, originalMessageGuid, 'love');
-      console.log(`❤️ Changed reaction to love on original message (task completed)`);
+      console.log(`❤️ Changed reaction to love on message ${originalMessageGuid} (task completed)`);
     } catch (error) {
       console.warn('Failed to change reaction to love:', error);
     }
