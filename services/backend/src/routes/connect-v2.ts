@@ -562,7 +562,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
               display: flex;
               flex-direction: column;
               align-items: center;
-              gap: 8px;
+              gap: 2px;
             }
             
             .footer-row {
