@@ -578,12 +578,28 @@ async function createManusTask(
 
     // Start persistent typing indicator via manager
     try {
+      const typingStartTimestamp = new Date().toISOString();
+      console.log(`\n🎬 [${typingStartTimestamp}] ======== INITIAL TYPING INDICATOR START ========`);
+      console.log(`📱 Phone: ${phoneNumber}`);
+      console.log(`🆔 Task: ${data.task_id}`);
+      
       // Ensure SDK is initialized
+      console.log(`🔧 [${new Date().toISOString()}] Initializing iMessage SDK...`);
       await getIMessageSDK();
+      console.log(`✓  [${new Date().toISOString()}] SDK initialized`);
+      
+      console.log(`🔧 [${new Date().toISOString()}] Getting typing manager...`);
       const manager = getTypingManager();
+      console.log(`✓  [${new Date().toISOString()}] Typing manager ready`);
+      
+      console.log(`🚀 [${new Date().toISOString()}] Starting typing indicator...`);
+      const startTime = Date.now();
       await manager.startTyping(phoneNumber, data.task_id);
+      const startDuration = Date.now() - startTime;
+      console.log(`✅ [${new Date().toISOString()}] Typing indicator start complete - took ${startDuration}ms`);
+      console.log(`======== INITIAL TYPING INDICATOR START COMPLETE ========\n`);
     } catch (error) {
-      console.warn('Failed to start typing indicator:', error);
+      console.warn(`❌ [${new Date().toISOString()}] Failed to start typing indicator:`, error);
       // Non-critical - continue anyway
     }
 
@@ -614,14 +630,31 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
 
   // Ensure typing indicator is active (start if not already)
   try {
+    const ensureTypingTimestamp = new Date().toISOString();
+    console.log(`\n🔍 [${ensureTypingTimestamp}] ======== ENSURE TYPING (APPEND) ========`);
+    console.log(`📱 Phone: ${phoneNumber}`);
+    console.log(`🆔 Task: ${connection.currentTaskId}`);
+    
     // Ensure SDK is initialized
+    console.log(`🔧 [${new Date().toISOString()}] Getting iMessage SDK and typing manager...`);
     await getIMessageSDK();
     const manager = getTypingManager();
-    if (!manager.isTyping(phoneNumber)) {
+    
+    const isCurrentlyTyping = manager.isTyping(phoneNumber);
+    console.log(`📊 Current typing status: ${isCurrentlyTyping ? 'ACTIVE ✓' : 'INACTIVE ✗'}`);
+    
+    if (!isCurrentlyTyping) {
+      console.log(`🟢 [${new Date().toISOString()}] Typing indicator NOT active - starting now...`);
+      const startTime = Date.now();
       await manager.startTyping(phoneNumber, connection.currentTaskId);
+      const startDuration = Date.now() - startTime;
+      console.log(`✅ [${new Date().toISOString()}] Typing indicator started - took ${startDuration}ms`);
+    } else {
+      console.log(`✅ [${new Date().toISOString()}] Typing indicator already active - no action needed`);
     }
+    console.log(`======== ENSURE TYPING COMPLETE ========\n`);
   } catch (error) {
-    console.warn('Failed to ensure typing indicator:', error);
+    console.warn(`❌ [${new Date().toISOString()}] Failed to ensure typing indicator:`, error);
     // Non-critical - continue anyway
   }
 
@@ -792,27 +825,40 @@ async function listenForEvents() {
           getQueue(phoneNumber); // Ensure worker exists
         }
       } else if (channel === 'ensure-typing') {
+        const receiveTimestamp = new Date().toISOString();
+        console.log(`\n📨 [${receiveTimestamp}] ======== ENSURE-TYPING EVENT RECEIVED ========`);
+        
         try {
           const data = JSON.parse(message);
           const { phoneNumber, taskId } = data;
-          console.log(`🔄 Ensure typing event received: ${phoneNumber} (task: ${taskId})`);
+          console.log(`📱 Phone: ${phoneNumber}`);
+          console.log(`🆔 Task: ${taskId}`);
           
           // Ensure typing indicator is active
           try {
+            console.log(`🔍 [${new Date().toISOString()}] Checking typing indicator status...`);
             await getIMessageSDK();
             const manager = getTypingManager();
-            if (!manager.isTyping(phoneNumber)) {
-              console.log(`🟢 Restarting typing indicator for ${phoneNumber} (task: ${taskId})`);
+            const isCurrentlyTyping = manager.isTyping(phoneNumber);
+            console.log(`📊 Current status: ${isCurrentlyTyping ? 'ACTIVE ✓' : 'INACTIVE ✗'}`);
+            
+            if (!isCurrentlyTyping) {
+              console.log(`🟢 [${new Date().toISOString()}] Typing indicator NOT active - starting now...`);
+              const startTime = Date.now();
               await manager.startTyping(phoneNumber, taskId);
+              const startDuration = Date.now() - startTime;
+              console.log(`✅ [${new Date().toISOString()}] Typing indicator started - took ${startDuration}ms`);
             } else {
-              console.log(`✅ Typing indicator already active for ${phoneNumber}`);
+              console.log(`✅ [${new Date().toISOString()}] Typing indicator already active - no action needed`);
             }
           } catch (error) {
-            console.warn('Failed to ensure typing indicator:', error);
+            console.warn(`❌ [${new Date().toISOString()}] Failed to ensure typing indicator:`, error);
           }
         } catch (error) {
-          console.error('Failed to handle ensure-typing event:', error);
+          console.error(`❌ [${new Date().toISOString()}] Failed to handle ensure-typing event:`, error);
         }
+        
+        console.log(`======== ENSURE-TYPING EVENT COMPLETE ========\n`);
       } else if (channel === 'task-stopped') {
         try {
           const data = JSON.parse(message);

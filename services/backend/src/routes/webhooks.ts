@@ -263,10 +263,12 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   // Ensure typing indicator continues after sending progress message
   // The worker's persistent typing indicator should remain active
   try {
+    const ensureTypingTimestamp = new Date().toISOString();
+    console.log(`\n🔄 [${ensureTypingTimestamp}] Publishing ensure-typing event for ${phoneNumber} (task: ${taskId})`);
     await redis.publish('ensure-typing', JSON.stringify({ phoneNumber, taskId }));
-    console.log(`🔄 Requested typing indicator refresh for ${phoneNumber} (task: ${taskId})`);
+    console.log(`✅ [${new Date().toISOString()}] ensure-typing event published successfully\n`);
   } catch (error) {
-    console.warn('Failed to request typing indicator refresh:', error);
+    console.warn(`❌ [${new Date().toISOString()}] Failed to request typing indicator refresh:`, error);
   }
 }
 
