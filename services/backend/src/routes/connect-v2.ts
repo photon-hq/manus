@@ -361,7 +361,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
     // Shorter message for Instagram to avoid encoding issues
-    const smsLink = `sms:${photonHandle}?body=Hey`;
+    const smsLink = `sms:${photonHandle}?body=Hello`;
     return reply.type('text/html').send(`
       <!DOCTYPE html><html><head>
       <meta http-equiv="refresh" content="0;url=${smsLink}">
@@ -379,7 +379,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/', async (request, reply) => {
     const raw = process.env.PHOTON_HANDLE ?? '';
     const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
-    const smsLink = `sms:${photonHandle}?body=Hey`;
+    const smsLink = `sms:${photonHandle}?body=Hello`;
     const metaPixel = getMetaPixelCode();
     const openPanel = getOpenPanelScriptTag();
     

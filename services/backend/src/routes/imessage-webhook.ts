@@ -163,7 +163,7 @@ export async function startIMessageListener() {
       }
 
       // Check if this is a connection initiation message
-      const isConnectionRequest = /hey\s+manus.*connect.*imessage/i.test(messageText) || 
+      const isConnectionRequest = /(hey|hello)\s+manus.*connect.*imessage/i.test(messageText) || 
                                   /connect.*imessage/i.test(messageText);
 
       if (isConnectionRequest) {
