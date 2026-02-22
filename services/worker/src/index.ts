@@ -834,25 +834,37 @@ async function listenForEvents() {
           console.log(`📱 Phone: ${phoneNumber}`);
           console.log(`🆔 Task: ${taskId}`);
           
-          // Ensure typing indicator is active
+          // FORCE RESTART typing indicator after progress message
+          // Sending iMessage stops typing automatically - must restart it manually
           try {
             console.log(`🔍 [${new Date().toISOString()}] Checking typing indicator status...`);
             await getIMessageSDK();
             const manager = getTypingManager();
             const isCurrentlyTyping = manager.isTyping(phoneNumber);
-            console.log(`📊 Current status: ${isCurrentlyTyping ? 'ACTIVE ✓' : 'INACTIVE ✗'}`);
+            console.log(`📊 Current status: ${isCurrentlyTyping ? 'ACTIVE ✓ (internal state)' : 'INACTIVE ✗'}`);
             
-            if (!isCurrentlyTyping) {
-              console.log(`🟢 [${new Date().toISOString()}] Typing indicator NOT active - starting now...`);
-              const startTime = Date.now();
-              await manager.startTyping(phoneNumber, taskId);
-              const startDuration = Date.now() - startTime;
-              console.log(`✅ [${new Date().toISOString()}] Typing indicator started - took ${startDuration}ms`);
-            } else {
-              console.log(`✅ [${new Date().toISOString()}] Typing indicator already active - no action needed`);
+            const totalStartTime = Date.now();
+            
+            if (isCurrentlyTyping) {
+              console.log(`🛑 [${new Date().toISOString()}] Force stopping typing indicator (iMessage auto-stopped it when we sent progress message)...`);
+              const stopTime = Date.now();
+              await manager.stopTyping(phoneNumber);
+              const stopDuration = Date.now() - stopTime;
+              console.log(`⏹️  [${new Date().toISOString()}] Stopped - took ${stopDuration}ms`);
+              
+              console.log(`⏳ [${new Date().toISOString()}] Waiting 500ms before restarting...`);
+              await new Promise(resolve => setTimeout(resolve, 500));
+              console.log(`✓  [${new Date().toISOString()}] Wait complete`);
             }
+            
+            console.log(`🟢 [${new Date().toISOString()}] Starting typing indicator...`);
+            const startTime = Date.now();
+            await manager.startTyping(phoneNumber, taskId);
+            const startDuration = Date.now() - startTime;
+            const totalDuration = Date.now() - totalStartTime;
+            console.log(`✅ [${new Date().toISOString()}] Typing indicator restarted - start took ${startDuration}ms, total operation ${totalDuration}ms`);
           } catch (error) {
-            console.warn(`❌ [${new Date().toISOString()}] Failed to ensure typing indicator:`, error);
+            console.warn(`❌ [${new Date().toISOString()}] Failed to restart typing indicator:`, error);
           }
         } catch (error) {
           console.error(`❌ [${new Date().toISOString()}] Failed to handle ensure-typing event:`, error);
