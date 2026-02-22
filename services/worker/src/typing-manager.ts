@@ -2,14 +2,14 @@
  * TypingIndicatorManager
  * 
  * Manages persistent typing indicators for active tasks.
- * Automatically refreshes typing indicators every 25 seconds to prevent timeout.
+ * Automatically refreshes typing indicators every 50 seconds to prevent timeout.
  * Ensures users see continuous typing feedback during long-running tasks.
  */
 
 import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-// Refresh interval: 25 seconds (safe buffer before typical 30s timeout)
-const TYPING_REFRESH_INTERVAL = 25000;
+// Refresh interval: 50 seconds (safe buffer before typical 60s timeout)
+const TYPING_REFRESH_INTERVAL = 50000;
 
 interface TypingState {
   phoneNumber: string;
@@ -28,7 +28,7 @@ export class TypingIndicatorManager {
 
   /**
    * Start typing indicator for a phone number
-   * Automatically refreshes every 25 seconds until stopped
+   * Automatically refreshes every 50 seconds until stopped
    */
   async startTyping(phoneNumber: string, taskId: string): Promise<void> {
     // If already typing for this phone number, update the task ID
@@ -63,7 +63,7 @@ export class TypingIndicatorManager {
 
   /**
    * Refresh typing indicator to prevent timeout
-   * Called automatically every 25 seconds
+   * Called automatically every 50 seconds
    */
   private async refreshTyping(phoneNumber: string): Promise<void> {
     const state = this.activeTyping.get(phoneNumber);
@@ -72,9 +72,9 @@ export class TypingIndicatorManager {
     try {
       const chatGuid = `any;-;${phoneNumber}`;
       
-      // Stop and immediately restart typing to refresh the indicator
+      // Stop and restart typing to refresh the indicator (2s gap for visibility)
       await this.sdk!.chats.stopTyping(chatGuid);
-      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
       await this.sdk!.chats.startTyping(chatGuid);
       
       const durationSeconds = Math.floor((Date.now() - state.startedAt) / 1000);
