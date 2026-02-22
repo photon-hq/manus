@@ -16,6 +16,7 @@ interface TypingState {
   taskId: string;
   refreshTimer: NodeJS.Timeout;
   startedAt: number;
+  isRefreshing: boolean;
 }
 
 export class TypingIndicatorManager {
@@ -63,6 +64,7 @@ export class TypingIndicatorManager {
         taskId,
         refreshTimer,
         startedAt: Date.now(),
+        isRefreshing: false,
       });
       
       console.log(`✅ [${new Date().toISOString()}] Typing state saved for ${phoneNumber} - next refresh in ${TYPING_REFRESH_INTERVAL / 1000}s\n`);
@@ -89,8 +91,17 @@ export class TypingIndicatorManager {
       return;
     }
 
+    // Check if already refreshing (prevent concurrent refresh operations)
+    if (state.isRefreshing) {
+      console.log(`⚠️  [${refreshTimestamp}] Refresh already in progress for ${phoneNumber} - skipping\n`);
+      return;
+    }
+
     const durationSeconds = Math.floor((Date.now() - state.startedAt) / 1000);
     console.log(`⏱️  [${refreshTimestamp}] Typing indicator has been active for ${durationSeconds}s (task: ${state.taskId})`);
+
+    // Mark as refreshing
+    state.isRefreshing = true;
 
     try {
       const chatGuid = `any;-;${phoneNumber}`;
@@ -102,23 +113,16 @@ export class TypingIndicatorManager {
       const stopDuration = Date.now() - stopStartTime;
       console.log(`⏹️  [${new Date().toISOString()}] Stopped typing indicator - API call took ${stopDuration}ms`);
       
-      // Wait 2 seconds
-      console.log(`⏳ [${new Date().toISOString()}] Waiting 2000ms before restarting...`);
-      const waitStartTime = Date.now();
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const actualWaitTime = Date.now() - waitStartTime;
-      console.log(`✓  [${new Date().toISOString()}] Wait completed - actual wait time: ${actualWaitTime}ms`);
-      
-      // Restart typing
+      // Restart typing immediately (no wait)
       const restartStartTime = Date.now();
-      console.log(`▶️  [${new Date().toISOString()}] Calling sdk.chats.startTyping(${chatGuid})...`);
+      console.log(`▶️  [${new Date().toISOString()}] Calling sdk.chats.startTyping(${chatGuid}) immediately...`);
       await this.sdk!.chats.startTyping(chatGuid);
       const restartDuration = Date.now() - restartStartTime;
       console.log(`🟢 [${new Date().toISOString()}] Restarted typing indicator - API call took ${restartDuration}ms`);
       
       const totalRefreshTime = Date.now() - refreshStartTime;
       console.log(`✅ [${new Date().toISOString()}] REFRESH COMPLETE - Total time: ${totalRefreshTime}ms (${(totalRefreshTime / 1000).toFixed(2)}s)`);
-      console.log(`📊 Breakdown: stop=${stopDuration}ms, wait=${actualWaitTime}ms, restart=${restartDuration}ms`);
+      console.log(`📊 Breakdown: stop=${stopDuration}ms, restart=${restartDuration}ms (no wait)`);
       console.log(`⏰ Next refresh in ${TYPING_REFRESH_INTERVAL / 1000}s`);
       console.log(`======== REFRESH CYCLE END ========\n`);
     } catch (error) {
@@ -126,6 +130,11 @@ export class TypingIndicatorManager {
       console.error(`❌ [${new Date().toISOString()}] Failed to refresh typing indicator for ${phoneNumber} after ${totalFailTime}ms:`, error);
       console.log(`🔄 Will retry on next interval (${TYPING_REFRESH_INTERVAL / 1000}s)\n`);
       // Try to continue anyway - will retry on next interval
+    } finally {
+      // Always clear refreshing flag
+      if (state) {
+        state.isRefreshing = false;
+      }
     }
   }
 
@@ -176,6 +185,13 @@ export class TypingIndicatorManager {
    */
   isTyping(phoneNumber: string): boolean {
     return this.activeTyping.has(phoneNumber);
+  }
+
+  /**
+   * Check if a refresh operation is currently in progress for a phone number
+   */
+  isRefreshing(phoneNumber: string): boolean {
+    return this.activeTyping.get(phoneNumber)?.isRefreshing || false;
   }
 
   /**
