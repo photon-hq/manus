@@ -1,12 +1,18 @@
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
 import { prisma, QueueStatus } from '@imessage-mcp/database';
-import { sanitizeHandle } from '@imessage-mcp/shared';
+import { sanitizeHandle, TaskClassification } from '@imessage-mcp/shared';
 import { SDK } from '@photon-ai/advanced-imessage-kit';
 import { TypingIndicatorManager } from './typing-manager.js';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const DEBOUNCE_WINDOW = 3000; // 3 seconds
+
+// Detection mode: 'thread' (default) or 'slm'
+const DETECTION_MODE = process.env.DETECTION_MODE || 'thread';
+
+// SLM service URL (only used when DETECTION_MODE=slm)
+const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
 
 // Redis key expiration for task mapping (24 hours)
 const TASK_MAPPING_TTL = 24 * 60 * 60; // seconds
@@ -65,6 +71,7 @@ const debounceTimers = new Map<string, NodeJS.Timeout>();
 const typingIndicators = new Map<string, NodeJS.Timeout>();
 
 console.log('Worker service starting...');
+console.log(`🔧 Detection mode: ${DETECTION_MODE}`);
 
 // Function to get or create queue for a handle (phone number or email)
 function getQueue(handle: string): Queue {
@@ -276,69 +283,65 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
-      // Regular message with text - use thread detection
-      // Get connection to check thread info and active task
+      // Regular message with text - use detection based on DETECTION_MODE
+      const { isFollowUp, taskId: taskIdForThread } = await detectMessageType(
+        phoneNumber,
+        messageText,
+        messageGuid,
+        threadOriginatorGuid
+      );
+
+      // Get connection for task handling
       const connection = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
-      // Check if user is replying to ANY message in ANY task's thread
-      let isFollowUp = false;
-      let taskIdForThread: string | null = null;
-
-      if (threadOriginatorGuid) {
-        // Direct lookup: msg:task:{messageGuid} → taskId
-        const msgTaskKey = `msg:task:${threadOriginatorGuid}`;
-        taskIdForThread = await redis.get(msgTaskKey);
-        
-        if (taskIdForThread) {
-          isFollowUp = true;
-          console.log(`✅ Found thread match via direct lookup: ${threadOriginatorGuid} → ${taskIdForThread}`);
-        }
-      }
-
-      console.log(`🔗 Thread detection for ${phoneNumber}:`, {
-        threadOriginatorGuid: threadOriginatorGuid || 'none',
-        currentTaskId: connection?.currentTaskId || 'none',
-        isFollowUp,
-        taskIdForThread,
-        hasActiveTask: !!connection?.currentTaskId
-      });
-
       if (isFollowUp && taskIdForThread) {
-        // User replied to a task thread → switch to that task and append
-        console.log(`✅ Thread reply detected - switching to task ${taskIdForThread}`);
+        // Follow-up detected → switch to that task and append
+        console.log(`✅ Follow-up detected - switching to task ${taskIdForThread}`);
         
-        // Restore the original triggeringMessageGuid for this task to maintain proper threading
-        const taskTriggerKey = `task:trigger:${taskIdForThread}`;
-        const originalTriggeringGuid = await redis.get(taskTriggerKey);
-        
-        if (originalTriggeringGuid) {
-          console.log(`✅ Restored original trigger GUID for task ${taskIdForThread}: ${originalTriggeringGuid}`);
+        // Thread mode: Restore the original triggeringMessageGuid for proper threading
+        if (DETECTION_MODE === 'thread') {
+          const taskTriggerKey = `task:trigger:${taskIdForThread}`;
+          const originalTriggeringGuid = await redis.get(taskTriggerKey);
+          
+          if (originalTriggeringGuid) {
+            console.log(`✅ Restored original trigger GUID for task ${taskIdForThread}: ${originalTriggeringGuid}`);
+          } else {
+            console.log(`⚠️  No stored trigger GUID found for task ${taskIdForThread}, using current message GUID as fallback`);
+          }
+          
+          // Update connection to point to the task being replied to AND restore its original trigger
+          await prisma.connection.update({
+            where: { phoneNumber },
+            data: { 
+              currentTaskId: taskIdForThread,
+              triggeringMessageGuid: originalTriggeringGuid || threadOriginatorGuid || messageGuid,
+            },
+          });
         } else {
-          console.log(`⚠️  No stored trigger GUID found for task ${taskIdForThread}, using current message GUID as fallback`);
+          // SLM mode: Just update currentTaskId
+          await prisma.connection.update({
+            where: { phoneNumber },
+            data: { currentTaskId: taskIdForThread },
+          });
         }
-        
-        // Update connection to point to the task being replied to AND restore its original trigger
-        await prisma.connection.update({
-          where: { phoneNumber },
-          data: { 
-            currentTaskId: taskIdForThread,
-            triggeringMessageGuid: originalTriggeringGuid || threadOriginatorGuid || messageGuid,
-          },
-        });
         
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
-        // Not a thread reply or no active task → create new task
+        // New task → clear previous task and create new one
         if (connection?.currentTaskId) {
           await prisma.connection.update({
             where: { phoneNumber },
             data: { currentTaskId: null },
           });
-          console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK - not a thread reply)`);
+          console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK)`);
         }
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
+        
+        // SLM mode preserves conversation history (currentTaskStartedAt) across task boundaries
+        // Thread mode starts fresh since it uses explicit thread replies
+        const preserveTaskStartTime = DETECTION_MODE === 'slm';
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, preserveTaskStartTime, messageGuid);
       }
     }
 
@@ -454,7 +457,240 @@ async function uploadFileToManus(fileBuffer: Buffer, filename: string, manusApiK
   return fileRecord.id;
 }
 
-// SLM classifier functions removed - now using thread detection instead
+// Detection result interface
+interface DetectionResult {
+  isFollowUp: boolean;
+  taskId: string | null;
+}
+
+/**
+ * Detect whether a message is a follow-up to an existing task or a new task
+ * Supports two modes based on DETECTION_MODE env var:
+ * - 'thread': Uses iMessage threadOriginatorGuid for instant detection
+ * - 'slm': Uses AI classification based on message context (requires slm-classifier service)
+ */
+async function detectMessageType(
+  phoneNumber: string,
+  messageText: string,
+  messageGuid: string,
+  threadOriginatorGuid?: string
+): Promise<DetectionResult> {
+  // Get connection to check active task
+  const connection = await prisma.connection.findFirst({
+    where: { phoneNumber, status: 'ACTIVE' },
+  });
+
+  if (DETECTION_MODE === 'thread') {
+    // Thread-based detection: use threadOriginatorGuid
+    return detectMessageTypeThread(phoneNumber, threadOriginatorGuid, connection);
+  } else if (DETECTION_MODE === 'slm') {
+    // SLM-based detection: use AI classification
+    return detectMessageTypeSLM(phoneNumber, messageText, messageGuid, connection);
+  } else {
+    console.warn(`Unknown DETECTION_MODE: ${DETECTION_MODE}, defaulting to thread`);
+    return detectMessageTypeThread(phoneNumber, threadOriginatorGuid, connection);
+  }
+}
+
+/**
+ * Thread-based detection: Check if user replied to a message in a task thread
+ */
+async function detectMessageTypeThread(
+  phoneNumber: string,
+  threadOriginatorGuid: string | undefined,
+  connection: any
+): Promise<DetectionResult> {
+  let isFollowUp = false;
+  let taskIdForThread: string | null = null;
+
+  if (threadOriginatorGuid) {
+    // Direct lookup: msg:task:{messageGuid} → taskId
+    const msgTaskKey = `msg:task:${threadOriginatorGuid}`;
+    taskIdForThread = await redis.get(msgTaskKey);
+    
+    if (taskIdForThread) {
+      isFollowUp = true;
+      console.log(`✅ Found thread match via direct lookup: ${threadOriginatorGuid} → ${taskIdForThread}`);
+    }
+  }
+
+  console.log(`🔗 Thread detection for ${phoneNumber}:`, {
+    threadOriginatorGuid: threadOriginatorGuid || 'none',
+    currentTaskId: connection?.currentTaskId || 'none',
+    isFollowUp,
+    taskIdForThread,
+    hasActiveTask: !!connection?.currentTaskId
+  });
+
+  return { isFollowUp, taskId: taskIdForThread };
+}
+
+/**
+ * SLM-based detection: Use AI classification based on message context
+ * Calls the slm-classifier service to determine if message is NEW_TASK or FOLLOW_UP
+ */
+async function detectMessageTypeSLM(
+  phoneNumber: string,
+  messageText: string,
+  messageGuid: string,
+  connection: any
+): Promise<DetectionResult> {
+  console.log(`🤖 SLM detection mode for ${phoneNumber}`);
+  
+  // Get last task context (last 20 messages), excluding the current message
+  const recentMessages = await getRecentMessages(phoneNumber, 20, messageGuid);
+
+  // Log context being sent to SLM
+  console.log(`📝 Context for SLM (${recentMessages.length} messages):`, 
+    recentMessages.map(m => `${m.from}: ${m.text.substring(0, 50)}`).join(' | '));
+
+  // No context = no active task → create new task (don't rely on classifier with empty context)
+  if (recentMessages.length === 0) {
+    console.log(`No task context for ${phoneNumber}, returning NEW_TASK`);
+    return { isFollowUp: false, taskId: null };
+  }
+
+  // Classify message using SLM
+  const classification = await classifyMessage(messageText, recentMessages);
+  console.log(`Classification for ${phoneNumber}:`, classification);
+
+  if (classification.type === TaskClassification.NEW_TASK) {
+    return { isFollowUp: false, taskId: null };
+  } else {
+    // Follow-up to existing task
+    return { isFollowUp: true, taskId: connection?.currentTaskId || null };
+  }
+}
+
+/**
+ * Get recent messages for context (only from current task)
+ * Used by SLM mode to provide conversation context to the classifier
+ */
+async function getRecentMessages(phoneNumber: string, limit: number = 20, excludeMessageGuid?: string): Promise<any[]> {
+  try {
+    // Get connection to check if there's an active task
+    const connection = await prisma.connection.findFirst({
+      where: { phoneNumber, status: 'ACTIVE' },
+    }) as any;
+
+    // If no active task or no start time, return empty context (indicates NEW_TASK)
+    if (!connection?.currentTaskId || !connection?.currentTaskStartedAt) {
+      console.log(`No active task context for ${phoneNumber}, returning empty context`);
+      return [];
+    }
+
+    const { SDK } = await import('@photon-ai/advanced-imessage-kit');
+    const sdk = SDK({
+      serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
+      apiKey: process.env.IMESSAGE_API_KEY,
+      logLevel: 'error',
+    });
+
+    await sdk.connect();
+
+    const chatGuid = `any;-;${phoneNumber}`;
+    
+    // Small delay to ensure the incoming message has been saved to iMessage database
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const messages = await sdk.messages.getMessages({
+      chatGuid,
+      limit,
+      sort: 'DESC',
+    });
+
+    await sdk.close();
+
+    // Log ALL messages to debug why user messages are missing
+    console.log(`📋 All ${messages.length} messages from iMessage:`, messages.slice(0, 5).map(m => ({
+      guid: m.guid?.substring(0, 8),
+      isFromMe: m.isFromMe,
+      text: m.text?.substring(0, 30),
+      dateCreated: new Date(m.dateCreated).toISOString(),
+    })));
+
+    // Get only MANUAL message GUIDs (sent via MCP tool) to filter out
+    // Keep WEBHOOK messages (task responses) in context for SLM classifier
+    const manualMessageGuids = await prisma.manusMessage.findMany({
+      where: { 
+        phoneNumber,
+        messageType: 'MANUAL'
+      },
+      select: { messageGuid: true },
+    });
+
+    const guidSet = new Set(manualMessageGuids.map((m) => m.messageGuid));
+
+    // Filter messages:
+    // 1. Only messages after current task started (with 5 second buffer for timing differences)
+    // 2. Exclude MANUAL messages
+    // 3. Keep user messages and webhook responses
+    const taskStartTime = connection.currentTaskStartedAt!.getTime();
+    const bufferMs = 5000; // 5 second buffer to account for timing differences
+    
+    console.log(`⏰ Task started at: ${connection.currentTaskStartedAt!.toISOString()} (${taskStartTime})`);
+    
+    const filteredRawMessages = messages.filter((msg) => {
+      const messageTime = new Date(msg.dateCreated).getTime();
+      const passesTimeFilter = messageTime >= (taskStartTime - bufferMs);
+      const notManual = !guidSet.has(msg.guid);
+      const notCurrent = msg.guid !== excludeMessageGuid;
+      
+      console.log(`  Message ${msg.guid?.substring(0, 8)}: time=${passesTimeFilter}, notManual=${notManual}, notCurrent=${notCurrent}, isFromMe=${msg.isFromMe}`);
+      
+      return passesTimeFilter && notManual && notCurrent;
+    });
+
+    console.log(`Fetched ${messages.length} total messages, ${filteredRawMessages.length} after filtering for current task context`);
+    console.log(`Excluding message GUID: ${excludeMessageGuid || 'none'}`);
+    console.log(`Filtered messages:`, filteredRawMessages.map(m => ({ 
+      guid: m.guid?.substring(0, 8), 
+      isFromMe: m.isFromMe,
+      text: m.text?.substring(0, 30) 
+    })));
+
+    const filteredMessages = filteredRawMessages.map((msg) => ({
+      from: msg.isFromMe ? 'me' : phoneNumber,
+      to: msg.isFromMe ? phoneNumber : 'me',
+      text: msg.text || '',
+      timestamp: new Date(msg.dateCreated).toISOString(),
+    }));
+    // Send context in chronological order (oldest first) so the classifier sees conversation flow
+    return filteredMessages.reverse();
+  } catch (error) {
+    console.error('Failed to fetch recent messages:', error);
+    return [];
+  }
+}
+
+/**
+ * Classify message using SLM service
+ * Returns { type: TaskClassification, confidence: number }
+ */
+async function classifyMessage(message: string, context: any[]): Promise<{ type: TaskClassification; confidence: number }> {
+  try {
+    const response = await fetch(`${SLM_SERVICE_URL}/classify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        latest_message: message,
+        last_task_context: context,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`SLM service error: ${response.statusText}`);
+    }
+
+    return await response.json() as { type: TaskClassification; confidence: number };
+  } catch (error) {
+    console.error('Classification failed:', error);
+    // Default to NEW_TASK on error
+    return { type: TaskClassification.NEW_TASK, confidence: 0.5 };
+  }
+}
 
 // Create new Manus task
 async function createManusTask(

@@ -26,9 +26,15 @@ const RevokeSchema = z.object({
   photonApiKey: z.string().regex(/^ph_(live|test)_[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{24}$/),
 });
 
+// Detection mode from environment variable
+const DETECTION_MODE = process.env.DETECTION_MODE || 'thread';
+
 /**
- * Send onboarding messages to teach users about reply threads
+ * Send onboarding messages to teach users how to use the service
  * Called after MCP config is sent, with a delay to give users time to paste the config
+ * 
+ * Messages 2, 3, 4 (thread/reply explanation) are only sent in thread mode
+ * since they don't apply to SLM-based detection
  */
 async function sendOnboardingMessages(phoneNumber: string, delayMs: number = 7000) {
   const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
@@ -36,31 +42,34 @@ async function sendOnboardingMessages(phoneNumber: string, delayMs: number = 700
   // Wait for user to have time to paste the config and view the visual guide
   await new Promise(resolve => setTimeout(resolve, delayMs));
   
-  // Message 1: Introduction
+  // Message 1: Introduction (COMMON)
   await sendTypingIndicator(phoneNumber, 800);
   await sendIMessage(phoneNumber, "Here's how to use:");
   
-  // Message 2: Reply threads explanation
-  await sendTypingIndicator(phoneNumber, 1200);
-  await sendIMessage(phoneNumber, "Reply to a message to continue that conversation (manus will remember everything in that thread)");
+  // Messages 2, 3, 4 are THREAD MODE ONLY
+  if (DETECTION_MODE === 'thread') {
+    // Message 2: Reply threads explanation
+    await sendTypingIndicator(phoneNumber, 1200);
+    await sendIMessage(phoneNumber, "Reply to a message to continue that conversation (manus will remember everything in that thread)");
+    
+    // Message 3: New message explanation
+    await sendTypingIndicator(phoneNumber, 1500);
+    await sendIMessage(phoneNumber, "Send a new message (not a reply) to start fresh on a new topic");
+    
+    // Message 4: Email metaphor
+    await sendTypingIndicator(phoneNumber, 900);
+    await sendIMessage(phoneNumber, "Think of it as email threads.");
+  }
   
-  // Message 3: New message explanation
-  await sendTypingIndicator(phoneNumber, 1500);
-  await sendIMessage(phoneNumber, "Send a new message (not a reply) to start fresh on a new topic");
-  
-  // Message 4: Email metaphor
-  await sendTypingIndicator(phoneNumber, 900);
-  await sendIMessage(phoneNumber, "Think of it as email threads.");
-  
-  // Message 5: Task acknowledgment
+  // Message 5: Task acknowledgment (COMMON)
   await sendTypingIndicator(phoneNumber, 1200);
   await sendIMessage(phoneNumber, "If you give me a task, I'll react with 👍 to acknowledge it and ❤️ when it's been completed.");
   
-  // Message 6: Revoke instruction
+  // Message 6: Revoke instruction (COMMON)
   await sendTypingIndicator(phoneNumber, 1000);
   await sendIMessage(phoneNumber, "(Use \"revoke\" to revoke your connection)");
   
-  // Message 7: Closing
+  // Message 7: Closing (COMMON)
   await sendTypingIndicator(phoneNumber, 600);
   await sendIMessage(phoneNumber, "Enjoy!");
 }
