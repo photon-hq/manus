@@ -102,21 +102,22 @@ services:
       - manus-network
     restart: unless-stopped
 
-  # SLM Classifier service (only needed when DETECTION_MODE=slm)
-  # To enable: set DETECTION_MODE=slm and OPENROUTER_API_KEY in your .env file
+  # SLM Classifier service (auto-starts when DETECTION_MODE=slm)
+  # The entrypoint script checks DETECTION_MODE and sleeps if not 'slm'
   slm-classifier:
     build:
       context: .
       dockerfile: services/slm-classifier/Dockerfile
     container_name: manus-slm-classifier
     environment:
+      DETECTION_MODE: ${DETECTION_MODE:-thread}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       PORT: 3001
       NODE_ENV: ${NODE_ENV:-development}
     expose:
       - "3001"
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD-SHELL", "if [ \"$DETECTION_MODE\" = 'slm' ]; then node -e \"require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))\"; else exit 0; fi"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -124,8 +125,6 @@ services:
     networks:
       - manus-network
     restart: unless-stopped
-    profiles:
-      - slm
 
 volumes:
   postgres_data:

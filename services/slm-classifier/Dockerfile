@@ -26,6 +26,11 @@ COPY --from=build /app ./
 # Set working directory to service
 WORKDIR /app/services/slm-classifier
 
+# Set up entrypoint script (already copied from build stage)
+RUN chmod +x docker-entrypoint.sh
+
 ENV NODE_ENV=production
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+
+# Use entrypoint script that checks DETECTION_MODE
+ENTRYPOINT ["./docker-entrypoint.sh"]
