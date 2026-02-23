@@ -371,7 +371,7 @@ export async function startIMessageListener() {
             await sendIMessage(handle, "You get 3 free tasks with full access to all premium features. After that, you can continue using your own API key.");
             
             await sendTypingIndicator(handle, 1500);
-            await sendIMessage(handle, "If you have a Manus API key, you can paste it anytime.");
+            await sendIMessage(handle, "You can also bring your own API key - just paste it here anytime.");
             
             await sendTypingIndicator(handle, 1000);
             await sendIMessage(handle, "Enjoy!");
