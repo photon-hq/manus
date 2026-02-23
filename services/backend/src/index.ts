@@ -1,9 +1,10 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { prisma } from '@imessage-mcp/database';
-import { mcpRoutes } from './routes/mcp';
-import { mcpSSERoutes } from './routes/mcp-sse';
-import { mcpHTTPRoutes } from './routes/mcp-http';
+// MCP routes commented out - not needed for current setup
+// import { mcpRoutes } from './routes/mcp';
+// import { mcpSSERoutes } from './routes/mcp-sse';
+// import { mcpHTTPRoutes } from './routes/mcp-http';
 import { webhookRoutes } from './routes/webhooks';
 import { imessageWebhookRoutes } from './routes/imessage-webhook';
 
@@ -64,9 +65,10 @@ const loadConnectRoutes = async () => {
 };
 
 // Register other routes immediately
-fastify.register(mcpRoutes, { prefix: '/mcp' });
-fastify.register(mcpSSERoutes, { prefix: '/mcp' });
-fastify.register(mcpHTTPRoutes, { prefix: '/mcp/http' });
+// MCP routes commented out - not needed for current setup
+// fastify.register(mcpRoutes, { prefix: '/mcp' });
+// fastify.register(mcpSSERoutes, { prefix: '/mcp' });
+// fastify.register(mcpHTTPRoutes, { prefix: '/mcp/http' });
 fastify.register(webhookRoutes, { prefix: '' }); // Root level
 fastify.register(imessageWebhookRoutes, { prefix: '' }); // Root level for health
 

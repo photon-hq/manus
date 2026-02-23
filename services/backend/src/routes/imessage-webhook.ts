@@ -532,44 +532,9 @@ Your iMessage is connected to Manus AI.`;
           
           console.log('✅ API key connected for:', handle);
           
-          // Build MCP config
-          const mcpConfig = {
-            mcpServers: {
-              'photon-imessage': {
-                type: 'streamableHttp',
-                url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/mcp/http`,
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json, text/event-stream',
-                  Authorization: `Bearer ${photonApiKey}`,
-                },
-              },
-            },
-          };
-          
-          // Send activation messages
-          const { sendLocalFile } = await import('../lib/imessage.js');
-          const path = await import('path');
-          
+          // Send activation messages (MCP config removed - not needed)
           await sendTypingIndicator(handle, 1000);
           await sendIMessage(handle, "All set! Your API key is connected.");
-          
-          await sendTypingIndicator(handle, 1500);
-          await sendIMessage(handle, `Here's your MCP configuration (copy and paste this in Manus settings):\n\n\`\`\`\n${JSON.stringify(mcpConfig, null, 2)}\n\`\`\``);
-          
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, "Open Manus Settings → Connectors → Custom MCP → Add custom MCP server → Import by JSON");
-          
-          // Send the MCP setup guide image
-          try {
-            // Path works both locally and in Docker
-            const imagePath = process.env.NODE_ENV === 'production' 
-              ? '/app/assets/mcp-setup-guide.png' 
-              : path.join(process.cwd(), '../../assets/mcp-setup-guide.png');
-            await sendLocalFile(handle, imagePath, 'mcp-setup-guide.png');
-          } catch (imgError) {
-            console.warn('⚠️ Failed to send MCP setup guide image (non-blocking):', imgError);
-          }
           
           await sendTypingIndicator(handle, 1000);
           await sendIMessage(handle, "You're ready to go. Type \"continue\" to pick up where you left off, or just tell me what you'd like to work on.");
