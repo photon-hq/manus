@@ -44,7 +44,7 @@ fastify.addHook('onRequest', async (request, reply) => {
 // Register plugins
 fastify.register(cors, {
   origin: [
-    'https://manus.im',
+    'https://manus.photon.codes',
     'https://app.manus.im',
     'https://open.manus.im',
     process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : null,
@@ -54,7 +54,7 @@ fastify.register(cors, {
 
 // Root route - redirect to Framer landing page (use 302 to avoid caching issues)
 fastify.get('/', async (request, reply) => {
-  return reply.redirect(302, 'https://manus.im');
+  return reply.redirect(302, 'https://manus.photon.codes');
 });
 
 // Register routes - dynamically load connect routes based on UI_DESIGN_VERSION
