@@ -163,9 +163,12 @@ export async function startIMessageListener() {
       }
 
       // Check if this message is an API key (sk-... format)
-      const trimmedMessage = messageText.trim();
-      const isApiKeyMessage = /^sk-[A-Za-z0-9_-]{70,100}$/.test(trimmedMessage);
-      const looksLikeApiKey = /^sk-/i.test(trimmedMessage); // Starts with sk- but might be malformed
+      // Clean the message first - handle quotes, backticks, whitespace
+      let cleanedForKeyCheck = messageText.trim();
+      cleanedForKeyCheck = cleanedForKeyCheck.replace(/^["'`]+|["'`]+$/g, '').trim();
+      
+      const isApiKeyMessage = /^sk-[A-Za-z0-9_-]{70,100}$/.test(cleanedForKeyCheck);
+      const looksLikeApiKey = /^sk-/i.test(cleanedForKeyCheck); // Starts with sk- but might be malformed
 
       if (isApiKeyMessage) {
         console.log('🔑 API key detected from:', handle);
@@ -173,10 +176,10 @@ export async function startIMessageListener() {
         // Continue to the API key handling logic
       } else if (looksLikeApiKey) {
         // User sent something that looks like an API key but doesn't match the expected format
-        console.log('⚠️  Malformed API key attempt from:', handle);
+        console.log('⚠️  Malformed API key attempt from:', handle, '- length:', cleanedForKeyCheck.length);
         const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
         await sendTypingIndicator(handle, 1000);
-        await sendIMessage(handle, "That doesn't look like a valid Manus API key. API keys start with 'sk-' followed by a long string of characters.\n\nMake sure you copy the entire key from:\nhttps://manus.im/app#settings/integrations/api");
+        await sendIMessage(handle, "That doesn't look like a complete API key. Make sure you copy the entire key - it should be about 80 characters long.\n\nGet your key at manus.im → Settings → Integrations → API");
         return;
       }
 
@@ -213,12 +216,92 @@ export async function startIMessageListener() {
           return;
         }
         
-        // Check if this is an API key - can't activate without existing connection
+        // Check if this is an API key - user wants to start with their own key
         if (isApiKeyMessage) {
-          console.log('⚠️  API key received but no connection exists yet');
+          console.log('🔑 API key received as first message - creating connection with user key');
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, "I received an API key, but you don't have a connection yet. Please send me a message first to get started!");
+          
+          // Clean up the API key
+          let apiKey = messageText.trim();
+          apiKey = apiKey.replace(/^["'`]+|["'`]+$/g, '').trim();
+          
+          // Validate the API key by attempting webhook registration
+          let webhookId: string | null = null;
+          try {
+            const response = await fetch('https://api.manus.im/v1/webhooks', {
+              method: 'POST',
+              headers: {
+                'API_KEY': apiKey,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                webhook: {
+                  url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/webhook`,
+                },
+              }),
+            });
+            
+            if (!response.ok) {
+              if (response.status === 401 || response.status === 403) {
+                await sendTypingIndicator(handle, 1000);
+                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key at manus.im → Settings → Integrations → API");
+                return;
+              }
+              if (response.status >= 400) {
+                await sendTypingIndicator(handle, 1000);
+                await sendIMessage(handle, "Something went wrong while validating your API key. Please try again in a moment.");
+                return;
+              }
+            }
+            
+            const data = await response.json() as { webhook_id?: string; id?: string };
+            webhookId = data.webhook_id || data.id || null;
+            console.log('✅ Webhook registered for new user:', webhookId);
+          } catch (error) {
+            console.warn('⚠️ Webhook registration failed:', error);
+          }
+          
+          // Create connection with their API key directly
+          const connectionId = generateConnectionId();
+          const photonApiKey = generatePhotonApiKey();
+          
+          await prisma.connection.upsert({
+            where: { phoneNumber: handle },
+            create: {
+              connectionId,
+              phoneNumber: handle,
+              photonApiKey,
+              manusApiKey: apiKey,
+              webhookId,
+              status: 'ACTIVE',
+              activatedAt: new Date(),
+              tasksUsed: 0,
+            } as any,
+            update: {
+              connectionId,
+              photonApiKey,
+              manusApiKey: apiKey,
+              webhookId,
+              status: 'ACTIVE',
+              activatedAt: new Date(),
+              currentTaskId: null,
+              currentTaskStartedAt: null,
+              triggeringMessageGuid: null,
+            } as any,
+          });
+          
+          console.log('✅ Connection created with user API key for:', handle);
+          
+          // Send welcome with confirmation
+          await sendTypingIndicator(handle, 1500);
+          await sendIMessage(handle, "Hey! Welcome to Manus on iMessage ✨");
+          
+          await sendTypingIndicator(handle, 1500);
+          await sendIMessage(handle, "Your API key is connected - you have unlimited access to all premium features.");
+          
+          await sendTypingIndicator(handle, 1500);
+          await sendIMessage(handle, "What can I help you with?");
+          
           return;
         }
         
@@ -267,21 +350,31 @@ export async function startIMessageListener() {
 
           // Send welcome message based on user status
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          await sendTypingIndicator(handle, 1000);
+          await sendTypingIndicator(handle, 1500);
           
           if (isReturningUser) {
             if (hasApiKey) {
-              await sendIMessage(handle, "Welcome back! Your connection is reactivated.");
+              await sendIMessage(handle, "Welcome back! Your API key is still connected and ready to go.");
             } else {
               const remainingTasks = Math.max(0, 3 - tasksUsed);
               if (remainingTasks > 0) {
-                await sendIMessage(handle, `Welcome back! You have ${remainingTasks} free task${remainingTasks === 1 ? '' : 's'} remaining.`);
+                await sendIMessage(handle, `Welcome back! You have ${remainingTasks} free task${remainingTasks === 1 ? '' : 's'} remaining.\n\nYou can also add your own API key anytime - just type "add key" to learn how.`);
               } else {
-                await sendIMessage(handle, "Welcome back! You've used your free tasks. Please add your API key to continue.");
+                await sendIMessage(handle, "Welcome back! You've used your free tasks.\n\nTo continue, add your Manus API key - type \"add key\" for instructions.");
               }
             }
           } else {
-            await sendIMessage(handle, "Hey! You're all set. You have 3 free tasks to try out Manus.");
+            // New user - warm welcome with clear value prop
+            await sendIMessage(handle, "Hey! Welcome to Manus on iMessage ✨");
+            
+            await sendTypingIndicator(handle, 1500);
+            await sendIMessage(handle, "You get 3 free tasks with full access to all premium features. After that, you can continue using your own API key.");
+            
+            await sendTypingIndicator(handle, 1500);
+            await sendIMessage(handle, "If you have a Manus API key, you can paste it anytime.");
+            
+            await sendTypingIndicator(handle, 1000);
+            await sendIMessage(handle, "Enjoy!");
           }
 
           console.log('✅ Welcome message sent to:', handle);
@@ -401,19 +494,48 @@ export async function startIMessageListener() {
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
           
           await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, `📱 Manus iMessage Commands:
+          await sendIMessage(handle, `Commands:
 
 • "help" - Show this message
-• "status" - Check connection status
+• "status" - Check your connection & usage
+• "add key" - Add or update your Manus API key
 • "revoke" - Disconnect and delete all data
 
-Your messages are automatically sent to Manus AI for processing.
-
-Need help? Visit https://manus.photon.codes`);
+Just message me normally and I'll help you with anything - browsing, coding, research, and more.`);
           
           console.log('✅ Sent help message to:', handle);
         } catch (error) {
           console.error('❌ Failed to send help message:', error);
+        }
+        
+        return;
+      }
+
+      // Check for "add key" command
+      if (/^(add\s*key|api\s*key|my\s*key|connect\s*key|use\s*my\s*key)$/i.test(messageText.trim())) {
+        console.log('🔑 Add key request from:', handle);
+        
+        try {
+          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+          
+          // Get fresh connection data
+          const conn = await prisma.connection.findFirst({
+            where: { phoneNumber: handle, status: 'ACTIVE' },
+          });
+          
+          const hasApiKey = !!conn?.manusApiKey;
+          
+          await sendTypingIndicator(handle, 1000);
+          
+          if (hasApiKey) {
+            await sendIMessage(handle, "You already have an API key connected.\n\nTo update it, just paste your new key here and I'll replace the old one.");
+          } else {
+            await sendIMessage(handle, "To add your Manus API key:\n\n1. Go to manus.im\n2. Settings → Integrations → API\n3. Copy your API key\n4. Paste it here\n\nYour key starts with \"sk-\" and is about 80 characters long.");
+          }
+          
+          console.log('✅ Sent add key instructions to:', handle);
+        } catch (error) {
+          console.error('❌ Failed to send add key message:', error);
         }
         
         return;
@@ -435,15 +557,23 @@ Need help? Visit https://manus.photon.codes`);
           
           const tasksUsed = (conn as any)?.tasksUsed ?? 0;
           const hasApiKey = !!conn?.manusApiKey;
+          const remainingTasks = Math.max(0, 3 - tasksUsed);
           
-          const statusMessage = `✅ Connection Status: ACTIVE
+          let statusMessage: string;
+          if (hasApiKey) {
+            statusMessage = `✅ Connected with your API key
 
-Phone: ${handle}
-Connected: ${conn?.activatedAt ? new Date(conn.activatedAt).toLocaleDateString() : 'N/A'}
-API Key: ${hasApiKey ? 'Connected' : `Free tier (${3 - tasksUsed} tasks remaining)`}
-Photon API Key: ${conn?.photonApiKey?.substring(0, 15)}...
+You have unlimited access to Manus.
 
-Your iMessage is connected to Manus AI.`;
+Connected since: ${conn?.activatedAt ? new Date(conn.activatedAt).toLocaleDateString() : 'N/A'}`;
+          } else {
+            statusMessage = `✅ Connected (Free Tier)
+
+Tasks used: ${tasksUsed}/3
+${remainingTasks > 0 ? `Remaining: ${remainingTasks} task${remainingTasks === 1 ? '' : 's'}` : '⚠️ Free tasks exhausted'}
+
+${remainingTasks === 0 ? 'Type "add key" to continue with your own API key.' : 'Type "add key" anytime to use your own API key for unlimited access.'}`;
+          }
           
           await sendIMessage(handle, statusMessage);
           
@@ -461,7 +591,15 @@ Your iMessage is connected to Manus AI.`;
         
         try {
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          const apiKey = messageText.trim();
+          
+          // Clean up the API key - handle whitespace, quotes, markdown code blocks
+          let apiKey = messageText.trim();
+          // Remove surrounding quotes
+          apiKey = apiKey.replace(/^["'`]+|["'`]+$/g, '');
+          // Remove markdown code formatting
+          apiKey = apiKey.replace(/^`+|`+$/g, '');
+          // Clean any remaining whitespace
+          apiKey = apiKey.trim();
           
           // Get fresh connection data
           const conn = await prisma.connection.findFirst({
@@ -474,13 +612,24 @@ Your iMessage is connected to Manus AI.`;
             return;
           }
           
-          if (conn.manusApiKey) {
-            await sendTypingIndicator(handle, 1000);
-            await sendIMessage(handle, "You already have an API key connected. Use 'revoke' to disconnect first if you want to change it.");
-            return;
+          const isUpdating = !!conn.manusApiKey;
+          
+          // If updating, delete old webhook first
+          if (isUpdating && conn.webhookId && conn.manusApiKey) {
+            try {
+              const deleteResponse = await fetch(`https://api.manus.im/v1/webhooks/${conn.webhookId}`, {
+                method: 'DELETE',
+                headers: { 'API_KEY': conn.manusApiKey },
+              });
+              if (deleteResponse.ok) {
+                console.log('✅ Old webhook deleted:', conn.webhookId);
+              }
+            } catch (error) {
+              console.warn('⚠️ Failed to delete old webhook:', error);
+            }
           }
           
-          // Register webhook with Manus
+          // Register webhook with new API key
           let webhookId: string | null = null;
           try {
             const response = await fetch('https://api.manus.im/v1/webhooks', {
@@ -503,7 +652,7 @@ Your iMessage is connected to Manus AI.`;
               // Check if it's an invalid API key error
               if (response.status === 401 || response.status === 403) {
                 await sendTypingIndicator(handle, 1000);
-                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key here:\nhttps://manus.im/app#settings/integrations/api");
+                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key at manus.im → Settings → Integrations → API");
                 return;
               }
               // For other errors (5xx, rate limits, etc.), don't save the key
@@ -536,14 +685,19 @@ Your iMessage is connected to Manus AI.`;
             },
           });
           
-          console.log('✅ API key connected for:', handle);
+          console.log(`✅ API key ${isUpdating ? 'updated' : 'connected'} for:`, handle);
           
-          // Send activation messages (MCP config removed - not needed)
+          // Send confirmation messages
           await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, "All set! Your API key is connected.");
           
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, "You're ready to go. Type \"continue\" to pick up where you left off, or just tell me what you'd like to work on.");
+          if (isUpdating) {
+            await sendIMessage(handle, "Done! Your API key has been updated.");
+          } else {
+            await sendIMessage(handle, "All set! Your API key is connected. You now have unlimited access.");
+            
+            await sendTypingIndicator(handle, 1000);
+            await sendIMessage(handle, "What would you like to work on?");
+          }
           
           console.log('✅ API key activation complete for:', handle);
         } catch (error) {
