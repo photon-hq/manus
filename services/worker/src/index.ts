@@ -1,7 +1,7 @@
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
 import { prisma, QueueStatus } from '@imessage-mcp/database';
-import { sanitizeHandle, TaskClassification } from '@imessage-mcp/shared';
+import { sanitizeHandle, MessageIntent, INTENT_RESPONSES } from '@imessage-mcp/shared';
 import { SDK } from '@photon-ai/advanced-imessage-kit';
 import { TypingIndicatorManager } from './typing-manager.js';
 
@@ -372,7 +372,7 @@ async function processMessage(phoneNumber: string, data: any) {
     } else {
       // Regular message with text - use detection based on DETECTION_MODE
       // Use original messageText for detection (not combined) to avoid confusion with pending message
-      const { isFollowUp, taskId: taskIdForThread } = await detectMessageType(
+      const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
         phoneNumber,
         messageText || '', // Use original for detection
         messageGuid,
@@ -384,9 +384,26 @@ async function processMessage(phoneNumber: string, data: any) {
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
+      // Check if this is a pre-defined intent that should be handled without Manus
+      if (intent && DETECTION_MODE === 'slm') {
+        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask);
+        if (handled) {
+          console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
+          // Mark as completed and return early
+          await prisma.messageQueue.update({
+            where: { id: messageId },
+            data: {
+              status: QueueStatus.COMPLETED,
+              processedAt: new Date(),
+            },
+          });
+          return;
+        }
+      }
+
       if (isFollowUp && taskIdForThread) {
         // Follow-up detected → switch to that task and append
-        console.log(`✅ Follow-up detected - switching to task ${taskIdForThread}`);
+        console.log(`✅ Follow-up detected - switching to task ${taskIdForThread}${reasoning ? ` (${reasoning})` : ''}`);
         
         // Update connection to point to the task being replied to
         // IMPORTANT: Set triggeringMessageGuid to the CURRENT message (messageGuid), not the original
@@ -403,6 +420,8 @@ async function processMessage(phoneNumber: string, data: any) {
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
         // New task → clear previous task and create new one
+        console.log(`🆕 New task detected for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
+        
         if (connForTask?.currentTaskId) {
           await prisma.connection.update({
             where: { phoneNumber },
@@ -542,6 +561,8 @@ async function uploadFileToManus(fileBuffer: Buffer, filename: string, manusApiK
 interface DetectionResult {
   isFollowUp: boolean;
   taskId: string | null;
+  intent?: MessageIntent; // Full intent from SLM router
+  reasoning?: string; // Debug info from SLM
 }
 
 /**
@@ -608,7 +629,8 @@ async function detectMessageTypeThread(
 
 /**
  * SLM-based detection: Use AI classification based on message context
- * Calls the slm-classifier service to determine if message is NEW_TASK or FOLLOW_UP
+ * Calls the slm-classifier service to determine message intent
+ * Returns: NEW_TASK, FOLLOW_UP, API_KEY_HELP, STATUS_CHECK, HELP_REQUEST, REVOKE, GENERAL_INFO
  */
 async function detectMessageTypeSLM(
   phoneNumber: string,
@@ -616,7 +638,7 @@ async function detectMessageTypeSLM(
   messageGuid: string,
   connection: any
 ): Promise<DetectionResult> {
-  console.log(`🤖 SLM detection mode for ${phoneNumber}`);
+  console.log(`🤖 SLM agentic router for ${phoneNumber}`);
   
   // Get last task context (last 20 messages), excluding the current message
   const recentMessages = await getRecentMessages(phoneNumber, 20, messageGuid);
@@ -625,21 +647,32 @@ async function detectMessageTypeSLM(
   console.log(`📝 Context for SLM (${recentMessages.length} messages):`, 
     recentMessages.map(m => `${m.from}: ${m.text.substring(0, 50)}`).join(' | '));
 
-  // No context = no active task → create new task (don't rely on classifier with empty context)
-  if (recentMessages.length === 0) {
-    console.log(`No task context for ${phoneNumber}, returning NEW_TASK`);
-    return { isFollowUp: false, taskId: null };
-  }
-
-  // Classify message using SLM
+  // Classify message using SLM router
   const classification = await classifyMessage(messageText, recentMessages);
-  console.log(`Classification for ${phoneNumber}:`, classification);
+  console.log(`🎯 Intent classification for ${phoneNumber}:`, classification);
 
-  if (classification.type === TaskClassification.NEW_TASK) {
-    return { isFollowUp: false, taskId: null };
-  } else {
-    // Follow-up to existing task
-    return { isFollowUp: true, taskId: connection?.currentTaskId || null };
+  const intent = classification.intent;
+  
+  // Map intent to detection result
+  switch (intent) {
+    case MessageIntent.NEW_TASK:
+      return { isFollowUp: false, taskId: null, intent, reasoning: classification.reasoning };
+    
+    case MessageIntent.FOLLOW_UP:
+      return { isFollowUp: true, taskId: connection?.currentTaskId || null, intent, reasoning: classification.reasoning };
+    
+    case MessageIntent.API_KEY_HELP:
+    case MessageIntent.STATUS_CHECK:
+    case MessageIntent.HELP_REQUEST:
+    case MessageIntent.REVOKE:
+    case MessageIntent.GENERAL_INFO:
+      // These intents are handled by pre-defined responses, not Manus tasks
+      return { isFollowUp: false, taskId: null, intent, reasoning: classification.reasoning };
+    
+    default:
+      // Unknown intent, default to NEW_TASK
+      console.warn(`Unknown intent: ${intent}, defaulting to NEW_TASK`);
+      return { isFollowUp: false, taskId: null, intent: MessageIntent.NEW_TASK };
   }
 }
 
@@ -745,10 +778,10 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
 }
 
 /**
- * Classify message using SLM service
- * Returns { type: TaskClassification, confidence: number }
+ * Classify message using SLM agentic router service
+ * Returns { intent: MessageIntent, confidence: number, reasoning?: string }
  */
-async function classifyMessage(message: string, context: any[]): Promise<{ type: TaskClassification; confidence: number }> {
+async function classifyMessage(message: string, context: any[]): Promise<{ intent: MessageIntent; confidence: number; reasoning?: string }> {
   try {
     const response = await fetch(`${SLM_SERVICE_URL}/classify`, {
       method: 'POST',
@@ -765,11 +798,100 @@ async function classifyMessage(message: string, context: any[]): Promise<{ type:
       throw new Error(`SLM service error: ${response.statusText}`);
     }
 
-    return await response.json() as { type: TaskClassification; confidence: number };
+    const result = await response.json() as { intent?: MessageIntent; type?: MessageIntent; confidence: number; reasoning?: string };
+    
+    // Support both 'intent' (new) and 'type' (legacy) field names
+    return {
+      intent: result.intent || result.type || MessageIntent.NEW_TASK,
+      confidence: result.confidence,
+      reasoning: result.reasoning,
+    };
   } catch (error) {
     console.error('Classification failed:', error);
     // Default to NEW_TASK on error
-    return { type: TaskClassification.NEW_TASK, confidence: 0.5 };
+    return { intent: MessageIntent.NEW_TASK, confidence: 0.5, reasoning: 'Classification error' };
+  }
+}
+
+/**
+ * Handle pre-defined intent responses (non-task intents)
+ * Returns true if handled, false if should continue to task processing
+ */
+async function handlePredefinedIntent(
+  phoneNumber: string,
+  intent: MessageIntent,
+  connection: any
+): Promise<boolean> {
+  const sdk = await getIMessageSDK();
+  const chatGuid = `any;-;${phoneNumber}`;
+  
+  const sendWithTyping = async (message: string, delayMs: number = 1000) => {
+    await sdk.chats.startTyping(chatGuid);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    await sdk.chats.stopTyping(chatGuid);
+    await sdk.messages.sendMessage({ chatGuid, message });
+  };
+  
+  switch (intent) {
+    case MessageIntent.API_KEY_HELP: {
+      console.log(`📋 Handling API_KEY_HELP intent for ${phoneNumber}`);
+      const hasApiKey = !!connection?.manusApiKey;
+      const response = hasApiKey 
+        ? INTENT_RESPONSES.API_KEY_HELP_ALREADY_CONNECTED 
+        : INTENT_RESPONSES.API_KEY_HELP;
+      await sendWithTyping(response as string, 1500);
+      return true;
+    }
+    
+    case MessageIntent.STATUS_CHECK: {
+      console.log(`📋 Handling STATUS_CHECK intent for ${phoneNumber}`);
+      const tasksUsed = connection?.tasksUsed ?? 0;
+      const hasApiKey = !!connection?.manusApiKey;
+      const remainingTasks = Math.max(0, 3 - tasksUsed);
+      
+      let statusMessage: string;
+      if (hasApiKey) {
+        statusMessage = `✅ Connected with your API key
+
+You have unlimited access to Manus.
+
+Connected since: ${connection?.activatedAt ? new Date(connection.activatedAt).toLocaleDateString() : 'N/A'}`;
+      } else {
+        statusMessage = `✅ Connected (Free Tier)
+
+Tasks used: ${tasksUsed}/3
+${remainingTasks > 0 ? `Remaining: ${remainingTasks} task${remainingTasks === 1 ? '' : 's'}` : '⚠️ Free tasks exhausted'}
+
+${remainingTasks === 0 ? 'Type "add key" to continue with your own API key.' : 'Type "add key" anytime to use your own API key for unlimited access.'}`;
+      }
+      
+      await sendWithTyping(statusMessage, 1000);
+      return true;
+    }
+    
+    case MessageIntent.HELP_REQUEST: {
+      console.log(`📋 Handling HELP_REQUEST intent for ${phoneNumber}`);
+      await sendWithTyping(INTENT_RESPONSES.HELP_REQUEST as string, 1000);
+      return true;
+    }
+    
+    case MessageIntent.REVOKE: {
+      console.log(`📋 Handling REVOKE intent for ${phoneNumber}`);
+      await sendWithTyping(INTENT_RESPONSES.REVOKE_CONFIRM as string, 1000);
+      return true;
+    }
+    
+    case MessageIntent.GENERAL_INFO: {
+      console.log(`📋 Handling GENERAL_INFO intent for ${phoneNumber}`);
+      // Send info about Photon
+      const infoMessage = `${INTENT_RESPONSES.GENERAL_INFO_PHOTON as string}\n\n${INTENT_RESPONSES.GENERAL_INFO_HOW_IT_WORKS as string}`;
+      await sendWithTyping(infoMessage, 1500);
+      return true;
+    }
+    
+    default:
+      // Not a pre-defined intent, continue to task processing
+      return false;
   }
 }
 

@@ -22,11 +22,19 @@ export enum QueueStatus {
   FAILED = 'FAILED',
 }
 
-// Task Classification
-export enum TaskClassification {
-  NEW_TASK = 'NEW_TASK',
-  FOLLOW_UP = 'FOLLOW_UP',
+// Message Intent - Agentic Router Classification
+export enum MessageIntent {
+  NEW_TASK = 'NEW_TASK',           // Start a new Manus task
+  FOLLOW_UP = 'FOLLOW_UP',         // Continue existing task
+  API_KEY_HELP = 'API_KEY_HELP',   // Questions about API key setup/instructions
+  STATUS_CHECK = 'STATUS_CHECK',   // Check connection status
+  HELP_REQUEST = 'HELP_REQUEST',   // General help/commands list
+  REVOKE = 'REVOKE',               // Disconnect/revoke access
+  GENERAL_INFO = 'GENERAL_INFO',   // General questions (about photon, how it works, etc.)
 }
+
+// Legacy alias for backwards compatibility
+export const TaskClassification = MessageIntent;
 
 // Schemas
 export const ConnectionSchema = z.object({
@@ -57,7 +65,14 @@ export const ClassificationRequestSchema = z.object({
 });
 
 export const ClassificationResponseSchema = z.object({
-  type: z.nativeEnum(TaskClassification),
+  intent: z.nativeEnum(MessageIntent),
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string().optional(), // Brief explanation for debugging
+});
+
+// Legacy schema for backwards compatibility
+export const LegacyClassificationResponseSchema = z.object({
+  type: z.nativeEnum(MessageIntent),
   confidence: z.number().min(0).max(1),
 });
 
@@ -87,3 +102,32 @@ export type Message = z.infer<typeof MessageSchema>;
 export type ClassificationRequest = z.infer<typeof ClassificationRequestSchema>;
 export type ClassificationResponse = z.infer<typeof ClassificationResponseSchema>;
 export type WebhookEvent = z.infer<typeof WebhookEventSchema>;
+
+// Pre-defined responses for non-task intents
+export const INTENT_RESPONSES: Record<string, string | string[]> = {
+  API_KEY_HELP: [
+    "To add your Manus API key:",
+    "1. Go to: https://manus.im/app#settings/integrations/api",
+    "2. Copy your API key (starts with \"sk-\", about 80 characters)",
+    "3. Paste it here in this chat",
+    "",
+    "Once connected, you'll have unlimited access to all features.",
+  ].join("\n"),
+  
+  API_KEY_HELP_ALREADY_CONNECTED: "You already have an API key connected.\n\nTo update it, just paste your new key here and I'll replace the old one.",
+  
+  HELP_REQUEST: `Commands:
+
+• "help" - Show this message
+• "status" - Check your connection & usage
+• "add key" - Add or update your Manus API key
+• "revoke" - Disconnect and delete all data
+
+Just message me normally and I'll help you with anything - browsing, coding, research, and more.`,
+
+  REVOKE_CONFIRM: 'This will disconnect and delete all your data.\n\nReply "YES REVOKE" to confirm.',
+  
+  GENERAL_INFO_PHOTON: "Photon is the service that connects Manus to iMessage. It lets you use Manus's AI capabilities directly from your Messages app - no apps to install, just text me what you need!",
+  
+  GENERAL_INFO_HOW_IT_WORKS: "Here's how it works:\n\n1. You send me a message with what you need\n2. I route it to Manus (a powerful AI agent)\n3. Manus works on your task and sends back results\n\nYou can send text, images, files - I'll handle them all!",
+};

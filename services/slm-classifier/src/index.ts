@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 import {
   ClassificationRequestSchema,
   ClassificationResponseSchema,
-  TaskClassification,
+  MessageIntent,
 } from '@imessage-mcp/shared';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -42,7 +42,7 @@ fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
 
-// POST /classify - Classify message as NEW_TASK or FOLLOW_UP
+// POST /classify - Agentic Router: Classify message intent
 fastify.post('/classify', async (request: any, reply: any) => {
   try {
     const body = ClassificationRequestSchema.parse(request.body);
@@ -51,7 +51,7 @@ fastify.post('/classify', async (request: any, reply: any) => {
     fastify.log.info({ 
       message: latest_message,
       contextLength: last_task_context.length 
-    }, 'Classifying message');
+    }, 'Classifying message intent');
 
     // Build context string
     const contextStr = last_task_context
@@ -63,65 +63,84 @@ fastify.post('/classify', async (request: any, reply: any) => {
       contextMessages: last_task_context.map((m: { from: string; text: string }) => ({ from: m.from, text: m.text.substring(0, 100) }))
     }, 'Context for classification');
 
-    // Call OpenRouter with Google Gemini 2.0 Flash (very fast, cheap, excellent for classification)
+    // Agentic Router Prompt - Routes to the right handler
+    const systemPrompt = `You are an intelligent message router for Photon, an iMessage-to-Manus bridge service.
+
+Your job is to classify the user's message into ONE of these intents:
+
+**INTENTS (choose exactly one):**
+
+1. **NEW_TASK** - User wants to start a NEW task/request for Manus AI agent
+   - "Book me a flight to Paris"
+   - "Help me write a resume"
+   - "Research the best laptops under $1000"
+   - "Debug this code: [code]"
+   - Any substantial request that requires AI agent work
+   - Use when NO conversation context exists
+
+2. **FOLLOW_UP** - User is continuing an EXISTING conversation/task
+   - Responding to assistant's questions
+   - Adding more details to current request
+   - "Yes, do that" / "No, try again"
+   - ANY message that relates to recent context
+   - **DEFAULT when context exists and message isn't a meta-command**
+
+3. **API_KEY_HELP** - User asking about API key setup/instructions
+   - "how do I add my key"
+   - "add key" / "api key" / "my key"
+   - "where do I get my API key"
+   - "how to connect my manus account"
+   - Questions about pricing, free tier, limits
+
+4. **STATUS_CHECK** - User wants to check their account status
+   - "status"
+   - "how many tasks do I have left"
+   - "am I connected"
+   - "what's my usage"
+
+5. **HELP_REQUEST** - User wants help/commands list
+   - "help"
+   - "commands"
+   - "what can you do"
+   - "how does this work" (when asking about Photon itself)
+
+6. **REVOKE** - User wants to disconnect/delete data
+   - "revoke"
+   - "disconnect"
+   - "delete my data"
+   - "unsubscribe"
+
+7. **GENERAL_INFO** - Questions about Photon/the service itself (NOT tasks for Manus)
+   - "what is photon"
+   - "who made this"
+   - "what did you use to communicate" → User asking about the service
+   - "how do you work"
+   - Meta questions about the bridge service
+
+**ROUTING RULES:**
+
+1. If message is a clear meta-command (help, status, revoke, add key) → Route to that intent
+2. If asking about API key, pricing, limits, or connection → API_KEY_HELP
+3. If asking about what Photon is or how it works → GENERAL_INFO
+4. If context exists AND message relates to it → FOLLOW_UP (strongly prefer this)
+5. If no context OR completely unrelated topic → NEW_TASK
+6. When in doubt between NEW_TASK and FOLLOW_UP → Choose FOLLOW_UP
+
+**Context (oldest to newest):**
+${contextStr || 'EMPTY - No previous context'}
+
+**Respond with JSON only:**
+{"intent": "NEW_TASK" | "FOLLOW_UP" | "API_KEY_HELP" | "STATUS_CHECK" | "HELP_REQUEST" | "REVOKE" | "GENERAL_INFO", "confidence": 0.0 to 1.0, "reasoning": "brief explanation"}`;
+
     const response = await openrouter.chat.completions.create({
       model: 'google/gemini-2.0-flash-001',
       messages: [
-        {
-          role: 'system',
-          content: `You classify whether the user's latest message is part of the SAME conversation (FOLLOW_UP) or starts a completely NEW and UNRELATED task (NEW_TASK).
-
-**CRITICAL: ALWAYS prefer FOLLOW_UP. NEW_TASK should be EXTREMELY RARE (< 5% of cases).**
-
-**FOLLOW_UP** = Default for ANY message in an ongoing conversation. Use for:
-- ANY message after context exists (greetings, questions, requests, statements, reactions)
-- User stating their need/request at ANY point (even after small talk like "hey", "how are you")
-- ANY topic that has even a REMOTE connection to previous messages
-- Related domains: travel → passport → visa → flights → hotels → budget → planning
-- Related domains: hiring → pricing → contracts → onboarding → team → culture
-- Related domains: coding → debugging → deployment → testing → documentation
-- Continuing, clarifying, refining, expanding on ANY previous topic
-- Answering assistant's questions or responding to assistant's output
-- **If there's ANY previous reference or connection, even loose → FOLLOW_UP**
-- **If you can imagine ANY way this relates to the conversation → FOLLOW_UP**
-- **When in doubt (which should be 95% of the time) → FOLLOW_UP**
-
-**NEW_TASK** = ONLY for COMPLETELY different, unrelated topics. Extremely high bar:
-- User explicitly says: "Forget that", "Different topic:", "New question:", "Nevermind, instead..."
-- Request is OBVIOUSLY unrelated with ZERO connection (e.g., "What's the weather in Tokyo?" after discussing code bugs; "Book a flight to Paris" after discussing cooking recipes with no travel context)
-- **Even if topics seem different, if there's ANY conceivable connection → FOLLOW_UP**
-- **If user previously mentioned anything related → FOLLOW_UP**
-
-**EXAMPLES (all FOLLOW_UP unless stated):**
-- "Hello! How can I help?" → "how are you" → "I'm doing well!" → "I need passport for Bali" → **FOLLOW_UP**
-- "Tell me about your trip" → "It was great!" → "Can you get a passport?" → **FOLLOW_UP** (travel context)
-- "Hiring a chef" → "Here's info" → "What's the budget?" → **FOLLOW_UP** (same topic)
-- "Fix my code" → "Here's the fix" → "Can you deploy it?" → **FOLLOW_UP** (same project)
-- "Recipe for pasta" → "Here you go" → "What about dessert?" → **FOLLOW_UP** (cooking context)
-- "Recipe for pasta" → "Here you go" → "What's 2+2?" → **NEW_TASK** (completely unrelated, no connection)
-
-**GOLDEN RULE: If context exists and message isn't OBVIOUSLY, COMPLETELY unrelated → FOLLOW_UP**
-
-RULES:
-1. Empty context → NEW_TASK
-2. Non-empty context → **FOLLOW_UP** (95%+ of cases)
-3. Only return NEW_TASK if message is COMPLETELY, OBVIOUSLY unrelated with ZERO connection
-4. Any doubt, any connection, any relation → **FOLLOW_UP**
-
-Context (oldest to newest):
-${contextStr || 'EMPTY - No previous context'}
-
-Respond with JSON only:
-{"type": "NEW_TASK" or "FOLLOW_UP", "confidence": 0.0 to 1.0}`,
-        },
-        {
-          role: 'user',
-          content: latest_message,
-        },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: latest_message },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.3,
-      max_tokens: 100,
+      temperature: 0.2,
+      max_tokens: 150,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -129,7 +148,7 @@ Respond with JSON only:
       throw new Error('No response from LLM');
     }
 
-    // Parse JSON response - handle potential markdown code blocks from some models
+    // Parse JSON response - handle potential markdown code blocks
     let jsonStr = content.trim();
     if (jsonStr.startsWith('```json')) {
       jsonStr = jsonStr.slice(7);
@@ -141,19 +160,34 @@ Respond with JSON only:
     }
     jsonStr = jsonStr.trim();
 
-    const classification = JSON.parse(jsonStr);
-    const validated = ClassificationResponseSchema.parse(classification);
+    const parsed = JSON.parse(jsonStr);
+    
+    // Normalize: support both 'intent' and 'type' for backwards compatibility
+    const intent = parsed.intent || parsed.type;
+    const result = {
+      intent: intent as MessageIntent,
+      confidence: parsed.confidence ?? 0.8,
+      reasoning: parsed.reasoning,
+    };
 
-    fastify.log.info({ classification: validated }, 'Classification complete');
+    // Validate the intent is valid
+    if (!Object.values(MessageIntent).includes(result.intent)) {
+      fastify.log.warn({ parsed, result }, 'Invalid intent, defaulting to NEW_TASK');
+      result.intent = MessageIntent.NEW_TASK;
+      result.confidence = 0.5;
+    }
 
-    return validated;
+    fastify.log.info({ classification: result }, 'Classification complete');
+
+    return result;
   } catch (error) {
     fastify.log.error(error, 'Classification failed');
     
     // Return default classification on error
     return {
-      type: TaskClassification.NEW_TASK,
+      intent: MessageIntent.NEW_TASK,
       confidence: 0.5,
+      reasoning: 'Error during classification, defaulting to NEW_TASK',
     };
   }
 });
