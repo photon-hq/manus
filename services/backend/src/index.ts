@@ -52,10 +52,10 @@ fastify.register(cors, {
   credentials: true,
 });
 
-// COMMENTED OUT: Landing page now on Framer - root route no longer needed
-// fastify.get('/', async (request, reply) => {
-//   return reply.redirect(301, '/connect');
-// });
+// Root route - redirect to Framer landing page (use 302 to avoid caching issues)
+fastify.get('/', async (request, reply) => {
+  return reply.redirect(302, 'https://manus.im');
+});
 
 // Register routes - dynamically load connect routes based on UI_DESIGN_VERSION
 const loadConnectRoutes = async () => {
