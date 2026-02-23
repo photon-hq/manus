@@ -54,7 +54,7 @@ fastify.register(cors, {
 
 // Root route - redirect to Framer landing page (use 302 to avoid caching issues)
 fastify.get('/', async (request, reply) => {
-  return reply.redirect(302, 'https://manus.photon.codes');
+  return reply.redirect(302, 'https://manus.im');
 });
 
 // Register routes - dynamically load connect routes based on UI_DESIGN_VERSION
