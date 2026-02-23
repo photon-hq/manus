@@ -1130,6 +1130,27 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
 
     if (!response.ok) {
       const errorText = await response.text();
+      
+      // Handle "task not found" error - task may have expired or been deleted on Manus side
+      // In this case, clear the stale task ID and create a new task instead
+      if (response.status === 404 && errorText.includes('task not found')) {
+        console.log(`⚠️ Task ${connection.currentTaskId} not found on Manus - clearing stale task and creating new one`);
+        
+        // Clear the stale task ID
+        await prisma.connection.update({
+          where: { phoneNumber },
+          data: { 
+            currentTaskId: null,
+            currentTaskStartedAt: null,
+            triggeringMessageGuid: null,
+          } as any,
+        });
+        
+        // Create a new task instead
+        console.log(`🔄 Creating new task for ${phoneNumber} after stale task cleanup`);
+        return createManusTask(phoneNumber, message, fileIds, new Date(), false, triggeringMessageGuid);
+      }
+      
       throw new Error(`Manus API error: ${response.status} - ${errorText}`);
     }
 
