@@ -52,10 +52,8 @@ fastify.register(cors, {
   credentials: true,
 });
 
-// Root route - redirect to Framer landing page (use 302 to avoid caching issues)
-fastify.get('/', async (request, reply) => {
-  return reply.redirect(302, 'https://manus.im');
-});
+// Root route handled by Framer - backend only serves API routes
+// No handler needed here - requests to / go to Framer via reverse proxy
 
 // Register routes - dynamically load connect routes based on UI_DESIGN_VERSION
 const loadConnectRoutes = async () => {
