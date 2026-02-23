@@ -183,9 +183,8 @@ export async function startIMessageListener() {
         return;
       }
 
-      // Legacy connection request phrases - now we just create ACTIVE connection on any first message
-      // const isConnectionRequest = /(hey|hello)\s+manus.*connect.*imessage/i.test(messageText) || 
-      //                             /connect.*imessage/i.test(messageText);
+      // Detect onboarding trigger phrase (sent by contact card / app link)
+      const isOnboardingTrigger = /^send this message to get started!?$/i.test(messageText.trim());
 
       // Always share contact card on every message (before connection check)
       try {
@@ -379,8 +378,13 @@ export async function startIMessageListener() {
 
           console.log('✅ Welcome message sent to:', handle);
           
-          // Now queue the message for processing (don't return - continue to queue)
-          // The worker will handle the task creation
+          // If this was just the onboarding trigger, don't queue it as a task
+          if (isOnboardingTrigger) {
+            console.log('⏭️  Onboarding trigger phrase - not queueing as task');
+            return;
+          }
+          
+          // Otherwise, queue the actual user message for processing
         } catch (error) {
           console.error('❌ Failed to create connection:', error);
           return;
@@ -396,8 +400,21 @@ export async function startIMessageListener() {
           return;
         }
         
-        // Continue to queue the message with the new connection
+        // Continue to queue the real message with the new connection
         // (Fall through to the message queueing logic below)
+      }
+
+      // If user is already connected and sends the onboarding trigger again, just acknowledge
+      if (isOnboardingTrigger) {
+        console.log('⏭️  Already connected user sent onboarding trigger - acknowledging');
+        try {
+          const { sendIMessage: sendMsg, sendTypingIndicator: showTyping } = await import('../lib/imessage.js');
+          await showTyping(handle, 1000);
+          await sendMsg(handle, "You're already connected! Just send me what you need help with.");
+        } catch (error) {
+          console.error('❌ Failed to send already-connected message:', error);
+        }
+        return;
       }
 
       // Check for revocation confirmation FIRST (before other commands)
