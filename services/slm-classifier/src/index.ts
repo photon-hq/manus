@@ -63,9 +63,9 @@ fastify.post('/classify', async (request, reply) => {
       contextMessages: last_task_context.map(m => ({ from: m.from, text: m.text.substring(0, 100) }))
     }, 'Context for classification');
 
-    // Call OpenRouter with OpenAI GPT-3.5 Turbo (reliable, fast, cheap)
+    // Call OpenRouter with Google Gemini 2.0 Flash (very fast, cheap, excellent for classification)
     const response = await openrouter.chat.completions.create({
-      model: 'openai/gpt-3.5-turbo',
+      model: 'google/gemini-2.0-flash-001',
       messages: [
         {
           role: 'system',
@@ -129,7 +129,19 @@ Respond with JSON only:
       throw new Error('No response from LLM');
     }
 
-    const classification = JSON.parse(content);
+    // Parse JSON response - handle potential markdown code blocks from some models
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```json')) {
+      jsonStr = jsonStr.slice(7);
+    } else if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith('```')) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
+
+    const classification = JSON.parse(jsonStr);
     const validated = ClassificationResponseSchema.parse(classification);
 
     fastify.log.info({ classification: validated }, 'Classification complete');
