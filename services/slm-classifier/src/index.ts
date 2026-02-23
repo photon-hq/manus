@@ -21,7 +21,7 @@ const openrouter = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: OPENROUTER_API_KEY,
   defaultHeaders: {
-    'HTTP-Referer': 'https://photon.ai',
+    'HTTP-Referer': 'https://photon.codes',
     'X-Title': 'Photon iMessage MCP',
   },
 });
@@ -43,7 +43,7 @@ fastify.get('/health', async () => {
 });
 
 // POST /classify - Classify message as NEW_TASK or FOLLOW_UP
-fastify.post('/classify', async (request, reply) => {
+fastify.post('/classify', async (request: any, reply: any) => {
   try {
     const body = ClassificationRequestSchema.parse(request.body);
     const { latest_message, last_task_context } = body;
@@ -55,12 +55,12 @@ fastify.post('/classify', async (request, reply) => {
 
     // Build context string
     const contextStr = last_task_context
-      .map((msg) => `${msg.from}: ${msg.text}`)
+      .map((msg: { from: string; text: string }) => `${msg.from}: ${msg.text}`)
       .join('\n');
     
     fastify.log.info({ 
       contextStr,
-      contextMessages: last_task_context.map(m => ({ from: m.from, text: m.text.substring(0, 100) }))
+      contextMessages: last_task_context.map((m: { from: string; text: string }) => ({ from: m.from, text: m.text.substring(0, 100) }))
     }, 'Context for classification');
 
     // Call OpenRouter with Google Gemini 2.0 Flash (very fast, cheap, excellent for classification)
