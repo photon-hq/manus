@@ -453,7 +453,7 @@ export async function startIMessageListener() {
             });
             console.log(`✅ Deleted ${deletedManusMessages.count} Manus messages`);
 
-            // Update connection status to REVOKED and clear sensitive data
+            // Update connection status to REVOKED and clear all transient state
             await tx.connection.update({
               where: { id: connection.id },
               data: {
@@ -461,7 +461,10 @@ export async function startIMessageListener() {
                 revokedAt: new Date(),
                 manusApiKey: null,
                 currentTaskId: null,
-              },
+                currentTaskStartedAt: null,
+                triggeringMessageGuid: null,
+                pendingMessage: null,
+              } as any,
             });
           });
 
