@@ -321,6 +321,51 @@ const start = async () => {
       throw error; // Fail fast if iMessage is not available
     }
 
+    // Register webhook for free tier API key (if configured)
+    const freeTierApiKey = process.env.MANUS_FREE_TIER_API_KEY || process.env.MANUS_API_KEY;
+    const publicUrl = process.env.PUBLIC_URL;
+    if (freeTierApiKey && publicUrl) {
+      try {
+        fastify.log.info('🔗 Registering webhook for free tier API key...');
+        const webhookUrl = `${publicUrl}/webhook`;
+        const response = await fetch('https://api.manus.im/v1/webhooks', {
+          method: 'POST',
+          headers: {
+            'API_KEY': freeTierApiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            webhook: {
+              url: webhookUrl,
+            },
+          }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json() as { webhook_id?: string; id?: string };
+          const webhookId = data.webhook_id || data.id;
+          fastify.log.info(`✅ Free tier webhook registered: ${webhookId} → ${webhookUrl}`);
+        } else {
+          const errorText = await response.text();
+          // 409 Conflict typically means webhook already exists - that's fine
+          if (response.status === 409) {
+            fastify.log.info(`✅ Free tier webhook already registered for ${webhookUrl}`);
+          } else {
+            fastify.log.warn(`⚠️ Free tier webhook registration failed: ${response.status} - ${errorText}`);
+          }
+        }
+      } catch (error) {
+        fastify.log.warn(`⚠️ Free tier webhook registration failed (non-critical): ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } else {
+      if (!freeTierApiKey) {
+        fastify.log.warn('⚠️ No MANUS_FREE_TIER_API_KEY or MANUS_API_KEY set - free tier webhooks not registered');
+      }
+      if (!publicUrl) {
+        fastify.log.warn('⚠️ No PUBLIC_URL set - webhooks not registered');
+      }
+    }
+
     await fastify.listen({ port: PORT, host: HOST });
     fastify.log.info(`Backend server running on http://${HOST}:${PORT}`);
   } catch (err) {
