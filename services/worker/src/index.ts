@@ -841,7 +841,7 @@ async function sendFreeTierLimitPrompt(phoneNumber: string, blockedMessage: stri
     // Send multi-message prompt with typing indicators
     const messages = [
       "You've used all 3 free tasks! 🎉",
-      "To keep going, add your own Manus API key:\n\n1. Go to manus.im\n2. Settings → Integrations → API\n3. Copy your key and paste it here",
+      "To keep going, add your own Manus API key:\nhttps://manus.im/app#settings/integrations/api\n\nCopy your key and paste it here.",
       "Your progress is saved. Once you add your key, just type \"continue\" or tell me what you were working on.",
     ];
     

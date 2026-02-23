@@ -179,7 +179,7 @@ export async function startIMessageListener() {
         console.log('⚠️  Malformed API key attempt from:', handle, '- length:', cleanedForKeyCheck.length);
         const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
         await sendTypingIndicator(handle, 1000);
-        await sendIMessage(handle, "That doesn't look like a complete API key. Make sure you copy the entire key - it should be about 80 characters long.\n\nGet your key at manus.im → Settings → Integrations → API");
+        await sendIMessage(handle, "That doesn't look like a complete API key. Make sure you copy the entire key - it should be about 80 characters long.\n\nGet your key here:\nhttps://manus.im/app#settings/integrations/api");
         return;
       }
 
@@ -243,7 +243,7 @@ export async function startIMessageListener() {
             if (!response.ok) {
               if (response.status === 401 || response.status === 403) {
                 await sendTypingIndicator(handle, 1000);
-                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key at manus.im → Settings → Integrations → API");
+                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key here:\nhttps://manus.im/app#settings/integrations/api");
                 return;
               }
               if (response.status >= 400) {
@@ -550,7 +550,7 @@ Just message me normally and I'll help you with anything - browsing, coding, res
           if (hasApiKey) {
             await sendIMessage(handle, "You already have an API key connected.\n\nTo update it, just paste your new key here and I'll replace the old one.");
           } else {
-            await sendIMessage(handle, "To add your Manus API key:\n\n1. Go to manus.im\n2. Settings → Integrations → API\n3. Copy your API key\n4. Paste it here\n\nYour key starts with \"sk-\" and is about 80 characters long.");
+            await sendIMessage(handle, "To add your Manus API key:\nhttps://manus.im/app#settings/integrations/api\n\nCopy your key and paste it here. It starts with \"sk-\" and is about 80 characters long.");
           }
           
           console.log('✅ Sent add key instructions to:', handle);
@@ -672,7 +672,7 @@ ${remainingTasks === 0 ? 'Type "add key" to continue with your own API key.' : '
               // Check if it's an invalid API key error
               if (response.status === 401 || response.status === 403) {
                 await sendTypingIndicator(handle, 1000);
-                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key at manus.im → Settings → Integrations → API");
+                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key here:\nhttps://manus.im/app#settings/integrations/api");
                 return;
               }
               // For other errors (5xx, rate limits, etc.), don't save the key
