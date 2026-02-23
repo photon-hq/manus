@@ -54,6 +54,54 @@ SQL
 fi
 
 echo "✅ Database ready"
+
+# Run one-time deploy operations from deploy-ops.json
+DEPLOY_OPS_FILE="/app/services/backend/deploy-ops.json"
+DEPLOY_OPS_LOG_TABLE="_deploy_ops_log"
+
+if [ -f "$DEPLOY_OPS_FILE" ]; then
+  echo "📋 Checking deploy operations..."
+
+  # Create log table if it doesn't exist
+  psql "$DATABASE_URL" -q -c "
+    CREATE TABLE IF NOT EXISTS $DEPLOY_OPS_LOG_TABLE (
+      id TEXT PRIMARY KEY,
+      description TEXT,
+      executed_at TIMESTAMPTZ DEFAULT now(),
+      rows_affected INT
+    );
+  " 2>/dev/null || true
+
+  # Parse and run each operation (only if not already executed)
+  OPS_COUNT=$(node -e "const ops=require('$DEPLOY_OPS_FILE'); console.log(ops.length)")
+
+  i=0
+  while [ "$i" -lt "$OPS_COUNT" ]; do
+    OP_ID=$(node -e "const ops=require('$DEPLOY_OPS_FILE'); console.log(ops[$i].id)")
+    OP_DESC=$(node -e "const ops=require('$DEPLOY_OPS_FILE'); console.log(ops[$i].description)")
+    OP_SQL=$(node -e "const ops=require('$DEPLOY_OPS_FILE'); console.log(ops[$i].sql)")
+
+    # Check if already executed
+    ALREADY_RAN=$(psql "$DATABASE_URL" -tAc "SELECT COUNT(*) FROM $DEPLOY_OPS_LOG_TABLE WHERE id = '$OP_ID';" 2>/dev/null || echo "0")
+
+    if [ "$ALREADY_RAN" = "0" ]; then
+      echo "  🔧 Running: $OP_DESC"
+      RESULT=$(psql "$DATABASE_URL" -c "$OP_SQL" 2>&1)
+      ROWS=$(echo "$RESULT" | grep -o '[0-9]*' | head -1 || echo "0")
+      echo "  ✅ Done ($RESULT)"
+
+      # Log it
+      psql "$DATABASE_URL" -q -c "INSERT INTO $DEPLOY_OPS_LOG_TABLE (id, description, rows_affected) VALUES ('$OP_ID', '$OP_DESC', ${ROWS:-0});" 2>/dev/null || true
+    else
+      echo "  ⏭️  Already ran: $OP_DESC"
+    fi
+
+    i=$((i + 1))
+  done
+
+  echo "✅ Deploy operations complete"
+fi
+
 echo "Starting backend service..."
 cd /app/services/backend
 exec node dist/index.js

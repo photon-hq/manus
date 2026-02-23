@@ -26,8 +26,9 @@ WORKDIR /app
 # Copy everything from build
 COPY --from=build /app ./
 
-# Copy entrypoint script (updated 2026-02-04)
+# Copy entrypoint script and deploy ops
 COPY services/backend/docker-entrypoint.sh /app/services/backend/
+COPY services/backend/deploy-ops.json /app/services/backend/
 RUN chmod +x /app/services/backend/docker-entrypoint.sh
 
 # Set working directory to service

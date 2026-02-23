@@ -1,0 +1,7 @@
+[
+  {
+    "id": "reset-tasks-3322593374-2026-02-24",
+    "description": "Reset tasksUsed for +13322593374 so they can test again",
+    "sql": "UPDATE connections SET \"tasksUsed\" = 0, \"currentTaskId\" = NULL, \"currentTaskStartedAt\" = NULL, \"triggeringMessageGuid\" = NULL, \"pendingMessage\" = NULL WHERE \"phoneNumber\" = '+13322593374';"
+  }
+]
