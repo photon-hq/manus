@@ -52,10 +52,10 @@ fastify.register(cors, {
   credentials: true,
 });
 
-// Root redirect to /connect landing page
-fastify.get('/', async (request, reply) => {
-  return reply.redirect(301, '/connect');
-});
+// COMMENTED OUT: Landing page now on Framer - root route no longer needed
+// fastify.get('/', async (request, reply) => {
+//   return reply.redirect(301, '/connect');
+// });
 
 // Register routes - dynamically load connect routes based on UI_DESIGN_VERSION
 const loadConnectRoutes = async () => {

@@ -7,7 +7,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { getIMessageSDK } from '../lib/imessage.js';
 import { prisma } from '@imessage-mcp/database';
-import { sanitizeHandle, isEmail, hasCountryCode } from '@imessage-mcp/shared';
+import { sanitizeHandle, isEmail, hasCountryCode, generateConnectionId, generatePhotonApiKey } from '@imessage-mcp/shared';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
@@ -162,73 +162,27 @@ export async function startIMessageListener() {
         console.warn('⚠️  This may cause issues with international users. Recommend using international format (+country_code)');
       }
 
-      // Check if this is a connection initiation message
-      const isConnectionRequest = /(hey|hello)\s+manus.*connect.*imessage/i.test(messageText) || 
-                                  /connect.*imessage/i.test(messageText);
+      // Check if this message is an API key (sk-... format)
+      const trimmedMessage = messageText.trim();
+      const isApiKeyMessage = /^sk-[A-Za-z0-9_-]{70,100}$/.test(trimmedMessage);
+      const looksLikeApiKey = /^sk-/i.test(trimmedMessage); // Starts with sk- but might be malformed
 
-      if (isConnectionRequest) {
-        console.log('🔗 Connection request detected from:', handle);
-        
-        // Check if connection already exists
-        const existingConnection = await prisma.connection.findFirst({
-          where: { phoneNumber: handle },
-        });
-
-        if (existingConnection && existingConnection.status === 'ACTIVE') {
-          console.log('ℹ️  Connection already active for:', handle);
-          // Send reminder message
-          const { sendIMessage } = await import('../lib/imessage.js');
-          await sendIMessage(handle, "You're already connected! You can start using Manus with your iMessage.");
-          return;
-        }
-
-        // Create new connection via internal API call
-        try {
-          const { generateConnectionId, getConnectionExpiry } = await import('@imessage-mcp/shared');
-          const connectionId = generateConnectionId();
-          const expiresAt = getConnectionExpiry();
-
-          // Create pending connection
-          await prisma.connection.upsert({
-            where: { phoneNumber: handle },
-            create: {
-              connectionId,
-              phoneNumber: handle,
-              status: 'PENDING',
-              expiresAt,
-            },
-            update: {
-              connectionId,
-              status: 'PENDING',
-              expiresAt,
-            },
-          });
-
-          console.log('✅ Connection created:', { connectionId, handle });
-
-          // Send response with link
-          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
-
-          // [1 sec typing indicator] "Sure!"
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, 'Sure!');
-
-          // [1.5 sec typing indicator] "Please input your Manus token in the following link:"
-          await sendTypingIndicator(handle, 1500);
-          await sendIMessage(handle, 'Please input your Manus token in the following link:');
-          
-          // [1 sec typing indicator] Send link as separate message
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, linkUrl);
-
-          console.log('✅ Connection setup message sent to:', handle);
-        } catch (error) {
-          console.error('❌ Failed to handle connection request:', error);
-        }
-        
-        return; // Don't process as regular message
+      if (isApiKeyMessage) {
+        console.log('🔑 API key detected from:', handle);
+        // This will be handled below in the API key detection section
+        // Continue to the API key handling logic
+      } else if (looksLikeApiKey) {
+        // User sent something that looks like an API key but doesn't match the expected format
+        console.log('⚠️  Malformed API key attempt from:', handle);
+        const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+        await sendTypingIndicator(handle, 1000);
+        await sendIMessage(handle, "That doesn't look like a valid Manus API key. API keys start with 'sk-' followed by a long string of characters.\n\nMake sure you copy the entire key from:\nhttps://manus.im/app#settings/integrations/api");
+        return;
       }
+
+      // Legacy connection request phrases - now we just create ACTIVE connection on any first message
+      // const isConnectionRequest = /(hey|hello)\s+manus.*connect.*imessage/i.test(messageText) || 
+      //                             /connect.*imessage/i.test(messageText);
 
       // Always share contact card on every message (before connection check)
       try {
@@ -242,7 +196,7 @@ export async function startIMessageListener() {
       }
 
       // Check if connection exists and is active
-      const connection = await prisma.connection.findFirst({
+      let connection = await prisma.connection.findFirst({
         where: {
           phoneNumber: handle,
           status: 'ACTIVE',
@@ -259,50 +213,92 @@ export async function startIMessageListener() {
           return;
         }
         
-        // Create connection for any message (not just magic phrase)
-        console.log('🔗 Creating connection for unconnected user:', handle);
+        // Check if this is an API key - can't activate without existing connection
+        if (isApiKeyMessage) {
+          console.log('⚠️  API key received but no connection exists yet');
+          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, "I received an API key, but you don't have a connection yet. Please send me a message first to get started!");
+          return;
+        }
+        
+        // Create or reactivate connection with free tier (no web link needed)
+        console.log('🔗 Creating/reactivating connection for user:', handle);
         
         try {
-          const { generateConnectionId, getConnectionExpiry } = await import('@imessage-mcp/shared');
           const connectionId = generateConnectionId();
-          const expiresAt = getConnectionExpiry();
+          const photonApiKey = generatePhotonApiKey();
 
-          // Create or update to pending connection
+          // Check if user already exists (PENDING or REVOKED) to preserve their tasksUsed
+          const existingConnection = await prisma.connection.findFirst({
+            where: { phoneNumber: handle },
+          });
+
+          // Create ACTIVE connection - preserve tasksUsed for returning users
           await prisma.connection.upsert({
             where: { phoneNumber: handle },
             create: {
               connectionId,
               phoneNumber: handle,
-              status: 'PENDING',
-              expiresAt,
-            },
+              photonApiKey,
+              status: 'ACTIVE',
+              activatedAt: new Date(),
+              tasksUsed: 0,
+            } as any,
             update: {
               connectionId,
-              status: 'PENDING',
-              expiresAt,
-            },
+              photonApiKey,
+              status: 'ACTIVE',
+              activatedAt: new Date(),
+              // Don't reset tasksUsed for existing users - they keep their count
+            } as any,
           });
 
-          console.log('✅ Connection created:', { connectionId, handle });
+          const isReturningUser = !!existingConnection;
+          const tasksUsed = (existingConnection as any)?.tasksUsed ?? 0;
+          const hasApiKey = !!(existingConnection as any)?.manusApiKey;
+          console.log(`✅ Connection ${isReturningUser ? 'reactivated' : 'created'} for:`, { connectionId, handle, tasksUsed, hasApiKey });
 
-          // Send response with connection link
+          // Send welcome message based on user status
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          const linkUrl = `${process.env.PUBLIC_URL || 'http://localhost:3000'}/connect/${connectionId}`;
-
-          // [1 sec typing indicator] "Please connect to Manus here:"
           await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, "Please connect to Manus here:");
           
-          // [1 sec typing indicator] Send link as separate message
-          await sendTypingIndicator(handle, 1000);
-          await sendIMessage(handle, linkUrl);
+          if (isReturningUser) {
+            if (hasApiKey) {
+              await sendIMessage(handle, "Welcome back! Your connection is reactivated.");
+            } else {
+              const remainingTasks = Math.max(0, 3 - tasksUsed);
+              if (remainingTasks > 0) {
+                await sendIMessage(handle, `Welcome back! You have ${remainingTasks} free task${remainingTasks === 1 ? '' : 's'} remaining.`);
+              } else {
+                await sendIMessage(handle, "Welcome back! You've used your free tasks. Please add your API key to continue.");
+              }
+            }
+          } else {
+            await sendIMessage(handle, "Hey! You're all set. You have 3 free tasks to try out Manus.");
+          }
 
-          console.log('✅ Generic connection message sent to:', handle);
+          console.log('✅ Welcome message sent to:', handle);
+          
+          // Now queue the message for processing (don't return - continue to queue)
+          // The worker will handle the task creation
         } catch (error) {
           console.error('❌ Failed to create connection:', error);
+          return;
         }
         
-        return;
+        // Re-fetch the connection we just created and assign to connection variable
+        connection = await prisma.connection.findFirst({
+          where: { phoneNumber: handle, status: 'ACTIVE' },
+        });
+        
+        if (!connection) {
+          console.error('❌ Failed to find newly created connection');
+          return;
+        }
+        
+        // Continue to queue the message with the new connection
+        // (Fall through to the message queueing logic below)
       }
 
       // Check for revocation confirmation FIRST (before other commands)
@@ -426,11 +422,20 @@ Need help? Visit https://manus.photon.codes`);
           
           await sendTypingIndicator(handle, 1000);
           
+          // Get fresh connection data for status
+          const conn = await prisma.connection.findFirst({
+            where: { phoneNumber: handle, status: 'ACTIVE' },
+          });
+          
+          const tasksUsed = (conn as any)?.tasksUsed ?? 0;
+          const hasApiKey = !!conn?.manusApiKey;
+          
           const statusMessage = `✅ Connection Status: ACTIVE
 
 Phone: ${handle}
-Connected: ${connection.activatedAt ? new Date(connection.activatedAt).toLocaleDateString() : 'N/A'}
-Photon API Key: ${connection.photonApiKey?.substring(0, 15)}...
+Connected: ${conn?.activatedAt ? new Date(conn.activatedAt).toLocaleDateString() : 'N/A'}
+API Key: ${hasApiKey ? 'Connected' : `Free tier (${3 - tasksUsed} tasks remaining)`}
+Photon API Key: ${conn?.photonApiKey?.substring(0, 15)}...
 
 Your iMessage is connected to Manus AI.`;
           
@@ -439,6 +444,146 @@ Your iMessage is connected to Manus AI.`;
           console.log('✅ Sent status message to:', handle);
         } catch (error) {
           console.error('❌ Failed to send status message:', error);
+        }
+        
+        return;
+      }
+
+      // Handle API key submission (user pasting their API key in chat)
+      if (isApiKeyMessage) {
+        console.log('🔑 Processing API key submission from:', handle);
+        
+        try {
+          const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+          const apiKey = messageText.trim();
+          
+          // Get fresh connection data
+          const conn = await prisma.connection.findFirst({
+            where: { phoneNumber: handle, status: 'ACTIVE' },
+          });
+          
+          if (!conn) {
+            await sendTypingIndicator(handle, 1000);
+            await sendIMessage(handle, "I received an API key, but couldn't find your connection. Please try again.");
+            return;
+          }
+          
+          if (conn.manusApiKey) {
+            await sendTypingIndicator(handle, 1000);
+            await sendIMessage(handle, "You already have an API key connected. Use 'revoke' to disconnect first if you want to change it.");
+            return;
+          }
+          
+          // Register webhook with Manus
+          let webhookId: string | null = null;
+          try {
+            const response = await fetch('https://api.manus.im/v1/webhooks', {
+              method: 'POST',
+              headers: {
+                'API_KEY': apiKey,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                webhook: {
+                  url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/webhook`,
+                },
+              }),
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('❌ Webhook registration failed:', response.status, errorText);
+              
+              // Check if it's an invalid API key error
+              if (response.status === 401 || response.status === 403) {
+                await sendTypingIndicator(handle, 1000);
+                await sendIMessage(handle, "That API key didn't work. Please double-check you copied the entire key.\n\nGet a fresh key here:\nhttps://manus.im/app#settings/integrations/api");
+                return;
+              }
+              // For other errors (5xx, rate limits, etc.), don't save the key
+              if (response.status >= 400) {
+                await sendTypingIndicator(handle, 1000);
+                await sendIMessage(handle, "Something went wrong while validating your API key. Please try again in a moment.");
+                return;
+              }
+              throw new Error(`Failed to register webhook: ${response.status}`);
+            }
+            
+            const data = await response.json() as { webhook_id?: string; id?: string };
+            webhookId = data.webhook_id || data.id || null;
+            console.log('✅ Webhook registered:', webhookId);
+          } catch (error) {
+            console.warn('⚠️  Webhook registration failed (expected for localhost):', error instanceof Error ? error.message : error);
+            // Continue without webhook - it's optional for development
+          }
+          
+          // Ensure photonApiKey exists (should already exist for free tier users)
+          const photonApiKey = conn.photonApiKey || generatePhotonApiKey();
+          
+          // Update connection with API key
+          await prisma.connection.update({
+            where: { id: conn.id },
+            data: {
+              manusApiKey: apiKey,
+              webhookId,
+              photonApiKey,
+            },
+          });
+          
+          console.log('✅ API key connected for:', handle);
+          
+          // Build MCP config
+          const mcpConfig = {
+            mcpServers: {
+              'photon-imessage': {
+                type: 'streamableHttp',
+                url: `${process.env.PUBLIC_URL || 'https://manus.photon.codes'}/mcp/http`,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json, text/event-stream',
+                  Authorization: `Bearer ${photonApiKey}`,
+                },
+              },
+            },
+          };
+          
+          // Send activation messages
+          const { sendLocalFile } = await import('../lib/imessage.js');
+          const path = await import('path');
+          
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, "All set! Your API key is connected.");
+          
+          await sendTypingIndicator(handle, 1500);
+          await sendIMessage(handle, `Here's your MCP configuration (copy and paste this in Manus settings):\n\n\`\`\`\n${JSON.stringify(mcpConfig, null, 2)}\n\`\`\``);
+          
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, "Open Manus Settings → Connectors → Custom MCP → Add custom MCP server → Import by JSON");
+          
+          // Send the MCP setup guide image
+          try {
+            // Path works both locally and in Docker
+            const imagePath = process.env.NODE_ENV === 'production' 
+              ? '/app/assets/mcp-setup-guide.png' 
+              : path.join(process.cwd(), '../../assets/mcp-setup-guide.png');
+            await sendLocalFile(handle, imagePath, 'mcp-setup-guide.png');
+          } catch (imgError) {
+            console.warn('⚠️ Failed to send MCP setup guide image (non-blocking):', imgError);
+          }
+          
+          await sendTypingIndicator(handle, 1000);
+          await sendIMessage(handle, "You're ready to go. Type \"continue\" to pick up where you left off, or just tell me what you'd like to work on.");
+          
+          console.log('✅ API key activation complete for:', handle);
+        } catch (error) {
+          console.error('❌ Failed to process API key:', error);
+          
+          try {
+            const { sendIMessage } = await import('../lib/imessage.js');
+            await sendIMessage(handle, 'Something went wrong while connecting your API key. Please try again.');
+          } catch (sendError) {
+            console.error('❌ Failed to send error message:', sendError);
+          }
         }
         
         return;

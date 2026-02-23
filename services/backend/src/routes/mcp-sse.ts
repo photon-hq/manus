@@ -32,11 +32,7 @@ export const mcpSSERoutes: FastifyPluginAsync = async (fastify) => {
       // Extract and validate API key
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        // If accessed from browser (no auth header), redirect to /connect
-        const acceptHeader = request.headers.accept || '';
-        if (acceptHeader.includes('text/html')) {
-          return reply.redirect(301, '/connect');
-        }
+        // No redirect - landing page is on Framer, just return 401
         return reply.code(401).send({ error: 'Missing or invalid authorization header' });
       }
 

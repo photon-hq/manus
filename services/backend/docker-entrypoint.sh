@@ -38,7 +38,9 @@ SQL
       npx prisma migrate resolve --rolled-back "20260202000000_add_attachments_and_current_task" || true
       npx prisma migrate resolve --rolled-back "20260206000000_add_task_started_at" || true
       npx prisma migrate resolve --rolled-back "20260211000000_add_triggering_message_guid" || true
+      npx prisma migrate resolve --rolled-back "20260214000000_add_contact_card_shared" || true
       npx prisma migrate resolve --rolled-back "20260216000000_add_thread_originator_guid" || true
+      npx prisma migrate resolve --rolled-back "20260223000000_add_free_tier_fields" || true
       
       echo "✅ Failed migrations marked as rolled back"
     fi

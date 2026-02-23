@@ -17,6 +17,10 @@ const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
 // Redis key expiration for task mapping (24 hours)
 const TASK_MAPPING_TTL = 24 * 60 * 60; // seconds
 
+// Free tier configuration
+const FREE_TIER_TASKS = 3; // Number of free tasks before requiring API key
+const FREE_TIER_API_KEY = process.env.MANUS_FREE_TIER_API_KEY || process.env.MANUS_API_KEY;
+
 // iMessage SDK instance
 let imessageSDK: ReturnType<typeof SDK> | null = null;
 
@@ -246,6 +250,88 @@ async function processMessage(phoneNumber: string, data: any) {
   const { messageId, messageText, attachments, messageGuid, threadOriginatorGuid, messageTimestamp } = data;
 
   try {
+    // Check for pending message (message that was blocked due to free tier limit)
+    // and combine it with the current message after user has added their API key
+    let combinedMessage = messageText;
+    const connection = await prisma.connection.findFirst({
+      where: { phoneNumber, status: 'ACTIVE' },
+    });
+    
+    const pendingMessage = (connection as any)?.pendingMessage;
+    if (pendingMessage && connection?.manusApiKey) {
+      console.log(`📋 Found pending message for ${phoneNumber}, combining with current message`);
+      
+      // If user sends "continue" (case insensitive), just use the pending message
+      // Otherwise, combine both messages
+      const isContinue = /^continue$/i.test(messageText?.trim() || '');
+      if (isContinue) {
+        combinedMessage = pendingMessage;
+        console.log(`📋 User said "continue" - using pending message only`);
+      } else if (messageText) {
+        combinedMessage = `${pendingMessage}\n\n${messageText}`;
+        console.log(`📋 Combining pending message with new message`);
+      } else {
+        combinedMessage = pendingMessage;
+        console.log(`📋 No new message text - using pending message only`);
+      }
+      
+      // Clear the pending message
+      await prisma.connection.update({
+        where: { id: connection.id },
+        data: { pendingMessage: null } as any,
+      });
+      console.log(`✅ Cleared pending message for ${phoneNumber}`);
+    }
+    
+    // Early check for free tier limit BEFORE processing attachments
+    // This ensures users get the nice prompt instead of an error
+    const connForFreeTierCheck = await prisma.connection.findFirst({
+      where: { phoneNumber, status: 'ACTIVE' },
+    });
+    if (connForFreeTierCheck) {
+      const { needsApiKeyPrompt } = await resolveApiKeyForConnection(connForFreeTierCheck);
+      if (needsApiKeyPrompt) {
+        const existingPendingMessage = (connForFreeTierCheck as any)?.pendingMessage;
+        
+        if (existingPendingMessage) {
+          // User already has a pending message and still hasn't added API key
+          // Don't overwrite the original blocked message, just remind them to add key
+          console.log('📊 Free tier exhausted - user has existing pending message, sending reminder');
+          
+          const sdk = await getIMessageSDK();
+          const chatGuid = `any;-;${phoneNumber}`;
+          await sdk.chats.startTyping(chatGuid);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await sdk.chats.stopTyping(chatGuid);
+          await sdk.messages.sendMessage({
+            chatGuid,
+            message: "Please add your API key first to continue. Get it here:\nhttps://manus.im/app#settings/integrations/api",
+          });
+        } else {
+          // First time hitting limit - store message and send full prompt
+          console.log('📊 Free tier exhausted - sending prompt before attachment processing');
+          // Build message to store (include attachment mention if relevant)
+          let blockedMsg = combinedMessage || '';
+          if (attachments && attachments.length > 0) {
+            blockedMsg = blockedMsg 
+              ? `${blockedMsg}\n\n[User also sent ${attachments.length} file(s) that need to be re-sent after adding API key]`
+              : `[User sent ${attachments.length} file(s) - please re-send after adding API key]`;
+          }
+          await sendFreeTierLimitPrompt(phoneNumber, blockedMsg);
+        }
+        
+        // Mark message as completed (not failed - we handled it)
+        await prisma.messageQueue.update({
+          where: { id: messageId },
+          data: {
+            status: QueueStatus.COMPLETED,
+            processedAt: new Date(),
+          },
+        });
+        return;
+      }
+    }
+    
     // Handle attachments if present
     let fileIds: string[] = [];
     if (attachments && attachments.length > 0) {
@@ -253,7 +339,7 @@ async function processMessage(phoneNumber: string, data: any) {
     }
 
     // If message is empty but has attachments, use a default prompt
-    let effectiveMessage = messageText;
+    let effectiveMessage = combinedMessage;
     if (!effectiveMessage && fileIds.length > 0) {
       effectiveMessage = `[User sent ${fileIds.length} file(s)]`;
     }
@@ -264,18 +350,19 @@ async function processMessage(phoneNumber: string, data: any) {
       return;
     }
 
-    // Special handling for file-only messages (no text)
+    // Special handling for file-only messages (no text and no combined pending message)
     // If user sends only files:
     // - No active task → Create new task
     // - Active task exists → Append to current task
-    if (!messageText && fileIds.length > 0) {
-      const connection = await prisma.connection.findFirst({
+    if (!combinedMessage && fileIds.length > 0) {
+      // Re-fetch connection since we might have modified it above
+      const connForFiles = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
-      if (connection?.currentTaskId) {
+      if (connForFiles?.currentTaskId) {
         // Active task exists - append files to it
-        console.log(`📎 File-only message with active task - appending to ${connection.currentTaskId}`);
+        console.log(`📎 File-only message with active task - appending to ${connForFiles.currentTaskId}`);
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
         // No active task - create new task
@@ -284,15 +371,16 @@ async function processMessage(phoneNumber: string, data: any) {
       }
     } else {
       // Regular message with text - use detection based on DETECTION_MODE
+      // Use original messageText for detection (not combined) to avoid confusion with pending message
       const { isFollowUp, taskId: taskIdForThread } = await detectMessageType(
         phoneNumber,
-        messageText,
+        messageText || '', // Use original for detection
         messageGuid,
         threadOriginatorGuid
       );
 
-      // Get connection for task handling
-      const connection = await prisma.connection.findFirst({
+      // Re-fetch connection for task handling
+      const connForTask = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
@@ -315,7 +403,7 @@ async function processMessage(phoneNumber: string, data: any) {
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
         // New task → clear previous task and create new one
-        if (connection?.currentTaskId) {
+        if (connForTask?.currentTaskId) {
           await prisma.connection.update({
             where: { phoneNumber },
             data: { currentTaskId: null },
@@ -367,8 +455,16 @@ async function processAttachments(
       where: { phoneNumber, status: 'ACTIVE' },
     });
 
-    if (!connection?.manusApiKey) {
-      throw new Error('No Manus API key found for user');
+    if (!connection) {
+      throw new Error('No active connection found');
+    }
+
+    // Resolve API key (user's own key vs free tier system key)
+    const { apiKey, needsApiKeyPrompt } = await resolveApiKeyForConnection(connection);
+    
+    if (needsApiKeyPrompt || !apiKey) {
+      console.log('⚠️ Cannot process attachments - user has no API key and free tier exhausted');
+      throw new Error('No API key available for attachment upload');
     }
 
     const { SDK } = await import('@photon-ai/advanced-imessage-kit');
@@ -387,8 +483,8 @@ async function processAttachments(
         // Download attachment from iMessage
         const result = await sdk.attachments.downloadAttachment(attachment.guid);
 
-        // Upload to Manus using user's API key
-        const fileId = await uploadFileToManus(Buffer.from(result), attachment.filename, connection.manusApiKey);
+        // Upload to Manus using resolved API key (user's or free tier system key)
+        const fileId = await uploadFileToManus(Buffer.from(result), attachment.filename, apiKey);
         fileIds.push(fileId);
 
         console.log(`✅ Uploaded ${attachment.filename} to Manus (ID: ${fileId})`);
@@ -677,6 +773,102 @@ async function classifyMessage(message: string, context: any[]): Promise<{ type:
   }
 }
 
+/**
+ * Resolve which API key to use for a connection
+ * Returns: { apiKey, shouldIncrementTasksUsed, needsApiKeyPrompt }
+ */
+async function resolveApiKeyForConnection(connection: any): Promise<{
+  apiKey: string | null;
+  shouldIncrementTasksUsed: boolean;
+  needsApiKeyPrompt: boolean;
+}> {
+  // If user has their own API key, use it
+  if (connection.manusApiKey) {
+    return { apiKey: connection.manusApiKey, shouldIncrementTasksUsed: false, needsApiKeyPrompt: false };
+  }
+
+  // Check if within free tier
+  const tasksUsed = connection.tasksUsed ?? 0;
+  if (tasksUsed < FREE_TIER_TASKS) {
+    if (!FREE_TIER_API_KEY) {
+      console.error('❌ No FREE_TIER_API_KEY configured and user has no API key');
+      return { apiKey: null, shouldIncrementTasksUsed: false, needsApiKeyPrompt: true };
+    }
+    console.log(`📊 Free tier: User has used ${tasksUsed}/${FREE_TIER_TASKS} tasks, using system key`);
+    return { apiKey: FREE_TIER_API_KEY, shouldIncrementTasksUsed: true, needsApiKeyPrompt: false };
+  }
+
+  // User has exhausted free tier and has no API key
+  console.log(`📊 Free tier exhausted: ${tasksUsed}/${FREE_TIER_TASKS} tasks used, prompting for API key`);
+  return { apiKey: null, shouldIncrementTasksUsed: false, needsApiKeyPrompt: true };
+}
+
+/**
+ * Send multi-message prompt when user hits free tier limit
+ * Only stores and sends if no pending message exists (to avoid overwriting)
+ */
+async function sendFreeTierLimitPrompt(phoneNumber: string, blockedMessage: string): Promise<void> {
+  console.log(`📢 Sending free tier limit prompt to ${phoneNumber}`);
+  
+  try {
+    const sdk = await getIMessageSDK();
+    const chatGuid = `any;-;${phoneNumber}`;
+    
+    // Check if there's already a pending message (don't overwrite)
+    const existingConn = await prisma.connection.findFirst({
+      where: { phoneNumber, status: 'ACTIVE' },
+    });
+    
+    if ((existingConn as any)?.pendingMessage) {
+      console.log(`⚠️ User already has pending message, not overwriting. Sending reminder instead.`);
+      await sdk.chats.startTyping(chatGuid);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sdk.chats.stopTyping(chatGuid);
+      await sdk.messages.sendMessage({
+        chatGuid,
+        message: "Please add your API key first to continue. Get it here:\nhttps://manus.im/app#settings/integrations/api",
+      });
+      return;
+    }
+    
+    // Store the blocked message as pendingMessage
+    await prisma.connection.updateMany({
+      where: { phoneNumber, status: 'ACTIVE' },
+      data: { pendingMessage: blockedMessage } as any,
+    });
+    console.log(`✅ Stored pending message for ${phoneNumber}`);
+    
+    // Send multi-message prompt with typing indicators
+    const messages = [
+      "You've used your 3 free tasks.",
+      "To continue, you'll need to add your Manus API key.",
+      "Get your key here:\nhttps://manus.im/app#settings/integrations/api",
+      "Once you have it, paste the key right here in this chat.",
+      "Don't worry—your progress is saved. After you add your key, just type \"continue\" or tell me what you were working on.",
+    ];
+    
+    for (const msg of messages) {
+      // Typing indicator
+      await sdk.chats.startTyping(chatGuid);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      await sdk.chats.stopTyping(chatGuid);
+      
+      // Send message
+      await sdk.messages.sendMessage({
+        chatGuid,
+        message: msg,
+        richLink: msg.includes('https://'), // Enable rich link for URL messages
+      });
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    console.log(`✅ Free tier limit prompt sent to ${phoneNumber}`);
+  } catch (error) {
+    console.error(`❌ Failed to send free tier limit prompt:`, error);
+    throw error;
+  }
+}
+
 // Create new Manus task
 async function createManusTask(
   phoneNumber: string, 
@@ -698,12 +890,21 @@ async function createManusTask(
     throw new Error('No active connection found');
   }
 
-  if (!connection.manusApiKey) {
-    console.error(`❌ No Manus API key found for ${phoneNumber}`);
-    throw new Error('No Manus API key configured');
+  // Resolve API key (user's own key vs free tier system key)
+  const { apiKey, shouldIncrementTasksUsed, needsApiKeyPrompt } = await resolveApiKeyForConnection(connection);
+  
+  if (needsApiKeyPrompt) {
+    // User has exhausted free tier, send prompt and store message for later
+    await sendFreeTierLimitPrompt(phoneNumber, message);
+    return; // Don't create task
+  }
+  
+  if (!apiKey) {
+    console.error(`❌ No API key available for ${phoneNumber}`);
+    throw new Error('No API key available');
   }
 
-  console.log(`✅ Found connection for ${phoneNumber}, creating task...`);
+  console.log(`✅ Found connection for ${phoneNumber}, creating task with ${shouldIncrementTasksUsed ? 'free tier key' : 'user key'}...`);
 
   try {
     // Build attachments array
@@ -717,7 +918,7 @@ async function createManusTask(
     const response = await fetch(`${MANUS_API_URL}/v1/tasks`, {
       method: 'POST',
       headers: {
-        'API_KEY': connection.manusApiKey,
+        'API_KEY': apiKey, // Use resolved API key (user's or free tier system key)
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -741,14 +942,19 @@ async function createManusTask(
     if (preserveTaskStartTime) {
       // Only update task ID, preserve existing currentTaskStartedAt
       // This keeps conversation history across task boundaries
+      const updateData: any = { 
+        currentTaskId: data.task_id,
+        triggeringMessageGuid: triggeringMessageGuid || null,
+      };
+      // Increment tasksUsed if using free tier
+      if (shouldIncrementTasksUsed) {
+        updateData.tasksUsed = { increment: 1 };
+      }
       await prisma.connection.update({
         where: { phoneNumber },
-        data: { 
-          currentTaskId: data.task_id,
-          triggeringMessageGuid: triggeringMessageGuid || null,
-        } as any,
+        data: updateData,
       });
-      console.log(`✅ Updated task ID, preserved conversation history`);
+      console.log(`✅ Updated task ID, preserved conversation history${shouldIncrementTasksUsed ? ', incremented tasksUsed' : ''}`);
     } else {
       // Update both task ID and start time (new conversation)
       // Use the user's message timestamp as task start time (not when Manus creates the task)
@@ -756,15 +962,20 @@ async function createManusTask(
       const taskStartTime = messageTimestamp 
         ? (messageTimestamp instanceof Date ? messageTimestamp : new Date(messageTimestamp))
         : new Date();
+      const updateData: any = { 
+        currentTaskId: data.task_id,
+        currentTaskStartedAt: taskStartTime,
+        triggeringMessageGuid: triggeringMessageGuid || null,
+      };
+      // Increment tasksUsed if using free tier
+      if (shouldIncrementTasksUsed) {
+        updateData.tasksUsed = { increment: 1 };
+      }
       await prisma.connection.update({
         where: { phoneNumber },
-        data: { 
-          currentTaskId: data.task_id,
-          currentTaskStartedAt: taskStartTime,
-          triggeringMessageGuid: triggeringMessageGuid || null,
-        } as any,
+        data: updateData,
       });
-      console.log(`✅ Stored task start time: ${taskStartTime.toISOString()} (user message time, not task creation time)`);
+      console.log(`✅ Stored task start time: ${taskStartTime.toISOString()}${shouldIncrementTasksUsed ? ', incremented tasksUsed' : ''}`);
     }
 
     // Store task-to-phone mapping in Redis for webhook lookup
@@ -840,8 +1051,21 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     where: { phoneNumber, status: 'ACTIVE' },
   });
 
-  if (!connection || !connection.manusApiKey) {
+  if (!connection) {
     throw new Error('No active connection found');
+  }
+
+  // Resolve API key (user's own key vs free tier system key)
+  const { apiKey, shouldIncrementTasksUsed, needsApiKeyPrompt } = await resolveApiKeyForConnection(connection);
+  
+  if (needsApiKeyPrompt) {
+    // User has exhausted free tier, send prompt and store message for later
+    await sendFreeTierLimitPrompt(phoneNumber, message);
+    return; // Don't append to task
+  }
+  
+  if (!apiKey) {
+    throw new Error('No API key available');
   }
 
   if (!connection.currentTaskId) {
@@ -891,7 +1115,7 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     const response = await fetch(`${MANUS_API_URL}/v1/tasks`, {
       method: 'POST',
       headers: {
-        'API_KEY': connection.manusApiKey,
+        'API_KEY': apiKey, // Use resolved API key (user's or free tier system key)
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -911,6 +1135,17 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
 
     const data = await response.json() as { task_id: string };
     console.log('✅ Appended to Manus task:', data.task_id);
+    
+    // Increment tasksUsed if using free tier (appending counts as using the task)
+    // Note: We only count new tasks, not appends to existing tasks
+    // This keeps it simple: 3 tasks = 3 conversations, not 3 messages
+    // Uncomment below if you want to count appends as well:
+    // if (shouldIncrementTasksUsed) {
+    //   await prisma.connection.update({
+    //     where: { phoneNumber },
+    //     data: { tasksUsed: { increment: 1 } } as any,
+    //   });
+    // }
 
     // Store reaction info so we can remove tapback when task stops
     if (triggeringMessageGuid) {

@@ -330,6 +330,41 @@ export async function shareContactCard(chatGuid: string): Promise<void> {
 }
 
 /**
+ * Send a local file as an iMessage attachment
+ * 
+ * @param handle - Phone number (+1234567890) or iCloud email (user@icloud.com)
+ * @param filePath - Absolute path to the local file
+ * @param fileName - Optional custom filename (defaults to basename of filePath)
+ * @returns Message GUID of the sent attachment
+ */
+export async function sendLocalFile(
+  handle: string,
+  filePath: string,
+  fileName?: string
+): Promise<string> {
+  const client = await getIMessageSDK();
+  const chatGuid = `any;-;${handle}`;
+  const path = await import('path');
+  
+  const actualFileName = fileName || path.basename(filePath);
+  
+  try {
+    console.log(`📤 Sending local file via iMessage: ${actualFileName} from ${filePath}`);
+    const result = await client.attachments.sendAttachment({
+      chatGuid,
+      filePath,
+      fileName: actualFileName,
+    });
+    
+    console.log(`✅ Sent local file: ${actualFileName}`);
+    return result.guid;
+  } catch (error) {
+    console.error(`❌ Failed to send local file ${actualFileName}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Handle graceful shutdown
  */
 process.on('SIGTERM', async () => {

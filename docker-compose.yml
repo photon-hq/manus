@@ -84,6 +84,7 @@ services:
       IMESSAGE_SERVER_URL: ${IMESSAGE_SERVER_URL}
       IMESSAGE_API_KEY: ${IMESSAGE_API_KEY}
       MANUS_API_URL: ${MANUS_API_URL:-https://api.manus.im}
+      MANUS_FREE_TIER_API_KEY: ${MANUS_FREE_TIER_API_KEY}
       NODE_ENV: ${NODE_ENV:-development}
       DETECTION_MODE: ${DETECTION_MODE:-thread}
       SLM_SERVICE_URL: ${SLM_SERVICE_URL:-http://slm-classifier:3001}
