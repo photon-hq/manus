@@ -235,6 +235,8 @@ export async function startIMessageListener() {
           });
 
           // Create ACTIVE connection - preserve tasksUsed for returning users
+          // But CLEAR old task data (currentTaskId, currentTaskStartedAt) since those tasks
+          // no longer exist after revoke or belong to a different API key
           await prisma.connection.upsert({
             where: { phoneNumber: handle },
             create: {
@@ -250,6 +252,10 @@ export async function startIMessageListener() {
               photonApiKey,
               status: 'ACTIVE',
               activatedAt: new Date(),
+              // Clear old task data - tasks don't persist across revoke/reactivate
+              currentTaskId: null,
+              currentTaskStartedAt: null,
+              triggeringMessageGuid: null,
               // Don't reset tasksUsed for existing users - they keep their count
             } as any,
           });
