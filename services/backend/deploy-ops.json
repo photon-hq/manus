@@ -8,5 +8,10 @@
     "id": "reset-tasks-918527438574-2026-02-24",
     "description": "Reset tasksUsed for +918527438574 so they can test again",
     "sql": "UPDATE connections SET \"tasksUsed\" = 0, \"currentTaskId\" = NULL, \"currentTaskStartedAt\" = NULL, \"triggeringMessageGuid\" = NULL, \"pendingMessage\" = NULL WHERE \"phoneNumber\" = '+918527438574';"
+  },
+  {
+    "id": "add-has-onboarded-column-2026-02-24",
+    "description": "Add hasOnboarded column to connections table",
+    "sql": "ALTER TABLE connections ADD COLUMN IF NOT EXISTS \"hasOnboarded\" BOOLEAN NOT NULL DEFAULT false;"
   }
 ]

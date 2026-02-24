@@ -386,7 +386,7 @@ async function processMessage(phoneNumber: string, data: any) {
 
       // Check if this is a pre-defined intent that should be handled without Manus
       if (intent && DETECTION_MODE === 'slm') {
-        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid);
+        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid, messageText);
         if (handled) {
           console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
           // Mark as completed and return early
@@ -665,8 +665,8 @@ async function detectMessageTypeSLM(
     case MessageIntent.STATUS_CHECK:
     case MessageIntent.HELP_REQUEST:
     case MessageIntent.REVOKE:
-    case MessageIntent.GENERAL_INFO:
-      // These intents are handled by pre-defined responses, not Manus tasks
+    case MessageIntent.GENERAL_QUESTION:
+      // These intents are handled by pre-defined responses or AI, not Manus tasks
       return { isFollowUp: false, taskId: null, intent, reasoning: classification.reasoning };
     
     default:
@@ -821,7 +821,8 @@ async function handlePredefinedIntent(
   phoneNumber: string,
   intent: MessageIntent,
   connection: any,
-  replyToMessageGuid?: string
+  replyToMessageGuid?: string,
+  originalMessage?: string
 ): Promise<boolean> {
   const sdk = await getIMessageSDK();
   const chatGuid = `any;-;${phoneNumber}`;
@@ -910,14 +911,33 @@ async function handlePredefinedIntent(
       return true;
     }
     
-    case MessageIntent.GENERAL_INFO: {
-      console.log(`📋 Handling GENERAL_INFO intent for ${phoneNumber}`);
-      const response = INTENT_RESPONSES.GENERAL_INFO;
-      if (Array.isArray(response)) {
-        await sendMultipleWithTyping(response, 1200);
-      } else {
-        await sendWithTyping(response as string, 1500);
+    case MessageIntent.GENERAL_QUESTION: {
+      console.log(`📋 Handling GENERAL_QUESTION intent for ${phoneNumber} - calling AI`);
+      
+      // Call SLM /answer endpoint for AI-generated response
+      try {
+        const answerResponse = await fetch(`${SLM_SERVICE_URL}/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: originalMessage || 'what can you do?' }),
+        });
+        
+        if (answerResponse.ok) {
+          const { messages } = await answerResponse.json() as { messages: string[] };
+          if (messages && messages.length > 0) {
+            await sendMultipleWithTyping(messages, 1200);
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to get AI answer:', error);
       }
+      
+      // Fallback response
+      await sendMultipleWithTyping([
+        "I'm Photon - your bridge to Manus AI through iMessage.",
+        "Just text me what you need help with!",
+      ], 1200);
       return true;
     }
     

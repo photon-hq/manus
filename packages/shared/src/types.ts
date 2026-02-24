@@ -24,13 +24,13 @@ export enum QueueStatus {
 
 // Message Intent - Agentic Router Classification
 export enum MessageIntent {
-  NEW_TASK = 'NEW_TASK',           // Start a new Manus task
-  FOLLOW_UP = 'FOLLOW_UP',         // Continue existing task
-  API_KEY_HELP = 'API_KEY_HELP',   // Questions about API key setup/instructions
-  STATUS_CHECK = 'STATUS_CHECK',   // Check connection status
-  HELP_REQUEST = 'HELP_REQUEST',   // General help/commands list
-  REVOKE = 'REVOKE',               // Disconnect/revoke access
-  GENERAL_INFO = 'GENERAL_INFO',   // General questions (about photon, how it works, etc.)
+  NEW_TASK = 'NEW_TASK',               // Start a new Manus task
+  FOLLOW_UP = 'FOLLOW_UP',             // Continue existing task
+  API_KEY_HELP = 'API_KEY_HELP',       // Questions about API key setup/instructions
+  STATUS_CHECK = 'STATUS_CHECK',       // Check connection status
+  HELP_REQUEST = 'HELP_REQUEST',       // General help/commands list
+  REVOKE = 'REVOKE',                   // Disconnect/revoke access
+  GENERAL_QUESTION = 'GENERAL_QUESTION', // Questions about Photon/Manus service (answered by AI)
 }
 
 // Legacy alias for backwards compatibility
@@ -127,9 +127,11 @@ export const INTENT_RESPONSES: Record<string, string | string[]> = {
     "Reply \"YES REVOKE\" to confirm.",
   ],
   
-  GENERAL_INFO: [
-    "Photon connects Manus to iMessage.",
-    "It lets you use Manus's AI capabilities directly from your Messages app - no apps to install, just text me what you need!",
-    "Here's how it works:\n1. You send me a message with what you need\n2. I route it to Manus (a powerful AI agent)\n3. Manus works on your task and sends back results",
+  // Onboarding messages for new users (multi-part)
+  ONBOARDING: [
+    "Hey! Welcome to Manus on iMessage",
+    "Manus is a powerful AI agent that can browse the web, write code, analyze data, and handle complex tasks - all through text.",
+    "You get 3 free tasks. After that, add your API key to continue.",
+    "Just text me what you need!",
   ],
 };

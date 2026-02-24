@@ -21,6 +21,7 @@ model Connection {
   currentTaskStartedAt DateTime? // Track when the current task started for context filtering
   triggeringMessageGuid String? // GUID of user message that triggered current task (for threaded replies)
   contactCardShared Boolean @default(false) // Track if contact card has been shared with this user
+  hasOnboarded  Boolean   @default(false) // Track if user completed onboarding flow
   tasksUsed     Int       @default(0) // Number of free tier tasks used (max 3 before requiring API key)
   pendingMessage String?  @db.Text // Message blocked at free tier limit, to be processed after API key added
   status        Status    @default(PENDING)

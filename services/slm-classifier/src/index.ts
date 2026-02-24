@@ -110,18 +110,19 @@ Your job is to classify the user's message into ONE of these intents:
    - "delete my data"
    - "unsubscribe"
 
-7. **GENERAL_INFO** - Questions about Photon/the service itself (NOT tasks for Manus)
+7. **GENERAL_QUESTION** - Questions about Photon/Manus service itself (NOT tasks for Manus)
    - "what is photon"
    - "who made this"
    - "what did you use to communicate" → User asking about the service
    - "how do you work"
-   - Meta questions about the bridge service
+   - "what can you do"
+   - Meta questions about the service capabilities
 
 **ROUTING RULES:**
 
 1. If message is a clear meta-command (help, status, revoke, add key) → Route to that intent
 2. If asking about API key, pricing, limits, or connection → API_KEY_HELP
-3. If asking about what Photon is or how it works → GENERAL_INFO
+3. If asking about what Photon is or how it works → GENERAL_QUESTION
 4. If context exists AND message relates to it → FOLLOW_UP (strongly prefer this)
 5. If no context OR completely unrelated topic → NEW_TASK
 6. When in doubt between NEW_TASK and FOLLOW_UP → Choose FOLLOW_UP
@@ -130,7 +131,7 @@ Your job is to classify the user's message into ONE of these intents:
 ${contextStr || 'EMPTY - No previous context'}
 
 **Respond with JSON only:**
-{"intent": "NEW_TASK" | "FOLLOW_UP" | "API_KEY_HELP" | "STATUS_CHECK" | "HELP_REQUEST" | "REVOKE" | "GENERAL_INFO", "confidence": 0.0 to 1.0, "reasoning": "brief explanation"}`;
+{"intent": "NEW_TASK" | "FOLLOW_UP" | "API_KEY_HELP" | "STATUS_CHECK" | "HELP_REQUEST" | "REVOKE" | "GENERAL_QUESTION", "confidence": 0.0 to 1.0, "reasoning": "brief explanation"}`;
 
     const response = await openrouter.chat.completions.create({
       model: 'google/gemini-2.0-flash-001',
@@ -188,6 +189,157 @@ ${contextStr || 'EMPTY - No previous context'}
       intent: MessageIntent.NEW_TASK,
       confidence: 0.5,
       reasoning: 'Error during classification, defaulting to NEW_TASK',
+    };
+  }
+});
+
+// POST /answer - AI-generated response for general questions about Photon/Manus
+fastify.post('/answer', async (request: any, reply: any) => {
+  try {
+    const { question, context } = request.body as { question: string; context?: string };
+
+    fastify.log.info({ question }, 'Generating AI answer');
+
+    const systemPrompt = `You are a friendly assistant for Photon, an iMessage bridge to Manus AI.
+
+**About the Service:**
+- Photon lets users access Manus (a powerful AI agent) directly through iMessage
+- Manus can: browse the web, write code, analyze data, create documents, research topics, book travel, and handle complex multi-step tasks
+- Users get 3 free tasks, then need to add their own Manus API key
+- No apps to install - just text what you need
+
+**Your Role:**
+- Answer questions about Photon/Manus capabilities conversationally
+- Be friendly, concise, and helpful
+- If the question is about something Manus can actually DO (a task), suggest they just ask for it directly
+
+**Response Format:**
+- Return a JSON object with "messages" array containing 1-3 short messages
+- Each message should be conversational and under 200 characters
+- Messages will be sent as separate iMessages with typing indicators
+
+Example response:
+{"messages": ["Photon connects you to Manus through iMessage!", "Manus can browse the web, write code, analyze data, and much more.", "Just text me what you need - no apps required."]}
+
+${context ? `\nConversation context:\n${context}` : ''}`;
+
+    const response = await openrouter.chat.completions.create({
+      model: 'anthropic/claude-3.5-sonnet',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: question },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      max_tokens: 500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from LLM');
+    }
+
+    // Parse JSON response
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```json')) {
+      jsonStr = jsonStr.slice(7);
+    } else if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith('```')) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
+
+    const parsed = JSON.parse(jsonStr);
+    const messages = parsed.messages || [parsed.message] || ['I can help you with that!'];
+
+    fastify.log.info({ messages }, 'AI answer generated');
+
+    return { messages };
+  } catch (error) {
+    fastify.log.error(error, 'Answer generation failed');
+    
+    return {
+      messages: [
+        "I'm Photon - your bridge to Manus AI through iMessage.",
+        "Just text me what you need help with!",
+      ],
+    };
+  }
+});
+
+// POST /onboarding-answer - Generate contextual response for first-time user's question + merge with onboarding
+fastify.post('/onboarding-answer', async (request: any, reply: any) => {
+  try {
+    const { question } = request.body as { question: string };
+
+    fastify.log.info({ question }, 'Generating onboarding answer');
+
+    const systemPrompt = `You are Photon, welcoming a new user to the Manus iMessage service.
+
+The user just sent their first message to you, and it's a question or statement (not the standard "Send this message to get started!" trigger).
+
+**Your task:**
+1. Briefly acknowledge/answer their question in a friendly way
+2. Naturally transition into introducing Manus
+
+**About Manus:**
+- Powerful AI agent accessible via iMessage
+- Can browse web, write code, analyze data, create documents, research, book travel, handle complex tasks
+- 3 free tasks, then needs API key
+- No apps to install
+
+**Response Format:**
+Return JSON with "answer" - a single short message (under 200 chars) that acknowledges their question and hints that you can help.
+
+Example for "what can you do?":
+{"answer": "Great question! I can help with all kinds of tasks - let me tell you more."}
+
+Example for "hi":
+{"answer": "Hey there! Welcome! Let me tell you what I can do."}
+
+Example for "can you help me book a flight?":
+{"answer": "Absolutely! I can help with that. First, let me quickly introduce myself."}`;
+
+    const response = await openrouter.chat.completions.create({
+      model: 'anthropic/claude-3.5-sonnet',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: question },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      max_tokens: 200,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from LLM');
+    }
+
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```json')) {
+      jsonStr = jsonStr.slice(7);
+    } else if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith('```')) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
+
+    const parsed = JSON.parse(jsonStr);
+    const answer = parsed.answer || "Welcome! Let me tell you what I can do.";
+
+    fastify.log.info({ answer }, 'Onboarding answer generated');
+
+    return { answer };
+  } catch (error) {
+    fastify.log.error(error, 'Onboarding answer generation failed');
+    
+    return {
+      answer: "Welcome! Let me tell you what I can do.",
     };
   }
 });

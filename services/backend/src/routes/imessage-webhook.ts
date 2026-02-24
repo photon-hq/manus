@@ -21,6 +21,17 @@ const redis = new Redis(REDIS_URL, {
 // In SLM mode, the worker's agentic router handles help/status/add-key commands
 const DETECTION_MODE = process.env.DETECTION_MODE || 'thread';
 
+// SLM service URL for AI-generated responses
+const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
+
+// Onboarding messages (multi-part)
+const ONBOARDING_MESSAGES = [
+  "Hey! Welcome to Manus on iMessage",
+  "Manus is a powerful AI agent that can browse the web, write code, analyze data, and handle complex tasks - all through text.",
+  "You get 3 free tasks. After that, add your API key to continue.",
+  "Just text me what you need!",
+];
+
 // Map to cache queues per phone number
 const queues = new Map<string, Queue>();
 
@@ -44,6 +55,51 @@ function getQueue(handle: string): Queue {
     queues.set(handle, queue);
   }
   return queues.get(handle)!;
+}
+
+/**
+ * Send onboarding messages to a new user (multi-part with typing indicators)
+ */
+async function sendOnboardingMessages(handle: string, replyToGuid?: string): Promise<void> {
+  const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+  
+  for (let i = 0; i < ONBOARDING_MESSAGES.length; i++) {
+    await sendTypingIndicator(handle, 1200);
+    // First message replies to user's message, rest are standalone
+    if (i === 0 && replyToGuid) {
+      // Use SDK directly for reply
+      const sdk = await getIMessageSDK();
+      const chatGuid = `any;-;${handle}`;
+      await sdk.messages.sendMessage({
+        chatGuid,
+        message: ONBOARDING_MESSAGES[i],
+        replyToGuid,
+      } as any);
+    } else {
+      await sendIMessage(handle, ONBOARDING_MESSAGES[i]);
+    }
+  }
+}
+
+/**
+ * Get AI-generated contextual answer for first-time user's question
+ */
+async function getOnboardingAnswer(question: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${SLM_SERVICE_URL}/onboarding-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    
+    if (response.ok) {
+      const { answer } = await response.json() as { answer: string };
+      return answer;
+    }
+  } catch (error) {
+    console.error('Failed to get onboarding answer:', error);
+  }
+  return null;
 }
 
 /**
@@ -279,6 +335,7 @@ export async function startIMessageListener() {
               status: 'ACTIVE',
               activatedAt: new Date(),
               tasksUsed: 0,
+              hasOnboarded: true, // API key user is onboarded
             } as any,
             update: {
               connectionId,
@@ -290,19 +347,20 @@ export async function startIMessageListener() {
               currentTaskId: null,
               currentTaskStartedAt: null,
               triggeringMessageGuid: null,
+              hasOnboarded: true, // Mark as onboarded
             } as any,
           });
           
           console.log('✅ Connection created with user API key for:', handle);
           
-          // Send welcome with confirmation
+          // Send welcome with confirmation (multi-part)
           await sendTypingIndicator(handle, 1500);
-          await sendIMessage(handle, "Hey! Welcome to Manus on iMessage ✨");
+          await sendIMessage(handle, "Hey! Welcome to Manus on iMessage");
           
-          await sendTypingIndicator(handle, 1500);
-          await sendIMessage(handle, "Your API key is connected - you have unlimited access to all premium features.");
+          await sendTypingIndicator(handle, 1200);
+          await sendIMessage(handle, "Your API key is connected - you have unlimited access.");
           
-          await sendTypingIndicator(handle, 1500);
+          await sendTypingIndicator(handle, 1200);
           await sendIMessage(handle, "What can I help you with?");
           
           return;
@@ -320,6 +378,12 @@ export async function startIMessageListener() {
             where: { phoneNumber: handle },
           });
 
+          // Check if this is a returning user (already onboarded before)
+          const wasOnboarded = (existingConnection as any)?.hasOnboarded ?? false;
+          const isReturningUser = !!existingConnection;
+          const tasksUsed = (existingConnection as any)?.tasksUsed ?? 0;
+          const hasApiKey = !!(existingConnection as any)?.manusApiKey;
+
           // Create ACTIVE connection - preserve tasksUsed for returning users
           // But CLEAR old task data (currentTaskId, currentTaskStartedAt) since those tasks
           // no longer exist after revoke or belong to a different API key
@@ -332,6 +396,7 @@ export async function startIMessageListener() {
               status: 'ACTIVE',
               activatedAt: new Date(),
               tasksUsed: 0,
+              hasOnboarded: false, // Will be set to true after onboarding messages
             } as any,
             update: {
               connectionId,
@@ -342,53 +407,76 @@ export async function startIMessageListener() {
               currentTaskId: null,
               currentTaskStartedAt: null,
               triggeringMessageGuid: null,
-              // Don't reset tasksUsed for existing users - they keep their count
+              // Don't reset tasksUsed or hasOnboarded for existing users
             } as any,
           });
 
-          const isReturningUser = !!existingConnection;
-          const tasksUsed = (existingConnection as any)?.tasksUsed ?? 0;
-          const hasApiKey = !!(existingConnection as any)?.manusApiKey;
-          console.log(`✅ Connection ${isReturningUser ? 'reactivated' : 'created'} for:`, { connectionId, handle, tasksUsed, hasApiKey });
+          console.log(`✅ Connection ${isReturningUser ? 'reactivated' : 'created'} for:`, { connectionId, handle, tasksUsed, hasApiKey, wasOnboarded });
 
           // Send welcome message based on user status
           const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-          await sendTypingIndicator(handle, 1500);
           
-          if (isReturningUser) {
+          if (isReturningUser && wasOnboarded) {
+            // Returning user who was already onboarded - shorter welcome
+            await sendTypingIndicator(handle, 1500);
             if (hasApiKey) {
               await sendIMessage(handle, "Welcome back! Your API key is still connected and ready to go.");
             } else {
               const remainingTasks = Math.max(0, 3 - tasksUsed);
               if (remainingTasks > 0) {
-                await sendIMessage(handle, `Welcome back! You have ${remainingTasks} free task${remainingTasks === 1 ? '' : 's'} remaining.\n\nYou can also add your own API key anytime - just type "add key" to learn how.`);
+                await sendIMessage(handle, `Welcome back! You have ${remainingTasks} free task${remainingTasks === 1 ? '' : 's'} remaining.`);
               } else {
                 await sendIMessage(handle, "Welcome back! You've used your free tasks.\n\nTo continue, add your Manus API key - type \"add key\" for instructions.");
               }
             }
           } else {
-            // New user - warm welcome with clear value prop
-            await sendIMessage(handle, "Hey! Welcome to Manus on iMessage ✨");
+            // New user or returning user who wasn't onboarded - full onboarding flow
             
-            await sendTypingIndicator(handle, 1500);
-            await sendIMessage(handle, "You get 3 free tasks with full access to all premium features. After that, you can continue using your own API key.");
+            if (isOnboardingTrigger) {
+              // Standard onboarding trigger - send onboarding messages directly
+              console.log('📋 Sending onboarding messages (trigger phrase)');
+              await sendOnboardingMessages(handle, message.guid);
+            } else {
+              // User sent a custom first message - get AI response first, then onboarding
+              console.log('📋 Custom first message - getting AI answer then onboarding');
+              
+              // Get AI-generated contextual answer
+              const aiAnswer = await getOnboardingAnswer(messageText);
+              if (aiAnswer) {
+                // Send AI answer as reply to user's message
+                const sdk = await getIMessageSDK();
+                const chatGuid = `any;-;${handle}`;
+                await sdk.chats.startTyping(chatGuid);
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                await sdk.chats.stopTyping(chatGuid);
+                await sdk.messages.sendMessage({
+                  chatGuid,
+                  message: aiAnswer,
+                  replyToGuid: message.guid,
+                } as any);
+              }
+              
+              // Then send onboarding messages (without reply - standalone)
+              await sendOnboardingMessages(handle);
+            }
             
-            await sendTypingIndicator(handle, 1500);
-            await sendIMessage(handle, "You can also bring your own API key - just paste it here anytime.");
-            
-            await sendTypingIndicator(handle, 1000);
-            await sendIMessage(handle, "Enjoy!");
+            // Mark as onboarded
+            await prisma.connection.update({
+              where: { phoneNumber: handle },
+              data: { hasOnboarded: true } as any,
+            });
+            console.log(`✅ User ${handle} marked as onboarded`);
           }
 
           console.log('✅ Welcome message sent to:', handle);
           
-          // If this was just the onboarding trigger, don't queue it as a task
-          if (isOnboardingTrigger) {
-            console.log('⏭️  Onboarding trigger phrase - not queueing as task');
+          // If this was the onboarding trigger or a new user's first message, don't queue as task
+          if (isOnboardingTrigger || !wasOnboarded) {
+            console.log('⏭️  Onboarding flow completed - not queueing as task');
             return;
           }
           
-          // Otherwise, queue the actual user message for processing
+          // Otherwise, queue the actual user message for processing (returning user)
         } catch (error) {
           console.error('❌ Failed to create connection:', error);
           return;
@@ -458,6 +546,7 @@ export async function startIMessageListener() {
             console.log(`✅ Deleted ${deletedManusMessages.count} Manus messages`);
 
             // Update connection status to REVOKED and clear all transient state
+            // Also reset hasOnboarded so they get full onboarding on re-connect
             await tx.connection.update({
               where: { id: connection.id },
               data: {
@@ -468,6 +557,7 @@ export async function startIMessageListener() {
                 currentTaskStartedAt: null,
                 triggeringMessageGuid: null,
                 pendingMessage: null,
+                hasOnboarded: false, // Reset so they get onboarding on re-connect
               } as any,
             });
           });
