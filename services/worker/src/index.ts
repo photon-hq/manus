@@ -860,43 +860,55 @@ async function handlePredefinedIntent(
       const hasApiKey = !!connection?.manusApiKey;
       const remainingTasks = Math.max(0, 3 - tasksUsed);
       
-      let statusMessage: string;
+      let statusMessages: string[];
       if (hasApiKey) {
-        statusMessage = `✅ Connected with your API key
-
-You have unlimited access to Manus.
-
-Connected since: ${connection?.activatedAt ? new Date(connection.activatedAt).toLocaleDateString() : 'N/A'}`;
+        statusMessages = [
+          "✅ Connected with your API key",
+          "You have unlimited access to Manus.",
+          `Connected since: ${connection?.activatedAt ? new Date(connection.activatedAt).toLocaleDateString() : 'N/A'}`,
+        ];
       } else {
-        statusMessage = `✅ Connected (Free Tier)
-
-Tasks used: ${tasksUsed}/3
-${remainingTasks > 0 ? `Remaining: ${remainingTasks} task${remainingTasks === 1 ? '' : 's'}` : '⚠️ Free tasks exhausted'}
-
-${remainingTasks === 0 ? 'Type "add key" to continue with your own API key.' : 'Type "add key" anytime to use your own API key for unlimited access.'}`;
+        statusMessages = [
+          "✅ Connected (Free Tier)",
+          `Tasks used: ${tasksUsed}/3${remainingTasks > 0 ? `\nRemaining: ${remainingTasks} task${remainingTasks === 1 ? '' : 's'}` : '\n⚠️ Free tasks exhausted'}`,
+          remainingTasks === 0 ? 'Type "add key" to continue with your own API key.' : 'Type "add key" anytime to use your own API key for unlimited access.',
+        ];
       }
       
-      await sendWithTyping(statusMessage, 1000);
+      await sendMultipleWithTyping(statusMessages, 1000);
       return true;
     }
     
     case MessageIntent.HELP_REQUEST: {
       console.log(`📋 Handling HELP_REQUEST intent for ${phoneNumber}`);
-      await sendWithTyping(INTENT_RESPONSES.HELP_REQUEST as string, 1000);
+      const response = INTENT_RESPONSES.HELP_REQUEST;
+      if (Array.isArray(response)) {
+        await sendMultipleWithTyping(response, 1000);
+      } else {
+        await sendWithTyping(response as string, 1000);
+      }
       return true;
     }
     
     case MessageIntent.REVOKE: {
       console.log(`📋 Handling REVOKE intent for ${phoneNumber}`);
-      await sendWithTyping(INTENT_RESPONSES.REVOKE_CONFIRM as string, 1000);
+      const response = INTENT_RESPONSES.REVOKE_CONFIRM;
+      if (Array.isArray(response)) {
+        await sendMultipleWithTyping(response, 1000);
+      } else {
+        await sendWithTyping(response as string, 1000);
+      }
       return true;
     }
     
     case MessageIntent.GENERAL_INFO: {
       console.log(`📋 Handling GENERAL_INFO intent for ${phoneNumber}`);
-      // Send info about Photon
-      const infoMessage = `${INTENT_RESPONSES.GENERAL_INFO_PHOTON as string}\n\n${INTENT_RESPONSES.GENERAL_INFO_HOW_IT_WORKS as string}`;
-      await sendWithTyping(infoMessage, 1500);
+      const response = INTENT_RESPONSES.GENERAL_INFO;
+      if (Array.isArray(response)) {
+        await sendMultipleWithTyping(response, 1200);
+      } else {
+        await sendWithTyping(response as string, 1500);
+      }
       return true;
     }
     

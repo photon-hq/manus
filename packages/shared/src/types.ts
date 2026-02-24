@@ -111,20 +111,25 @@ export const INTENT_RESPONSES: Record<string, string | string[]> = {
     "Copy your API key and paste it here in this chat.",
   ],
   
-  API_KEY_HELP_ALREADY_CONNECTED: "You already have an API key connected.\n\nTo update it, just paste your new key here and I'll replace the old one.",
+  API_KEY_HELP_ALREADY_CONNECTED: [
+    "You already have an API key connected.",
+    "To update it, just paste your new key here and I'll replace the old one.",
+  ],
   
-  HELP_REQUEST: `Commands:
+  HELP_REQUEST: [
+    "Here's what I can do:",
+    "Just message me normally and I'll help you with anything - browsing, coding, research, and more.",
+    "Commands:\n• \"help\" - Show this message\n• \"status\" - Check your connection & usage\n• \"add key\" - Add or update your Manus API key\n• \"revoke\" - Disconnect and delete all data",
+  ],
 
-• "help" - Show this message
-• "status" - Check your connection & usage
-• "add key" - Add or update your Manus API key
-• "revoke" - Disconnect and delete all data
-
-Just message me normally and I'll help you with anything - browsing, coding, research, and more.`,
-
-  REVOKE_CONFIRM: 'This will disconnect and delete all your data.\n\nReply "YES REVOKE" to confirm.',
+  REVOKE_CONFIRM: [
+    "This will disconnect and delete all your data.",
+    "Reply \"YES REVOKE\" to confirm.",
+  ],
   
-  GENERAL_INFO_PHOTON: "Photon is the service that connects Manus to iMessage. It lets you use Manus's AI capabilities directly from your Messages app - no apps to install, just text me what you need!",
-  
-  GENERAL_INFO_HOW_IT_WORKS: "Here's how it works:\n\n1. You send me a message with what you need\n2. I route it to Manus (a powerful AI agent)\n3. Manus works on your task and sends back results\n\nYou can send text, images, files - I'll handle them all!",
+  GENERAL_INFO: [
+    "Photon connects Manus to iMessage.",
+    "It lets you use Manus's AI capabilities directly from your Messages app - no apps to install, just text me what you need!",
+    "Here's how it works:\n1. You send me a message with what you need\n2. I route it to Manus (a powerful AI agent)\n3. Manus works on your task and sends back results",
+  ],
 };
