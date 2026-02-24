@@ -386,7 +386,7 @@ async function processMessage(phoneNumber: string, data: any) {
 
       // Check if this is a pre-defined intent that should be handled without Manus
       if (intent && DETECTION_MODE === 'slm') {
-        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask);
+        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid);
         if (handled) {
           console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
           // Mark as completed and return early
@@ -820,21 +820,30 @@ async function classifyMessage(message: string, context: any[]): Promise<{ inten
 async function handlePredefinedIntent(
   phoneNumber: string,
   intent: MessageIntent,
-  connection: any
+  connection: any,
+  replyToMessageGuid?: string
 ): Promise<boolean> {
   const sdk = await getIMessageSDK();
   const chatGuid = `any;-;${phoneNumber}`;
   
-  const sendWithTyping = async (message: string, delayMs: number = 1000) => {
+  const sendWithTyping = async (message: string, delayMs: number = 1000, isFirstMessage: boolean = false) => {
     await sdk.chats.startTyping(chatGuid);
     await new Promise(resolve => setTimeout(resolve, delayMs));
     await sdk.chats.stopTyping(chatGuid);
-    await sdk.messages.sendMessage({ chatGuid, message });
+    
+    const hasUrl = message.includes('https://') || message.includes('http://');
+    
+    await sdk.messages.sendMessage({ 
+      chatGuid, 
+      message,
+      richLink: hasUrl,
+      ...(isFirstMessage && replyToMessageGuid ? { replyToGuid: replyToMessageGuid } : {}),
+    });
   };
   
   const sendMultipleWithTyping = async (messages: string[], delayMs: number = 1000) => {
-    for (const msg of messages) {
-      await sendWithTyping(msg, delayMs);
+    for (let i = 0; i < messages.length; i++) {
+      await sendWithTyping(messages[i], delayMs, i === 0);
     }
   };
   
