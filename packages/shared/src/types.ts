@@ -107,12 +107,9 @@ export type WebhookEvent = z.infer<typeof WebhookEventSchema>;
 export const INTENT_RESPONSES: Record<string, string | string[]> = {
   API_KEY_HELP: [
     "To add your Manus API key:",
-    "1. Go to: https://manus.im/app#settings/integrations/api",
-    "2. Copy your API key (starts with \"sk-\", about 80 characters)",
-    "3. Paste it here in this chat",
-    "",
-    "Once connected, you'll have unlimited access to all features.",
-  ].join("\n"),
+    "Go to: https://manus.im/app#settings/integrations/api",
+    "Copy your API key and paste it here in this chat.",
+  ],
   
   API_KEY_HELP_ALREADY_CONNECTED: "You already have an API key connected.\n\nTo update it, just paste your new key here and I'll replace the old one.",
   

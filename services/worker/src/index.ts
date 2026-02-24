@@ -832,6 +832,12 @@ async function handlePredefinedIntent(
     await sdk.messages.sendMessage({ chatGuid, message });
   };
   
+  const sendMultipleWithTyping = async (messages: string[], delayMs: number = 1000) => {
+    for (const msg of messages) {
+      await sendWithTyping(msg, delayMs);
+    }
+  };
+  
   switch (intent) {
     case MessageIntent.API_KEY_HELP: {
       console.log(`📋 Handling API_KEY_HELP intent for ${phoneNumber}`);
@@ -839,7 +845,12 @@ async function handlePredefinedIntent(
       const response = hasApiKey 
         ? INTENT_RESPONSES.API_KEY_HELP_ALREADY_CONNECTED 
         : INTENT_RESPONSES.API_KEY_HELP;
-      await sendWithTyping(response as string, 1500);
+      
+      if (Array.isArray(response)) {
+        await sendMultipleWithTyping(response, 1200);
+      } else {
+        await sendWithTyping(response as string, 1500);
+      }
       return true;
     }
     
