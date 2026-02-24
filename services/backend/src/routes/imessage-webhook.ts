@@ -62,21 +62,29 @@ function getQueue(handle: string): Queue {
  */
 async function sendOnboardingMessages(handle: string, replyToGuid?: string): Promise<void> {
   const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+  const sdk = await getIMessageSDK();
+  const chatGuid = `any;-;${handle}`;
   
   for (let i = 0; i < ONBOARDING_MESSAGES.length; i++) {
+    const msg = ONBOARDING_MESSAGES[i];
+    const hasUrl = msg.includes('https://') || msg.includes('http://');
+    
     await sendTypingIndicator(handle, 1200);
+    
     // First message replies to user's message, rest are standalone
     if (i === 0 && replyToGuid) {
-      // Use SDK directly for reply
-      const sdk = await getIMessageSDK();
-      const chatGuid = `any;-;${handle}`;
       await sdk.messages.sendMessage({
         chatGuid,
-        message: ONBOARDING_MESSAGES[i],
+        message: msg,
+        richLink: hasUrl,
         replyToGuid,
       } as any);
     } else {
-      await sendIMessage(handle, ONBOARDING_MESSAGES[i]);
+      await sdk.messages.sendMessage({
+        chatGuid,
+        message: msg,
+        richLink: hasUrl,
+      });
     }
   }
 }
@@ -446,12 +454,14 @@ export async function startIMessageListener() {
                 // Send AI answer as reply to user's message
                 const sdk = await getIMessageSDK();
                 const chatGuid = `any;-;${handle}`;
+                const hasUrl = aiAnswer.includes('https://') || aiAnswer.includes('http://');
                 await sdk.chats.startTyping(chatGuid);
                 await new Promise(resolve => setTimeout(resolve, 1200));
                 await sdk.chats.stopTyping(chatGuid);
                 await sdk.messages.sendMessage({
                   chatGuid,
                   message: aiAnswer,
+                  richLink: hasUrl,
                   replyToGuid: message.guid,
                 } as any);
               }
