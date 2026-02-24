@@ -94,7 +94,7 @@ async function sendOnboardingMessages(handle: string, replyToGuid?: string): Pro
  */
 async function getOnboardingAnswer(question: string): Promise<string | null> {
   try {
-    const response = await fetch(`${SLM_SERVICE_URL}/onboarding-answer`, {
+    const response = await fetch(`${SLM_SERVICE_URL}/before-onboarding`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question }),

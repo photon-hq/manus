@@ -301,7 +301,7 @@ Example:
 });
 
 // POST /onboarding-answer - Generate contextual response for first-time user's question + merge with onboarding
-fastify.post('/onboarding-answer', async (request: any, reply: any) => {
+fastify.post('/before-onboarding', async (request: any, reply: any) => {
   try {
     const { question } = request.body as { question: string };
 
