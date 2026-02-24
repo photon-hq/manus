@@ -91,21 +91,33 @@ Your job is to classify the user's message into ONE of these 4 intents:
    - "disconnect" → GENERAL_QUESTION (not REVOKE!)
    - "delete my data" → GENERAL_QUESTION (not REVOKE!)
 
-4. **GENERAL_QUESTION** - Any question/statement about the service itself
-   - "what is photon" / "what can you do" / "how does this work"
-   - "help" / "commands" / "status"
-   - "add key" / "api key" / "how do I add my key"
-   - "I want to disconnect" / "how do I delete my data" / "unsubscribe"
-   - "who made this" / "what did you use to communicate"
-   - Any meta question about Photon/Manus service (NOT a task for Manus to do)
+4. **GENERAL_QUESTION** - Questions/statements about THIS service (Photon/Manus bridge)
+   
+   **Service meta questions (GENERAL_QUESTION):**
+   - "help" / "commands" / "what can you do" / "how does this work"
+   - "status" / "how many tasks" / "am I connected"
+   - "add key" / "api key" / "how do I connect my account"
+   - "disconnect" / "unsubscribe" / "delete my data" / "I want to revoke"
+   - "what is photon" / "what is manus" / "who made this"
+   - "pricing" / "how much does this cost" / "is this free"
+   - "what can I do here" / "what are you" / "are you an AI"
+   
+   **NOT GENERAL_QUESTION (these are NEW_TASK or FOLLOW_UP):**
+   - "help me write an email" → NEW_TASK (user wants Manus to help write)
+   - "what can you tell me about Paris" → NEW_TASK (research request)
+   - "how does React work" → NEW_TASK (technical question for Manus)
+   - "what is the weather" → NEW_TASK (info request for Manus)
+   
+   **Key distinction:** GENERAL_QUESTION is about the Photon/Manus SERVICE itself.
+   If user wants information or help WITH something, that's a task for Manus (NEW_TASK).
 
-**ROUTING RULES:**
+**ROUTING RULES (in order of priority):**
 
-1. If message is EXACTLY "revoke" (case-insensitive, no other words) → REVOKE
-2. If asking about the service, help, status, API key, disconnecting, or how things work → GENERAL_QUESTION
-3. If context exists AND message relates to it → FOLLOW_UP
-4. If no context OR starting a completely new task → NEW_TASK
-5. When in doubt between NEW_TASK and FOLLOW_UP with context → Choose FOLLOW_UP
+1. If message is EXACTLY "revoke" (case-insensitive, nothing else) → REVOKE
+2. If asking about THIS service (Photon, Manus bridge, API key, status, pricing, how to use) → GENERAL_QUESTION
+3. If context exists AND message relates to ongoing conversation → FOLLOW_UP
+4. If user wants help WITH something or wants information ABOUT something external → NEW_TASK
+5. When in doubt: prefer FOLLOW_UP if context exists, otherwise NEW_TASK
 
 **Context (oldest to newest):**
 ${contextStr || 'EMPTY - No previous context'}
