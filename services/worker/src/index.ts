@@ -661,9 +661,6 @@ async function detectMessageTypeSLM(
     case MessageIntent.FOLLOW_UP:
       return { isFollowUp: true, taskId: connection?.currentTaskId || null, intent, reasoning: classification.reasoning };
     
-    case MessageIntent.API_KEY_HELP:
-    case MessageIntent.STATUS_CHECK:
-    case MessageIntent.HELP_REQUEST:
     case MessageIntent.REVOKE:
     case MessageIntent.GENERAL_QUESTION:
       // These intents are handled by pre-defined responses or AI, not Manus tasks
@@ -849,57 +846,6 @@ async function handlePredefinedIntent(
   };
   
   switch (intent) {
-    case MessageIntent.API_KEY_HELP: {
-      console.log(`📋 Handling API_KEY_HELP intent for ${phoneNumber}`);
-      const hasApiKey = !!connection?.manusApiKey;
-      const response = hasApiKey 
-        ? INTENT_RESPONSES.API_KEY_HELP_ALREADY_CONNECTED 
-        : INTENT_RESPONSES.API_KEY_HELP;
-      
-      if (Array.isArray(response)) {
-        await sendMultipleWithTyping(response, 1200);
-      } else {
-        await sendWithTyping(response as string, 1500);
-      }
-      return true;
-    }
-    
-    case MessageIntent.STATUS_CHECK: {
-      console.log(`📋 Handling STATUS_CHECK intent for ${phoneNumber}`);
-      const tasksUsed = connection?.tasksUsed ?? 0;
-      const hasApiKey = !!connection?.manusApiKey;
-      const remainingTasks = Math.max(0, 3 - tasksUsed);
-      
-      let statusMessages: string[];
-      if (hasApiKey) {
-        statusMessages = [
-          "✅ Connected with your API key",
-          "You have unlimited access to Manus.",
-          `Connected since: ${connection?.activatedAt ? new Date(connection.activatedAt).toLocaleDateString() : 'N/A'}`,
-        ];
-      } else {
-        statusMessages = [
-          "✅ Connected (Free Tier)",
-          `Tasks used: ${tasksUsed}/3${remainingTasks > 0 ? `\nRemaining: ${remainingTasks} task${remainingTasks === 1 ? '' : 's'}` : '\n⚠️ Free tasks exhausted'}`,
-          remainingTasks === 0 ? 'Type "add key" to continue with your own API key.' : 'Type "add key" anytime to use your own API key for unlimited access.',
-        ];
-      }
-      
-      await sendMultipleWithTyping(statusMessages, 1000);
-      return true;
-    }
-    
-    case MessageIntent.HELP_REQUEST: {
-      console.log(`📋 Handling HELP_REQUEST intent for ${phoneNumber}`);
-      const response = INTENT_RESPONSES.HELP_REQUEST;
-      if (Array.isArray(response)) {
-        await sendMultipleWithTyping(response, 1000);
-      } else {
-        await sendWithTyping(response as string, 1000);
-      }
-      return true;
-    }
-    
     case MessageIntent.REVOKE: {
       console.log(`📋 Handling REVOKE intent for ${phoneNumber}`);
       const response = INTENT_RESPONSES.REVOKE_CONFIRM;
@@ -914,12 +860,23 @@ async function handlePredefinedIntent(
     case MessageIntent.GENERAL_QUESTION: {
       console.log(`📋 Handling GENERAL_QUESTION intent for ${phoneNumber} - calling AI`);
       
+      // Build context for AI to give better answers
+      const tasksUsed = connection?.tasksUsed ?? 0;
+      const hasApiKey = !!connection?.manusApiKey;
+      const remainingTasks = Math.max(0, 3 - tasksUsed);
+      const context = hasApiKey 
+        ? `User has API key connected. Unlimited access.`
+        : `User on free tier. Tasks used: ${tasksUsed}/3, remaining: ${remainingTasks}`;
+      
       // Call SLM /answer endpoint for AI-generated response
       try {
         const answerResponse = await fetch(`${SLM_SERVICE_URL}/answer`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: originalMessage || 'what can you do?' }),
+          body: JSON.stringify({ 
+            question: originalMessage || 'what can you do?',
+            context,
+          }),
         });
         
         if (answerResponse.ok) {
@@ -942,7 +899,7 @@ async function handlePredefinedIntent(
     }
     
     default:
-      // Not a pre-defined intent, continue to task processing
+      // Not a pre-defined intent (NEW_TASK or FOLLOW_UP), continue to task processing
       return false;
   }
 }

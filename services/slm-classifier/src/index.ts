@@ -66,7 +66,7 @@ fastify.post('/classify', async (request: any, reply: any) => {
     // Agentic Router Prompt - Routes to the right handler
     const systemPrompt = `You are an intelligent message router for Photon, an iMessage-to-Manus bridge service.
 
-Your job is to classify the user's message into ONE of these intents:
+Your job is to classify the user's message into ONE of these 4 intents:
 
 **INTENTS (choose exactly one):**
 
@@ -76,62 +76,42 @@ Your job is to classify the user's message into ONE of these intents:
    - "Research the best laptops under $1000"
    - "Debug this code: [code]"
    - Any substantial request that requires AI agent work
-   - Use when NO conversation context exists
+   - Use when NO conversation context exists OR user is starting a completely new topic
 
 2. **FOLLOW_UP** - User is continuing an EXISTING conversation/task
    - Responding to assistant's questions
    - Adding more details to current request
    - "Yes, do that" / "No, try again"
    - ANY message that relates to recent context
-   - **DEFAULT when context exists and message isn't a meta-command**
+   - **DEFAULT when context exists and message isn't about the service itself**
 
-3. **API_KEY_HELP** - User asking about API key setup/instructions
-   - "how do I add my key"
-   - "add key" / "api key" / "my key"
-   - "where do I get my API key"
-   - "how to connect my manus account"
-   - Questions about pricing, free tier, limits
-
-4. **STATUS_CHECK** - User wants to check their account status
-   - "status"
-   - "how many tasks do I have left"
-   - "am I connected"
-   - "what's my usage"
-
-5. **HELP_REQUEST** - User wants help/commands list
-   - "help"
-   - "commands"
-   - "what can you do"
-   - "how does this work" (when asking about Photon itself)
-
-6. **REVOKE** - User wants to disconnect/delete data
+3. **REVOKE** - User wants to disconnect/delete data
    - "revoke"
    - "disconnect"
    - "delete my data"
    - "unsubscribe"
 
-7. **GENERAL_QUESTION** - Questions about Photon/Manus service itself (NOT tasks for Manus)
-   - "what is photon"
-   - "who made this"
-   - "what did you use to communicate" → User asking about the service
-   - "how do you work"
-   - "what can you do"
-   - Meta questions about the service capabilities
+4. **GENERAL_QUESTION** - Questions about the service, help, status, API key, etc.
+   - "what is photon" / "what can you do" / "how does this work"
+   - "help" / "commands"
+   - "status" / "how many tasks left" / "am I connected"
+   - "add key" / "api key" / "how do I add my key"
+   - "who made this" / "what did you use to communicate"
+   - Any meta question about Photon/Manus service (NOT a task for Manus to do)
 
 **ROUTING RULES:**
 
-1. If message is a clear meta-command (help, status, revoke, add key) → Route to that intent
-2. If asking about API key, pricing, limits, or connection → API_KEY_HELP
-3. If asking about what Photon is or how it works → GENERAL_QUESTION
-4. If context exists AND message relates to it → FOLLOW_UP (strongly prefer this)
-5. If no context OR completely unrelated topic → NEW_TASK
-6. When in doubt between NEW_TASK and FOLLOW_UP → Choose FOLLOW_UP
+1. If user wants to revoke/disconnect → REVOKE
+2. If asking about the service, help, status, API key, or how things work → GENERAL_QUESTION
+3. If context exists AND message relates to it → FOLLOW_UP
+4. If no context OR starting a completely new task → NEW_TASK
+5. When in doubt between NEW_TASK and FOLLOW_UP with context → Choose FOLLOW_UP
 
 **Context (oldest to newest):**
 ${contextStr || 'EMPTY - No previous context'}
 
 **Respond with JSON only:**
-{"intent": "NEW_TASK" | "FOLLOW_UP" | "API_KEY_HELP" | "STATUS_CHECK" | "HELP_REQUEST" | "REVOKE" | "GENERAL_QUESTION", "confidence": 0.0 to 1.0, "reasoning": "brief explanation"}`;
+{"intent": "NEW_TASK" | "FOLLOW_UP" | "REVOKE" | "GENERAL_QUESTION", "confidence": 0.0 to 1.0, "reasoning": "brief explanation"}`;
 
     const response = await openrouter.chat.completions.create({
       model: 'google/gemini-2.0-flash-001',
@@ -200,28 +180,31 @@ fastify.post('/answer', async (request: any, reply: any) => {
 
     fastify.log.info({ question }, 'Generating AI answer');
 
-    const systemPrompt = `You are a friendly assistant for Photon, an iMessage bridge to Manus AI.
+    const systemPrompt = `You are Photon, an iMessage bridge to Manus AI. Answer questions about the service helpfully.
 
-**About the Service:**
-- Photon lets users access Manus (a powerful AI agent) directly through iMessage
-- Manus can: browse the web, write code, analyze data, create documents, research topics, book travel, and handle complex multi-step tasks
-- Users get 3 free tasks, then need to add their own Manus API key
+**About Photon/Manus:**
+- Photon connects iMessage to Manus AI
+- Manus is a powerful AI agent that can: browse the web, write code, analyze data, create documents, research topics, book travel, handle complex multi-step tasks
+- Users get 3 free tasks, then need to add their Manus API key
+- API key setup: Go to https://manus.im/app#settings/integrations/api and copy your key, then paste it here
 - No apps to install - just text what you need
 
-**Your Role:**
-- Answer questions about Photon/Manus capabilities conversationally
-- Be friendly, concise, and helpful
-- If the question is about something Manus can actually DO (a task), suggest they just ask for it directly
+**Handle these common queries:**
+- "help" / "what can you do" → List capabilities (browsing, coding, research, etc.) and mention you can just text requests
+- "status" → Tell them to text "status" to see tasks used, remaining, and connection info
+- "add key" / "api key" / "how to add key" → Give the URL https://manus.im/app#settings/integrations/api and explain to copy + paste key here
+- "who made this" / "what is photon" → Explain Photon bridges iMessage to Manus AI
+- Other questions → Answer conversationally based on the info above
+
+${context ? `**User context:** ${context}` : ''}
 
 **Response Format:**
-- Return a JSON object with "messages" array containing 1-3 short messages
-- Each message should be conversational and under 200 characters
-- Messages will be sent as separate iMessages with typing indicators
+- Return JSON with "messages" array (1-4 short messages, each under 200 chars)
+- Be friendly and conversational
+- Include URLs when relevant (they'll show as rich previews)
 
-Example response:
-{"messages": ["Photon connects you to Manus through iMessage!", "Manus can browse the web, write code, analyze data, and much more.", "Just text me what you need - no apps required."]}
-
-${context ? `\nConversation context:\n${context}` : ''}`;
+Example:
+{"messages": ["Here's how to add your API key:", "Go to: https://manus.im/app#settings/integrations/api", "Copy your key and paste it right here in the chat."]}`;
 
     const response = await openrouter.chat.completions.create({
       model: 'anthropic/claude-3.5-sonnet',

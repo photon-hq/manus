@@ -26,11 +26,8 @@ export enum QueueStatus {
 export enum MessageIntent {
   NEW_TASK = 'NEW_TASK',               // Start a new Manus task
   FOLLOW_UP = 'FOLLOW_UP',             // Continue existing task
-  API_KEY_HELP = 'API_KEY_HELP',       // Questions about API key setup/instructions
-  STATUS_CHECK = 'STATUS_CHECK',       // Check connection status
-  HELP_REQUEST = 'HELP_REQUEST',       // General help/commands list
   REVOKE = 'REVOKE',                   // Disconnect/revoke access
-  GENERAL_QUESTION = 'GENERAL_QUESTION', // Questions about Photon/Manus service (answered by AI)
+  GENERAL_QUESTION = 'GENERAL_QUESTION', // All other questions (API key, status, help, etc.) - answered by AI
 }
 
 // Legacy alias for backwards compatibility
@@ -105,23 +102,6 @@ export type WebhookEvent = z.infer<typeof WebhookEventSchema>;
 
 // Pre-defined responses for non-task intents
 export const INTENT_RESPONSES: Record<string, string | string[]> = {
-  API_KEY_HELP: [
-    "To add your Manus API key:",
-    "Go to: https://manus.im/app#settings/integrations/api",
-    "Copy your API key and paste it here in this chat.",
-  ],
-  
-  API_KEY_HELP_ALREADY_CONNECTED: [
-    "You already have an API key connected.",
-    "To update it, just paste your new key here and I'll replace the old one.",
-  ],
-  
-  HELP_REQUEST: [
-    "Here's what I can do:",
-    "Just message me normally and I'll help you with anything - browsing, coding, research, and more.",
-    "Commands:\n• \"help\" - Show this message\n• \"status\" - Check your connection & usage\n• \"add key\" - Add or update your Manus API key\n• \"revoke\" - Disconnect and delete all data",
-  ],
-
   REVOKE_CONFIRM: [
     "This will disconnect and delete all your data.",
     "Reply \"YES REVOKE\" to confirm.",
