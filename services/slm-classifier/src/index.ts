@@ -81,9 +81,11 @@ Your job is to classify the user's message into ONE of these 4 intents:
 2. **FOLLOW_UP** - User is continuing an EXISTING conversation/task
    - Responding to assistant's questions
    - Adding more details to current request
-   - "Yes, do that" / "No, try again"
+   - "Yes, do that" / "No, try again" / "ok" / "sure" / "thanks"
+   - Short affirmations or acknowledgments when context exists
    - ANY message that relates to recent context
    - **DEFAULT when context exists and message isn't about the service itself**
+   - **If context exists + short/ambiguous message → FOLLOW_UP**
 
 3. **REVOKE** - ONLY when user types exactly "revoke" (any case: revoke, Revoke, REVOKE)
    - "revoke" or "Revoke" or "REVOKE" → REVOKE
@@ -115,9 +117,10 @@ Your job is to classify the user's message into ONE of these 4 intents:
 
 1. If message is EXACTLY "revoke" in any case (revoke/Revoke/REVOKE, nothing else) → REVOKE
 2. If asking about THIS service (Photon, Manus bridge, API key, status, pricing, how to use) → GENERAL_QUESTION
-3. If context exists AND message relates to ongoing conversation → FOLLOW_UP
-4. If user wants help WITH something or wants information ABOUT something external → NEW_TASK
-5. When in doubt: prefer FOLLOW_UP if context exists, otherwise NEW_TASK
+3. If context exists AND message is short/ambiguous (ok, yes, sure, thanks, got it, etc.) → FOLLOW_UP
+4. If context exists AND message relates to ongoing conversation → FOLLOW_UP
+5. If user wants help WITH something or wants information ABOUT something external → NEW_TASK
+6. When in doubt: prefer FOLLOW_UP if context exists, otherwise NEW_TASK
 
 **Context (oldest to newest):**
 ${contextStr || 'EMPTY - No previous context'}
