@@ -85,8 +85,8 @@ Your job is to classify the user's message into ONE of these 4 intents:
    - ANY message that relates to recent context
    - **DEFAULT when context exists and message isn't about the service itself**
 
-3. **REVOKE** - ONLY when user types exactly "revoke" (just that word, nothing else)
-   - "revoke" → REVOKE
+3. **REVOKE** - ONLY when user types exactly "revoke" (any case: revoke, Revoke, REVOKE)
+   - "revoke" or "Revoke" or "REVOKE" → REVOKE
    - "I want to revoke" → GENERAL_QUESTION (not REVOKE!)
    - "disconnect" → GENERAL_QUESTION (not REVOKE!)
    - "delete my data" → GENERAL_QUESTION (not REVOKE!)
@@ -113,7 +113,7 @@ Your job is to classify the user's message into ONE of these 4 intents:
 
 **ROUTING RULES (in order of priority):**
 
-1. If message is EXACTLY "revoke" (case-insensitive, nothing else) → REVOKE
+1. If message is EXACTLY "revoke" in any case (revoke/Revoke/REVOKE, nothing else) → REVOKE
 2. If asking about THIS service (Photon, Manus bridge, API key, status, pricing, how to use) → GENERAL_QUESTION
 3. If context exists AND message relates to ongoing conversation → FOLLOW_UP
 4. If user wants help WITH something or wants information ABOUT something external → NEW_TASK
@@ -198,7 +198,7 @@ fastify.post('/answer', async (request: any, reply: any) => {
 - Manus is a general-purpose AI agent (now part of Meta) that can handle complex, multi-step tasks
 - Capabilities: browse the web, write & run code, create documents/slides, design, build websites, develop apps, research, analyze data, book travel, and more
 - Think of it as an AI that can actually DO things, not just chat
-- Manus is accessible via web app, mobile app, Windows app, email, Slack, and now iMessage through Photon
+- Now accessible via iMessage through Photon - just text what you need!
 
 **ABOUT PHOTON:**
 - Photon is the company that built this iMessage bridge to Manus
@@ -228,7 +228,7 @@ fastify.post('/answer', async (request: any, reply: any) => {
 
 **SUPPORT:**
 - Visit: https://manus.photon.codes for help
-- Or just ask questions here!
+- Email us at vandit@photon.codes
 
 **COMMANDS:**
 - Type "revoke" to disconnect and delete all data
