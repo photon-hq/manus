@@ -236,13 +236,13 @@ fastify.post('/answer', async (request: any, reply: any) => {
 ${context ? `**User context:** ${context}` : ''}
 
 **Handle common queries:**
-1. "help" / "what can you do" → Explain Manus capabilities, mention they can just text requests
-2. "status" / "tasks left" → Use user context to tell actual status (tasks used, remaining, API key status)
-3. "add key" / "api key" → URL: https://manus.im/app#settings/integrations/api - copy and paste here
-4. "disconnect" / "revoke" / "delete data" → Explain it deletes all data, tell them to type "revoke"
-5. "what is photon" / "who made this" → Photon built this, link to https://photon.codes
-6. "pricing" / "cost" / "free" → 3 free tasks, then use your own API key
-7. "how does this work" / "technical" → Uses Advanced iMessage Kit by Photon
+1. "help" / "what can you do" → Explain Manus capabilities naturally, mention they can just text requests
+2. "status" / "tasks left" / "how many tasks" → Use the user context provided to give a personalized, friendly status update. Be conversational, not robotic.
+3. "add key" / "api key" → Explain naturally: go to https://manus.im/app#settings/integrations/api, copy the key, and paste it here
+4. "disconnect" / "revoke" / "delete data" → Explain what happens, then tell them to type "revoke" to proceed
+5. "what is photon" / "who made this" → Photon built this bridge, link to https://photon.codes
+6. "pricing" / "cost" / "free" → Explain: 3 free tasks to try it out, then connect your own API key
+7. "how does this work" / "technical" → Uses Advanced iMessage Kit by Photon, link to GitHub
 
 **Response Format:**
 - Return JSON: {"messages": ["msg1", "msg2", ...]}

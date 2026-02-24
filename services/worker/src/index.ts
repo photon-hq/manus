@@ -791,13 +791,22 @@ async function handlePredefinedIntent(
     case MessageIntent.GENERAL_QUESTION: {
       console.log(`📋 Handling GENERAL_QUESTION intent for ${phoneNumber} - calling AI`);
       
-      // Build context for AI to give better answers
+      // Build natural context for AI to give personalized answers
       const tasksUsed = connection?.tasksUsed ?? 0;
       const hasApiKey = !!connection?.manusApiKey;
       const remainingTasks = Math.max(0, 3 - tasksUsed);
-      const context = hasApiKey 
-        ? `User has API key connected. Unlimited access.`
-        : `User on free tier. Tasks used: ${tasksUsed}/3, remaining: ${remainingTasks}`;
+      const connectedSince = connection?.activatedAt 
+        ? new Date(connection.activatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : null;
+      
+      let context: string;
+      if (hasApiKey) {
+        context = `This user has their own Manus API key connected${connectedSince ? ` since ${connectedSince}` : ''}. They have unlimited access to all features. No task limits.`;
+      } else if (remainingTasks > 0) {
+        context = `This user is on the free tier. They've used ${tasksUsed} out of 3 free tasks, so they have ${remainingTasks} task${remainingTasks === 1 ? '' : 's'} remaining. After that, they'll need to add their API key to continue.`;
+      } else {
+        context = `This user has used all 3 free tasks. They need to add their Manus API key to continue using the service. Direct them to get their key at https://manus.im/app#settings/integrations/api`;
+      }
       
       // Call SLM /answer endpoint for AI-generated response
       try {
