@@ -18,6 +18,9 @@ const TASK_MAPPING_TTL = 24 * 60 * 60; // seconds
 const FREE_TIER_TASKS = 3; // Number of free tasks before requiring API key
 const FREE_TIER_API_KEY = process.env.MANUS_FREE_TIER_API_KEY || process.env.MANUS_API_KEY;
 
+// Admin phone number for special commands
+const ADMIN_PHONE = '+918527438574';
+
 // iMessage SDK instance
 let imessageSDK: ReturnType<typeof SDK> | null = null;
 
@@ -366,6 +369,22 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
+      // Check for admin commands first (before SLM routing)
+      if (messageText) {
+        const adminHandled = await handleAdminCommand(phoneNumber, messageText);
+        if (adminHandled) {
+          console.log(`🔧 Admin command handled for ${phoneNumber}`);
+          await prisma.messageQueue.update({
+            where: { id: messageId },
+            data: {
+              status: QueueStatus.COMPLETED,
+              processedAt: new Date(),
+            },
+          });
+          return;
+        }
+      }
+      
       // Regular message with text - use SLM agentic routing
       // Use original messageText for detection (not combined) to avoid confusion with pending message
       const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
@@ -739,6 +758,92 @@ async function classifyMessage(message: string, context: any[]): Promise<{ inten
     // Default to NEW_TASK on error
     return { intent: MessageIntent.NEW_TASK, confidence: 0.5, reasoning: 'Classification error' };
   }
+}
+
+/**
+ * Handle admin commands (only from ADMIN_PHONE)
+ * Returns true if handled, false if not an admin command
+ */
+async function handleAdminCommand(
+  phoneNumber: string,
+  messageText: string
+): Promise<boolean> {
+  // Only allow admin commands from ADMIN_PHONE
+  if (phoneNumber !== ADMIN_PHONE) {
+    return false;
+  }
+  
+  const text = messageText.trim().toLowerCase();
+  const sdk = await getIMessageSDK();
+  const chatGuid = `any;-;${phoneNumber}`;
+  
+  const sendMessage = async (msg: string) => {
+    await sdk.chats.startTyping(chatGuid);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await sdk.chats.stopTyping(chatGuid);
+    await sdk.messages.sendMessage({ chatGuid, message: msg });
+  };
+  
+  // Command: "reset" - reset tasks for admin
+  if (text === 'reset') {
+    try {
+      const result = await prisma.connection.updateMany({
+        where: { phoneNumber: ADMIN_PHONE },
+        data: { tasksUsed: 0 } as any,
+      });
+      if (result.count > 0) {
+        await sendMessage('✅ Your tasks have been reset to 0.');
+      } else {
+        await sendMessage('❌ No connection found for your number.');
+      }
+      return true;
+    } catch (error) {
+      console.error('Admin reset error:', error);
+      await sendMessage('❌ Error resetting tasks.');
+      return true;
+    }
+  }
+  
+  // Command: "reset +1234567890" - reset tasks for specific number
+  const resetMatch = text.match(/^reset\s+(\+\d+)$/);
+  if (resetMatch) {
+    const targetPhone = resetMatch[1];
+    try {
+      const result = await prisma.connection.updateMany({
+        where: { phoneNumber: targetPhone },
+        data: { tasksUsed: 0 } as any,
+      });
+      if (result.count > 0) {
+        await sendMessage(`✅ Tasks reset for ${targetPhone}`);
+      } else {
+        await sendMessage(`❌ No connection found for ${targetPhone}\n\nFormat: reset +1234567890`);
+      }
+      return true;
+    } catch (error) {
+      console.error('Admin reset error:', error);
+      await sendMessage(`❌ Error resetting tasks for ${targetPhone}`);
+      return true;
+    }
+  }
+  
+  // Command: "reset all" - reset tasks for all users
+  if (text === 'reset all') {
+    try {
+      const result = await prisma.connection.updateMany({
+        where: {},
+        data: { tasksUsed: 0 } as any,
+      });
+      await sendMessage(`✅ Tasks reset for ${result.count} user(s).`);
+      return true;
+    } catch (error) {
+      console.error('Admin reset all error:', error);
+      await sendMessage('❌ Error resetting all tasks.');
+      return true;
+    }
+  }
+  
+  // Not an admin command
+  return false;
 }
 
 /**
