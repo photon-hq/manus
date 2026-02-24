@@ -17,10 +17,6 @@ const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
 });
 
-// Detection mode: 'thread' (default) or 'slm'
-// In SLM mode, the worker's agentic router handles help/status/add-key commands
-const DETECTION_MODE = process.env.DETECTION_MODE || 'thread';
-
 // SLM service URL for AI-generated responses
 const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
 
@@ -608,109 +604,6 @@ export async function startIMessageListener() {
         }
         
         return;
-      }
-
-      // In thread mode, handle commands directly (faster, no SLM call needed)
-      // In SLM mode, these are routed through the worker's agentic router
-      if (DETECTION_MODE === 'thread') {
-        // Check for help command
-        if (/^help$/i.test(messageText.trim()) || /^commands$/i.test(messageText.trim())) {
-          console.log('ℹ️  Help request from:', handle);
-          
-          try {
-            const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-            
-            await sendTypingIndicator(handle, 1000);
-            await sendIMessage(handle, `Commands:
-
-• "help" - Show this message
-• "status" - Check your connection & usage
-• "add key" - Add or update your Manus API key
-• "revoke" - Disconnect and delete all data
-
-Just message me normally and I'll help you with anything - browsing, coding, research, and more.`);
-            
-            console.log('✅ Sent help message to:', handle);
-          } catch (error) {
-            console.error('❌ Failed to send help message:', error);
-          }
-          
-          return;
-        }
-
-        // Check for "add key" command
-        if (/^(add\s*key|api\s*key|my\s*key|connect\s*key|use\s*my\s*key)$/i.test(messageText.trim())) {
-          console.log('🔑 Add key request from:', handle);
-          
-          try {
-            const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-            
-            // Get fresh connection data
-            const conn = await prisma.connection.findFirst({
-              where: { phoneNumber: handle, status: 'ACTIVE' },
-            });
-            
-            const hasApiKey = !!conn?.manusApiKey;
-            
-            await sendTypingIndicator(handle, 1000);
-            
-            if (hasApiKey) {
-              await sendIMessage(handle, "You already have an API key connected.\n\nTo update it, just paste your new key here and I'll replace the old one.");
-            } else {
-              await sendIMessage(handle, "To add your Manus API key:\nhttps://manus.im/app#settings/integrations/api\n\nCopy your key and paste it here. It starts with \"sk-\" and is about 80 characters long.");
-            }
-            
-            console.log('✅ Sent add key instructions to:', handle);
-          } catch (error) {
-            console.error('❌ Failed to send add key message:', error);
-          }
-          
-          return;
-        }
-
-        // Check for status command
-        if (/^status$/i.test(messageText.trim())) {
-          console.log('ℹ️  Status request from:', handle);
-          
-          try {
-            const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
-            
-            await sendTypingIndicator(handle, 1000);
-            
-            // Get fresh connection data for status
-            const conn = await prisma.connection.findFirst({
-              where: { phoneNumber: handle, status: 'ACTIVE' },
-            });
-            
-            const tasksUsed = (conn as any)?.tasksUsed ?? 0;
-            const hasApiKey = !!conn?.manusApiKey;
-            const remainingTasks = Math.max(0, 3 - tasksUsed);
-            
-            let statusMessage: string;
-            if (hasApiKey) {
-              statusMessage = `✅ Connected with your API key
-
-You have unlimited access to Manus.
-
-Connected since: ${conn?.activatedAt ? new Date(conn.activatedAt).toLocaleDateString() : 'N/A'}`;
-            } else {
-              statusMessage = `✅ Connected (Free Tier)
-
-Tasks used: ${tasksUsed}/3
-${remainingTasks > 0 ? `Remaining: ${remainingTasks} task${remainingTasks === 1 ? '' : 's'}` : '⚠️ Free tasks exhausted'}
-
-${remainingTasks === 0 ? 'Type "add key" to continue with your own API key.' : 'Type "add key" anytime to use your own API key for unlimited access.'}`;
-            }
-            
-            await sendIMessage(handle, statusMessage);
-            
-            console.log('✅ Sent status message to:', handle);
-          } catch (error) {
-            console.error('❌ Failed to send status message:', error);
-          }
-          
-          return;
-        }
       }
 
       // Handle API key submission (user pasting their API key in chat)

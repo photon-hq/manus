@@ -8,10 +8,7 @@ import { TypingIndicatorManager } from './typing-manager.js';
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const DEBOUNCE_WINDOW = 3000; // 3 seconds
 
-// Detection mode: 'thread' (default) or 'slm'
-const DETECTION_MODE = process.env.DETECTION_MODE || 'thread';
-
-// SLM service URL (only used when DETECTION_MODE=slm)
+// SLM service URL for agentic routing
 const SLM_SERVICE_URL = process.env.SLM_SERVICE_URL || 'http://localhost:3001';
 
 // Redis key expiration for task mapping (24 hours)
@@ -75,7 +72,6 @@ const debounceTimers = new Map<string, NodeJS.Timeout>();
 const typingIndicators = new Map<string, NodeJS.Timeout>();
 
 console.log('Worker service starting...');
-console.log(`🔧 Detection mode: ${DETECTION_MODE}`);
 
 // Function to get or create queue for a handle (phone number or email)
 function getQueue(handle: string): Queue {
@@ -370,13 +366,12 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
-      // Regular message with text - use detection based on DETECTION_MODE
+      // Regular message with text - use SLM agentic routing
       // Use original messageText for detection (not combined) to avoid confusion with pending message
       const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
         phoneNumber,
         messageText || '', // Use original for detection
-        messageGuid,
-        threadOriginatorGuid
+        messageGuid
       );
 
       // Re-fetch connection for task handling
@@ -385,7 +380,7 @@ async function processMessage(phoneNumber: string, data: any) {
       });
 
       // Check if this is a pre-defined intent that should be handled without Manus
-      if (intent && DETECTION_MODE === 'slm') {
+      if (intent) {
         const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid, messageText);
         if (handled) {
           console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
@@ -402,20 +397,17 @@ async function processMessage(phoneNumber: string, data: any) {
       }
 
       if (isFollowUp && taskIdForThread) {
-        // Follow-up detected → switch to that task and append
-        console.log(`✅ Follow-up detected - switching to task ${taskIdForThread}${reasoning ? ` (${reasoning})` : ''}`);
+        // Follow-up detected → append to existing task
+        console.log(`✅ Follow-up detected - appending to task ${taskIdForThread}${reasoning ? ` (${reasoning})` : ''}`);
         
-        // Update connection to point to the task being replied to
-        // IMPORTANT: Set triggeringMessageGuid to the CURRENT message (messageGuid), not the original
-        // This ensures the love reaction goes to the follow-up message that was just thumbed-up
+        // Update connection to point to the current task
         await prisma.connection.update({
           where: { phoneNumber },
           data: { 
             currentTaskId: taskIdForThread,
-            triggeringMessageGuid: messageGuid, // Always use current message for reaction tracking
+            triggeringMessageGuid: messageGuid,
           },
         });
-        console.log(`✅ Updated triggeringMessageGuid to current message: ${messageGuid}`);
         
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
@@ -430,10 +422,8 @@ async function processMessage(phoneNumber: string, data: any) {
           console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK)`);
         }
         
-        // SLM mode preserves conversation history (currentTaskStartedAt) across task boundaries
-        // Thread mode starts fresh since it uses explicit thread replies
-        const preserveTaskStartTime = DETECTION_MODE === 'slm';
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, preserveTaskStartTime, messageGuid);
+        // Preserve conversation history across task boundaries
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true, messageGuid);
       }
     }
 
@@ -567,77 +557,18 @@ interface DetectionResult {
 
 /**
  * Detect whether a message is a follow-up to an existing task or a new task
- * Supports two modes based on DETECTION_MODE env var:
- * - 'thread': Uses iMessage threadOriginatorGuid for instant detection
- * - 'slm': Uses AI classification based on message context (requires slm-classifier service)
+ * Uses SLM agentic routing to classify message intent
  */
 async function detectMessageType(
   phoneNumber: string,
   messageText: string,
-  messageGuid: string,
-  threadOriginatorGuid?: string
+  messageGuid: string
 ): Promise<DetectionResult> {
   // Get connection to check active task
   const connection = await prisma.connection.findFirst({
     where: { phoneNumber, status: 'ACTIVE' },
   });
 
-  if (DETECTION_MODE === 'thread') {
-    // Thread-based detection: use threadOriginatorGuid
-    return detectMessageTypeThread(phoneNumber, threadOriginatorGuid, connection);
-  } else if (DETECTION_MODE === 'slm') {
-    // SLM-based detection: use AI classification
-    return detectMessageTypeSLM(phoneNumber, messageText, messageGuid, connection);
-  } else {
-    console.warn(`Unknown DETECTION_MODE: ${DETECTION_MODE}, defaulting to thread`);
-    return detectMessageTypeThread(phoneNumber, threadOriginatorGuid, connection);
-  }
-}
-
-/**
- * Thread-based detection: Check if user replied to a message in a task thread
- */
-async function detectMessageTypeThread(
-  phoneNumber: string,
-  threadOriginatorGuid: string | undefined,
-  connection: any
-): Promise<DetectionResult> {
-  let isFollowUp = false;
-  let taskIdForThread: string | null = null;
-
-  if (threadOriginatorGuid) {
-    // Direct lookup: msg:task:{messageGuid} → taskId
-    const msgTaskKey = `msg:task:${threadOriginatorGuid}`;
-    taskIdForThread = await redis.get(msgTaskKey);
-    
-    if (taskIdForThread) {
-      isFollowUp = true;
-      console.log(`✅ Found thread match via direct lookup: ${threadOriginatorGuid} → ${taskIdForThread}`);
-    }
-  }
-
-  console.log(`🔗 Thread detection for ${phoneNumber}:`, {
-    threadOriginatorGuid: threadOriginatorGuid || 'none',
-    currentTaskId: connection?.currentTaskId || 'none',
-    isFollowUp,
-    taskIdForThread,
-    hasActiveTask: !!connection?.currentTaskId
-  });
-
-  return { isFollowUp, taskId: taskIdForThread };
-}
-
-/**
- * SLM-based detection: Use AI classification based on message context
- * Calls the slm-classifier service to determine message intent
- * Returns: NEW_TASK, FOLLOW_UP, API_KEY_HELP, STATUS_CHECK, HELP_REQUEST, REVOKE, GENERAL_INFO
- */
-async function detectMessageTypeSLM(
-  phoneNumber: string,
-  messageText: string,
-  messageGuid: string,
-  connection: any
-): Promise<DetectionResult> {
   console.log(`🤖 SLM agentic router for ${phoneNumber}`);
   
   // Get last task context (last 20 messages), excluding the current message
