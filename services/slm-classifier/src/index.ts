@@ -85,24 +85,24 @@ Your job is to classify the user's message into ONE of these 4 intents:
    - ANY message that relates to recent context
    - **DEFAULT when context exists and message isn't about the service itself**
 
-3. **REVOKE** - User wants to disconnect/delete data
-   - "revoke"
-   - "disconnect"
-   - "delete my data"
-   - "unsubscribe"
+3. **REVOKE** - ONLY when user types exactly "revoke" (just that word, nothing else)
+   - "revoke" → REVOKE
+   - "I want to revoke" → GENERAL_QUESTION (not REVOKE!)
+   - "disconnect" → GENERAL_QUESTION (not REVOKE!)
+   - "delete my data" → GENERAL_QUESTION (not REVOKE!)
 
-4. **GENERAL_QUESTION** - Questions about the service, help, status, API key, etc.
+4. **GENERAL_QUESTION** - Any question/statement about the service itself
    - "what is photon" / "what can you do" / "how does this work"
-   - "help" / "commands"
-   - "status" / "how many tasks left" / "am I connected"
+   - "help" / "commands" / "status"
    - "add key" / "api key" / "how do I add my key"
+   - "I want to disconnect" / "how do I delete my data" / "unsubscribe"
    - "who made this" / "what did you use to communicate"
    - Any meta question about Photon/Manus service (NOT a task for Manus to do)
 
 **ROUTING RULES:**
 
-1. If user wants to revoke/disconnect → REVOKE
-2. If asking about the service, help, status, API key, or how things work → GENERAL_QUESTION
+1. If message is EXACTLY "revoke" (case-insensitive, no other words) → REVOKE
+2. If asking about the service, help, status, API key, disconnecting, or how things work → GENERAL_QUESTION
 3. If context exists AND message relates to it → FOLLOW_UP
 4. If no context OR starting a completely new task → NEW_TASK
 5. When in doubt between NEW_TASK and FOLLOW_UP with context → Choose FOLLOW_UP
@@ -188,13 +188,28 @@ fastify.post('/answer', async (request: any, reply: any) => {
 - Users get 3 free tasks, then need to add their Manus API key
 - API key setup: Go to https://manus.im/app#settings/integrations/api and copy your key, then paste it here
 - No apps to install - just text what you need
+- To disconnect/delete data: type "revoke"
 
 **Handle these common queries:**
-- "help" / "what can you do" → List capabilities (browsing, coding, research, etc.) and mention you can just text requests
-- "status" → Tell them to text "status" to see tasks used, remaining, and connection info
-- "add key" / "api key" / "how to add key" → Give the URL https://manus.im/app#settings/integrations/api and explain to copy + paste key here
-- "who made this" / "what is photon" → Explain Photon bridges iMessage to Manus AI
-- Other questions → Answer conversationally based on the info above
+
+1. **Help / What can you do:**
+   - Explain Manus capabilities (browsing, coding, research, data analysis, etc.)
+   - Mention they can just text what they need
+
+2. **Status / Tasks left:**
+   - Use the user context provided to tell them their actual status
+   - If no context, explain they have 3 free tasks then need API key
+
+3. **API key / Add key / How to connect:**
+   - Provide URL: https://manus.im/app#settings/integrations/api
+   - Explain to copy the key and paste it directly in this chat
+
+4. **Disconnect / Delete data / Unsubscribe / I want to revoke:**
+   - Explain what happens when they revoke (data deleted, disconnected)
+   - Tell them to type "revoke" to proceed
+
+5. **What is Photon / Who made this:**
+   - Explain Photon bridges iMessage to Manus AI
 
 ${context ? `**User context:** ${context}` : ''}
 
@@ -202,9 +217,10 @@ ${context ? `**User context:** ${context}` : ''}
 - Return JSON with "messages" array (1-4 short messages, each under 200 chars)
 - Be friendly and conversational
 - Include URLs when relevant (they'll show as rich previews)
+- When suggesting commands, format like: type "revoke" or type "add key"
 
-Example:
-{"messages": ["Here's how to add your API key:", "Go to: https://manus.im/app#settings/integrations/api", "Copy your key and paste it right here in the chat."]}`;
+Example for disconnect question:
+{"messages": ["Revoking will disconnect your account and delete all your data.", "To proceed, just type: revoke"]}`;
 
     const response = await openrouter.chat.completions.create({
       model: 'anthropic/claude-3.5-sonnet',
