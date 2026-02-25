@@ -854,13 +854,13 @@ async function handlePredefinedIntent(
   phoneNumber: string,
   intent: MessageIntent,
   connection: any,
-  replyToMessageGuid?: string,
+  _replyToMessageGuid?: string,
   originalMessage?: string
 ): Promise<boolean> {
   const sdk = await getIMessageSDK();
   const chatGuid = `any;-;${phoneNumber}`;
   
-  const sendWithTyping = async (message: string, delayMs: number = 1000, isFirstMessage: boolean = false) => {
+  const sendWithTyping = async (message: string, delayMs: number = 1000) => {
     await sdk.chats.startTyping(chatGuid);
     await new Promise(resolve => setTimeout(resolve, delayMs));
     await sdk.chats.stopTyping(chatGuid);
@@ -871,13 +871,12 @@ async function handlePredefinedIntent(
       chatGuid, 
       message,
       richLink: hasUrl,
-      ...(isFirstMessage && replyToMessageGuid ? { replyToGuid: replyToMessageGuid } : {}),
     });
   };
   
   const sendMultipleWithTyping = async (messages: string[], delayMs: number = 1000) => {
-    for (let i = 0; i < messages.length; i++) {
-      await sendWithTyping(messages[i], delayMs, i === 0);
+    for (const msg of messages) {
+      await sendWithTyping(msg, delayMs);
     }
   };
   

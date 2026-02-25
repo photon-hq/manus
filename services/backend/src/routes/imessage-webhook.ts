@@ -56,32 +56,20 @@ function getQueue(handle: string): Queue {
 /**
  * Send onboarding messages to a new user (multi-part with typing indicators)
  */
-async function sendOnboardingMessages(handle: string, replyToGuid?: string): Promise<void> {
-  const { sendIMessage, sendTypingIndicator } = await import('../lib/imessage.js');
+async function sendOnboardingMessages(handle: string): Promise<void> {
+  const { sendTypingIndicator } = await import('../lib/imessage.js');
   const sdk = await getIMessageSDK();
   const chatGuid = `any;-;${handle}`;
   
-  for (let i = 0; i < ONBOARDING_MESSAGES.length; i++) {
-    const msg = ONBOARDING_MESSAGES[i];
+  for (const msg of ONBOARDING_MESSAGES) {
     const hasUrl = msg.includes('https://') || msg.includes('http://');
     
     await sendTypingIndicator(handle, 1200);
-    
-    // First message replies to user's message, rest are standalone
-    if (i === 0 && replyToGuid) {
-      await sdk.messages.sendMessage({
-        chatGuid,
-        message: msg,
-        richLink: hasUrl,
-        replyToGuid,
-      } as any);
-    } else {
-      await sdk.messages.sendMessage({
-        chatGuid,
-        message: msg,
-        richLink: hasUrl,
-      });
-    }
+    await sdk.messages.sendMessage({
+      chatGuid,
+      message: msg,
+      richLink: hasUrl,
+    });
   }
 }
 
@@ -439,7 +427,7 @@ export async function startIMessageListener() {
             if (isOnboardingTrigger) {
               // Standard onboarding trigger - send onboarding messages directly
               console.log('📋 Sending onboarding messages (trigger phrase)');
-              await sendOnboardingMessages(handle, message.guid);
+              await sendOnboardingMessages(handle);
             } else {
               // User sent a custom first message - get AI response first, then onboarding
               console.log('📋 Custom first message - getting AI answer then onboarding');
@@ -447,7 +435,7 @@ export async function startIMessageListener() {
               // Get AI-generated contextual answer
               const aiAnswer = await getOnboardingAnswer(messageText);
               if (aiAnswer) {
-                // Send AI answer as reply to user's message
+                // Send AI answer as normal message
                 const sdk = await getIMessageSDK();
                 const chatGuid = `any;-;${handle}`;
                 const hasUrl = aiAnswer.includes('https://') || aiAnswer.includes('http://');
@@ -458,11 +446,10 @@ export async function startIMessageListener() {
                   chatGuid,
                   message: aiAnswer,
                   richLink: hasUrl,
-                  replyToGuid: message.guid,
-                } as any);
+                });
               }
               
-              // Then send onboarding messages (without reply - standalone)
+              // Then send onboarding messages
               await sendOnboardingMessages(handle);
             }
             
