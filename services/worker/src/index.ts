@@ -18,8 +18,8 @@ const TASK_MAPPING_TTL = 24 * 60 * 60; // seconds
 const FREE_TIER_TASKS = 3; // Number of free tasks before requiring API key
 const FREE_TIER_API_KEY = process.env.MANUS_FREE_TIER_API_KEY || process.env.MANUS_API_KEY;
 
-// Admin phone number for special commands
-const ADMIN_PHONE = '+918527438574';
+// Admin phone numbers for special commands
+const ADMIN_PHONES = ['+918527438574', '+13322593374'];
 
 // iMessage SDK instance
 let imessageSDK: ReturnType<typeof SDK> | null = null;
@@ -761,15 +761,15 @@ async function classifyMessage(message: string, context: any[]): Promise<{ inten
 }
 
 /**
- * Handle admin commands (only from ADMIN_PHONE)
+ * Handle admin commands (only from ADMIN_PHONES)
  * Returns true if handled, false if not an admin command
  */
 async function handleAdminCommand(
   phoneNumber: string,
   messageText: string
 ): Promise<boolean> {
-  // Only allow admin commands from ADMIN_PHONE
-  if (phoneNumber !== ADMIN_PHONE) {
+  // Only allow admin commands from ADMIN_PHONES
+  if (!ADMIN_PHONES.includes(phoneNumber)) {
     return false;
   }
   
@@ -784,11 +784,11 @@ async function handleAdminCommand(
     await sdk.messages.sendMessage({ chatGuid, message: msg });
   };
   
-  // Command: "reset" - reset tasks for admin
+  // Command: "reset" - reset tasks for the admin who sent it
   if (text === 'reset') {
     try {
       const result = await prisma.connection.updateMany({
-        where: { phoneNumber: ADMIN_PHONE },
+        where: { phoneNumber },
         data: { tasksUsed: 0 } as any,
       });
       if (result.count > 0) {
