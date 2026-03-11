@@ -61,9 +61,27 @@ function getTypingManager(): TypingIndicatorManager {
   return typingManager;
 }
 
-// Redis connection
+// Redis connection with improved resilience
 const redis = new Redis(REDIS_URL, {
-  maxRetriesPerRequest: null,
+  // Enable automatic retries for individual Redis commands
+  // This helps survive transient network glitches
+  maxRetriesPerRequest: 3,
+  
+  // Buffer commands while reconnecting
+  enableOfflineQueue: true,
+  
+  // Exponential backoff for connection retries
+  retryStrategy: (times) => {
+    const delay = Math.min(times * 50, 2000);
+    console.log(`Redis connection retry attempt ${times}, waiting ${delay}ms...`);
+    return delay;
+  },
+  
+  // Timeout for individual operations (10 seconds)
+  commandTimeout: 10000,
+  
+  // Keep connection alive
+  keepAlive: 30000,
 });
 
 // Map to track queues and workers per phone number
@@ -1397,27 +1415,54 @@ const shutdown = async () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
+// Retry logic helper for database operations
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  maxAttempts = 5,
+  operation_name = 'operation'
+): Promise<T | null> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        console.error(`❌ ${operation_name} failed after ${maxAttempts} attempts:`, error);
+        return null;
+      }
+      const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+      console.warn(`⚠️  ${operation_name} attempt ${attempt} failed, retrying in ${backoffMs}ms:`, error);
+      await new Promise(resolve => setTimeout(resolve, backoffMs));
+    }
+  }
+  return null;
+}
+
 // Initialize workers for existing queues on startup
 async function initializeExistingQueues() {
-  try {
-    // Get all active connections from database
-    const activeConnections = await prisma.connection.findMany({
-      where: { status: 'ACTIVE' },
-      select: { phoneNumber: true },
-    });
+  const result = await retryWithBackoff(
+    async () => {
+      const activeConnections = await prisma.connection.findMany({
+        where: { status: 'ACTIVE' },
+        select: { phoneNumber: true },
+      });
 
-    console.log(`Found ${activeConnections.length} active connection(s)`);
+      console.log(`Found ${activeConnections.length} active connection(s)`);
 
-    // Start workers for each active phone number
-    for (const conn of activeConnections) {
-      console.log(`Starting worker for ${conn.phoneNumber}`);
-      getQueue(conn.phoneNumber); // This will create queue and start worker
-    }
+      // Start workers for each active phone number
+      for (const conn of activeConnections) {
+        console.log(`Starting worker for ${conn.phoneNumber}`);
+        getQueue(conn.phoneNumber); // This will create queue and start worker
+      }
 
-    console.log('Worker service ready and listening for messages');
-  } catch (error) {
-    console.error('Failed to initialize existing queues:', error);
-    console.log('Worker service ready and listening for messages');
+      console.log('✅ All existing queue workers initialized');
+      return true;
+    },
+    5,
+    'initializeExistingQueues'
+  );
+  
+  if (!result) {
+    throw new Error('Failed to initialize existing queues after retries - critical startup failure');
   }
 }
 
@@ -1438,7 +1483,8 @@ async function checkForNewConnections() {
       }
     }
   } catch (error) {
-    console.error('Failed to check for new connections:', error);
+    console.error('❌ Failed to check for new connections:', error);
+    console.warn('⚠️  Will retry at next 10s interval...');
   }
 }
 
@@ -1587,12 +1633,28 @@ async function initializeSDK() {
   }
 }
 
-// Initialize on startup
-initializeSDK();
-initializeExistingQueues();
+// Startup sequence - must run in order to ensure dependencies are ready
+async function startup() {
+  try {
+    // Step 1: Initialize SDK first (required for message processing)
+    await initializeSDK();
+    
+    // Step 2: Initialize queues for existing connections
+    await initializeExistingQueues();
+    
+    // Step 3: Listen for real-time events
+    await listenForEvents();
+    
+    // Step 4: Periodic backup check for new connections
+    setInterval(checkForNewConnections, 10000);
+    
+    console.log('🚀 Worker startup complete - all systems ready');
+  } catch (error) {
+    console.error('💥 Critical startup error:', error);
+    // Exit if critical initialization fails
+    process.exit(1);
+  }
+}
 
-// Listen for instant activation and message notifications
-listenForEvents();
-
-// Check for new connections every 10 seconds (backup mechanism)
-setInterval(checkForNewConnections, 10000);
+// Start the worker
+startup();
