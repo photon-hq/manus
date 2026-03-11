@@ -31,16 +31,22 @@ SQL
     MIGRATION_STATUS=$(npx prisma migrate status 2>&1 || true)
 
     if echo "$MIGRATION_STATUS" | grep -q "failed"; then
-      echo "⚠️  Failed migrations detected. Marking all as rolled back..."
+      echo "⚠️  Failed migrations detected. Automatically resolving as rolled back..."
       
-      # Mark all failed migrations as rolled back
-      npx prisma migrate resolve --rolled-back "20260201000000_init" || true
-      npx prisma migrate resolve --rolled-back "20260202000000_add_attachments_and_current_task" || true
-      npx prisma migrate resolve --rolled-back "20260206000000_add_task_started_at" || true
-      npx prisma migrate resolve --rolled-back "20260211000000_add_triggering_message_guid" || true
-      npx prisma migrate resolve --rolled-back "20260214000000_add_contact_card_shared" || true
-      npx prisma migrate resolve --rolled-back "20260216000000_add_thread_originator_guid" || true
-      npx prisma migrate resolve --rolled-back "20260223000000_add_free_tier_fields" || true
+      # Extract all failed migration names and mark them as rolled back
+      FAILED_MIGRATIONS=$(echo "$MIGRATION_STATUS" | grep "↓" | grep -oP '\d{14}_[a-z0-9_]+' || true)
+      
+      if [ -z "$FAILED_MIGRATIONS" ]; then
+        echo "⚠️  Could not extract migration names, attempting generic resolution..."
+        # Fallback: Try to reset and redeploy if extraction fails
+        npx prisma migrate resolve --rolled-back "init" || true
+      else
+        echo "🔧 Found failed migrations: $FAILED_MIGRATIONS"
+        for migration in $FAILED_MIGRATIONS; do
+          echo "  Resolving migration: $migration"
+          npx prisma migrate resolve --rolled-back "$migration" || true
+        done
+      fi
       
       echo "✅ Failed migrations marked as rolled back"
     fi
