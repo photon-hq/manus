@@ -282,8 +282,26 @@ async function processMessage(phoneNumber: string, data: any) {
       console.log(`✅ Cleared pending message for ${phoneNumber}`);
     }
     
+    // Check for admin commands FIRST (before free tier check)
+    // Admins should always be able to use admin commands regardless of API key status
+    if (messageText) {
+      const adminHandled = await handleAdminCommand(phoneNumber, messageText);
+      if (adminHandled) {
+        console.log(`🔧 Admin command handled for ${phoneNumber}`);
+        await prisma.messageQueue.update({
+          where: { id: messageId },
+          data: {
+            status: QueueStatus.COMPLETED,
+            processedAt: new Date(),
+          },
+        });
+        return;
+      }
+    }
+    
     // Early check for free tier limit BEFORE processing attachments
     // This ensures users get the nice prompt instead of an error
+    // (Admins are exempt via the check above)
     const connForFreeTierCheck = await prisma.connection.findFirst({
       where: { phoneNumber, status: 'ACTIVE' },
     });
@@ -369,22 +387,6 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
-      // Check for admin commands first (before SLM routing)
-      if (messageText) {
-        const adminHandled = await handleAdminCommand(phoneNumber, messageText);
-        if (adminHandled) {
-          console.log(`🔧 Admin command handled for ${phoneNumber}`);
-          await prisma.messageQueue.update({
-            where: { id: messageId },
-            data: {
-              status: QueueStatus.COMPLETED,
-              processedAt: new Date(),
-            },
-          });
-          return;
-        }
-      }
-      
       // Regular message with text - use SLM agentic routing
       // Use original messageText for detection (not combined) to avoid confusion with pending message
       const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
