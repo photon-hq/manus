@@ -14,6 +14,7 @@ services:
       retries: 5
     networks:
       - manus-network
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -27,6 +28,7 @@ services:
       retries: 5
     networks:
       - manus-network
+    restart: unless-stopped
 
   backend:
     build:
@@ -87,6 +89,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('ioredis').default.prototype.ping.call(new (require('ioredis').default)(process.env.REDIS_URL)).then(() => process.exit(0)).catch(() => process.exit(1))"]
