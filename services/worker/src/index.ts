@@ -626,19 +626,32 @@ async function detectMessageType(
 }
 
 /**
- * Get recent messages for context (only from current task)
+ * Get recent messages for context (from current task or recent completed tasks)
  * Used by SLM mode to provide conversation context to the classifier
  */
 async function getRecentMessages(phoneNumber: string, limit: number = 20, excludeMessageGuid?: string): Promise<any[]> {
   try {
-    // Get connection to check if there's an active task
+    // Get connection to check for active task and recent task history
     const connection = await prisma.connection.findFirst({
       where: { phoneNumber, status: 'ACTIVE' },
     }) as any;
 
-    // If no active task or no start time, return empty context (indicates NEW_TASK)
-    if (!connection?.currentTaskId || !connection?.currentTaskStartedAt) {
-      console.log(`No active task context for ${phoneNumber}, returning empty context`);
+    // Get the most recent task start time (active or recently completed)
+    // This allows follow-ups to recently completed tasks to have context
+    let taskStartTime: number | null = null;
+    
+    if (connection?.currentTaskId && connection?.currentTaskStartedAt) {
+      // Active task exists - use its start time
+      taskStartTime = connection.currentTaskStartedAt.getTime();
+      console.log(`Using active task context for ${phoneNumber} (started at ${connection.currentTaskStartedAt.toISOString()})`);
+    } else if (connection) {
+      // No active task, but check recent messages from last 5 minutes to preserve context for follow-ups
+      // This allows: Q1 -> Answer -> Q2 (follow-up to Q1) pattern
+      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+      taskStartTime = fiveMinutesAgo;
+      console.log(`No active task for ${phoneNumber}, using recent 5-minute context window for follow-up detection`);
+    } else {
+      console.log(`No active connection for ${phoneNumber}, returning empty context`);
       return [];
     }
 
@@ -685,13 +698,12 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
     const guidSet = new Set(manualMessageGuids.map((m) => m.messageGuid));
 
     // Filter messages:
-    // 1. Only messages after current task started (with 5 second buffer for timing differences)
+    // 1. Only messages in recent window (active task start or last 5 minutes)
     // 2. Exclude MANUAL messages
     // 3. Keep user messages and webhook responses
-    const taskStartTime = connection.currentTaskStartedAt!.getTime();
     const bufferMs = 5000; // 5 second buffer to account for timing differences
     
-    console.log(`⏰ Task started at: ${connection.currentTaskStartedAt!.toISOString()} (${taskStartTime})`);
+    console.log(`⏰ Context window start: ${new Date(taskStartTime).toISOString()} (${taskStartTime})`);
     
     const filteredRawMessages = messages.filter((msg) => {
       const messageTime = new Date(msg.dateCreated).getTime();
