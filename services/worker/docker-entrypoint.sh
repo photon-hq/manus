@@ -29,7 +29,8 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-  echo "⚠️  Database migrations not complete after $MAX_RETRIES attempts, starting anyway..."
+  echo "❌ Database migrations not complete after $MAX_RETRIES attempts. Exiting so Docker can restart."
+  exit 1
 fi
 
 echo "Starting worker service..."
