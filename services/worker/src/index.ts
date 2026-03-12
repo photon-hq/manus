@@ -638,7 +638,7 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
 
     // Get the most recent task start time (active or recently completed)
     // This allows follow-ups to recently completed tasks to have context
-    let taskStartTime: number | null = null;
+    let taskStartTime: number;
     
     if (connection?.currentTaskId && connection?.currentTaskStartedAt) {
       // Active task exists - use its start time
@@ -647,8 +647,7 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
     } else if (connection) {
       // No active task, but check recent messages from last 5 minutes to preserve context for follow-ups
       // This allows: Q1 -> Answer -> Q2 (follow-up to Q1) pattern
-      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-      taskStartTime = fiveMinutesAgo;
+      taskStartTime = Date.now() - (5 * 60 * 1000);
       console.log(`No active task for ${phoneNumber}, using recent 5-minute context window for follow-up detection`);
     } else {
       console.log(`No active connection for ${phoneNumber}, returning empty context`);
