@@ -710,10 +710,11 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
       const passesTimeFilter = messageTime >= (taskStartTime - bufferMs);
       const notManual = !guidSet.has(msg.guid);
       const notCurrent = msg.guid !== excludeMessageGuid;
+      const isRelevantMessage = !msg.isFromMe; // Only include user messages, exclude system/bot messages
       
       console.log(`  Message ${msg.guid?.substring(0, 8)}: time=${passesTimeFilter}, notManual=${notManual}, notCurrent=${notCurrent}, isFromMe=${msg.isFromMe}`);
       
-      return passesTimeFilter && notManual && notCurrent;
+      return passesTimeFilter && notManual && notCurrent && isRelevantMessage;
     });
 
     console.log(`Fetched ${messages.length} total messages, ${filteredRawMessages.length} after filtering for current task context`);
