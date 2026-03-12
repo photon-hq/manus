@@ -66,67 +66,64 @@ fastify.post('/classify', async (request: any, reply: any) => {
     // Agentic Router Prompt - Routes to the right handler
     const systemPrompt = `You are an intelligent message router for Photon, an iMessage-to-Manus bridge service.
 
-Your job is to classify the user's message into ONE of these 4 intents:
+Your job is to classify the user's message into ONE of these 4 intents based on CONVERSATION CONTEXT:
+
+**CORE PRINCIPLE:**
+- **NEW_TASK**: User introduces a NEW problem/request that hasn't been discussed yet
+- **FOLLOW_UP**: User continues discussing the SAME problem/topic that's already in context
+- The key is: "Is the user talking about the same thing as the recent context, or something different?"
 
 **INTENTS (choose exactly one):**
 
-1. **NEW_TASK** - User wants to start a NEW task/request for Manus AI agent
-   - "Book me a flight to Paris"
-   - "Help me write a resume"
-   - "Research the best laptops under $1000"
-   - "Debug this code: [code]"
-   - Any substantial request that requires AI agent work
-   - Use when NO conversation context exists OR user is starting a completely new topic
+1. **NEW_TASK** - User wants to start a COMPLETELY NEW task/request
+   - Introduction of a NEW problem or topic NOT mentioned in recent context
+   - User pivots away from current topic to something unrelated
+   - Example triggers: "Also...", "By the way...", "Different question...", new subject entirely
+   - Use when context is EMPTY OR user clearly introduces a different problem
 
-2. **FOLLOW_UP** - User is continuing an EXISTING conversation/task
+2. **FOLLOW_UP** - User continues the EXISTING conversation/task
    - Responding to assistant's questions
    - Adding more details to current request
-   - "Yes, do that" / "No, try again" / "ok" / "sure" / "thanks"
    - Short affirmations or acknowledgments when context exists
    - ANY message that relates to recent context
    - **DEFAULT when context exists and message isn't about the service itself**
    - **If context exists + short/ambiguous message → FOLLOW_UP**
+   - User references or builds on what's already being discussed
+   - Refinements, additions, or reactions to the ongoing topic
+   - Example triggers: "Yes...", "No...", "More specifically...", answering a question asked
 
-3. **REVOKE** - ONLY when user types exactly "revoke" (any case: revoke, Revoke, REVOKE)
-   - "revoke" or "Revoke" or "REVOKE" → REVOKE
-   - "I want to revoke" → GENERAL_QUESTION (not REVOKE!)
-   - "disconnect" → GENERAL_QUESTION (not REVOKE!)
-   - "delete my data" → GENERAL_QUESTION (not REVOKE!)
+3. **REVOKE** - ONLY when user types exactly "revoke" (case-insensitive)
+   - Only "revoke" alone, nothing else
 
-4. **GENERAL_QUESTION** - Questions/statements about THIS service (Photon/Manus bridge)
-   
-   **Service meta questions (GENERAL_QUESTION):**
-   - "help" / "commands" / "what can you do" / "how does this work"
-   - "status" / "how many tasks" / "am I connected"
-   - "add key" / "api key" / "how do I connect my account"
-   - "disconnect" / "unsubscribe" / "delete my data" / "I want to revoke"
-   - "what is photon" / "what is manus" / "who made this"
-   - "pricing" / "how much does this cost" / "is this free"
-   - "what can I do here" / "what are you" / "are you an AI"
-   
-   **NOT GENERAL_QUESTION (these are NEW_TASK or FOLLOW_UP):**
-   - "help me write an email" → NEW_TASK (user wants Manus to help write)
-   - "what can you tell me about Paris" → NEW_TASK (research request)
-   - "how does React work" → NEW_TASK (technical question for Manus)
-   - "what is the weather" → NEW_TASK (info request for Manus)
-   
-   **Key distinction:** GENERAL_QUESTION is about the Photon/Manus SERVICE itself.
-   If user wants information or help WITH something, that's a task for Manus (NEW_TASK).
+4. **GENERAL_QUESTION** - Questions about THIS SERVICE (Photon/Manus/API keys/pricing)
+   - Asking how to USE the service
+   - Asking ABOUT the service itself
+   - NOT asking FOR the service to help with something
 
-**ROUTING RULES (in order of priority):**
+**DECISION FRAMEWORK (use this logic):**
 
-1. If message is EXACTLY "revoke" in any case (revoke/Revoke/REVOKE, nothing else) → REVOKE
-2. If asking about THIS service (Photon, Manus bridge, API key, status, pricing, how to use) → GENERAL_QUESTION
-3. If context exists AND message is short/ambiguous (ok, yes, sure, thanks, got it, etc.) → FOLLOW_UP
-4. If context exists AND message relates to ongoing conversation → FOLLOW_UP
-5. If user wants help WITH something or wants information ABOUT something external → NEW_TASK
-6. When in doubt: prefer FOLLOW_UP if context exists, otherwise NEW_TASK
+Step 1: Is message EXACTLY "revoke"? → REVOKE
+Step 2: Is this about the Photon/Manus SERVICE itself? (how it works, pricing, API keys, status) → GENERAL_QUESTION
+Step 3: Does context exist?
+  - NO context → Must be NEW_TASK
+  - YES context → Ask: "Is the user talking about the SAME problem/topic as in the context?"
+    - YES, same topic → FOLLOW_UP (default when context exists)
+    - NO, different topic → NEW_TASK
 
-**Context (oldest to newest):**
-${contextStr || 'EMPTY - No previous context'}
+**Context Analysis Tips:**
+- Look at WHAT was being discussed (the topic/problem)
+- Look at the STATE (is it ongoing, was an answer given, is more info needed?)
+- If new message addresses the same problem or responds to something in context → FOLLOW_UP
+- If new message introduces a completely different topic → NEW_TASK
+
+**Recent Conversation Context (oldest to newest):**
+${contextStr || 'EMPTY - No previous messages'}
+
+**User's New Message:**
+"${latest_message}"
 
 **Respond with JSON only:**
-{"intent": "NEW_TASK" | "FOLLOW_UP" | "REVOKE" | "GENERAL_QUESTION", "confidence": 0.0 to 1.0, "reasoning": "brief explanation"}`;
+{"intent": "NEW_TASK" | "FOLLOW_UP" | "REVOKE" | "GENERAL_QUESTION", "confidence": 0.0 to 1.0, "reasoning": "brief explanation of why"}`;
 
     const response = await openrouter.chat.completions.create({
       model: 'anthropic/claude-4.5-sonnet',
