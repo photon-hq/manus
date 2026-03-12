@@ -129,7 +129,7 @@ ${contextStr || 'EMPTY - No previous context'}
 {"intent": "NEW_TASK" | "FOLLOW_UP" | "REVOKE" | "GENERAL_QUESTION", "confidence": 0.0 to 1.0, "reasoning": "brief explanation"}`;
 
     const response = await openrouter.chat.completions.create({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-4.5-sonnet',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: latest_message },
