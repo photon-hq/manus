@@ -48,5 +48,5 @@ coverage/
 tmp/
 temp/
 
-# Blog drafts
+# Blog drafts (work in progress)
 BLOG_DRAFT.md
