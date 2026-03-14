@@ -47,3 +47,6 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Blog drafts
+BLOG_DRAFT.md
