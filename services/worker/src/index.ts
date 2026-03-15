@@ -645,10 +645,19 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
       taskStartTime = connection.currentTaskStartedAt.getTime();
       console.log(`Using active task context for ${phoneNumber} (started at ${connection.currentTaskStartedAt.toISOString()})`);
     } else if (connection) {
-      // No active task, but check recent messages from last 5 minutes to preserve context for follow-ups
-      // This allows: Q1 -> Answer -> Q2 (follow-up to Q1) pattern
-      taskStartTime = Date.now() - (5 * 60 * 1000);
-      console.log(`No active task for ${phoneNumber}, using recent 5-minute context window for follow-up detection`);
+      // No active task - use the later of: last task start time or 10-minute window.
+      // currentTaskStartedAt persists after task completion, so we can use it to
+      // capture the full conversation from the last task (even if it took >5min).
+      const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+      const lastTaskStart = (connection as any).currentTaskStartedAt?.getTime();
+      
+      if (lastTaskStart && lastTaskStart > tenMinutesAgo) {
+        taskStartTime = lastTaskStart;
+        console.log(`No active task for ${phoneNumber}, using last task start time ${new Date(lastTaskStart).toISOString()} for follow-up detection`);
+      } else {
+        taskStartTime = tenMinutesAgo;
+        console.log(`No active task for ${phoneNumber}, using 10-minute context window for follow-up detection`);
+      }
     } else {
       console.log(`No active connection for ${phoneNumber}, returning empty context`);
       return [];
@@ -698,9 +707,12 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
 
     // Filter messages:
     // 1. Only messages in recent window (active task start or last 5 minutes)
-    // 2. Exclude MANUAL messages
-    // 3. Keep user messages and webhook responses
+    // 2. Exclude MANUAL messages (sent via MCP tool, not part of conversation)
+    // 3. Keep BOTH user messages AND bot responses for full conversation context
+    // 4. Exclude tapbacks/reactions (noise like "Liked ...", "Loved ...")
     const bufferMs = 5000; // 5 second buffer to account for timing differences
+    
+    const tapbackPattern = /^(Liked|Loved|Disliked|Laughed at|Emphasized|Questioned) "/;
     
     console.log(`⏰ Context window start: ${new Date(taskStartTime).toISOString()} (${taskStartTime})`);
     
@@ -709,11 +721,11 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
       const passesTimeFilter = messageTime >= (taskStartTime - bufferMs);
       const notManual = !guidSet.has(msg.guid);
       const notCurrent = msg.guid !== excludeMessageGuid;
-      const isRelevantMessage = !msg.isFromMe; // Only include user messages, exclude system/bot messages
+      const isTapback = tapbackPattern.test(msg.text || '');
       
-      console.log(`  Message ${msg.guid?.substring(0, 8)}: time=${passesTimeFilter}, notManual=${notManual}, notCurrent=${notCurrent}, isFromMe=${msg.isFromMe}`);
+      console.log(`  Message ${msg.guid?.substring(0, 8)}: time=${passesTimeFilter}, notManual=${notManual}, notCurrent=${notCurrent}, isFromMe=${msg.isFromMe}, isTapback=${isTapback}`);
       
-      return passesTimeFilter && notManual && notCurrent && isRelevantMessage;
+      return passesTimeFilter && notManual && notCurrent && !isTapback;
     });
 
     console.log(`Fetched ${messages.length} total messages, ${filteredRawMessages.length} after filtering for current task context`);
