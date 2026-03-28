@@ -1477,57 +1477,22 @@ async function listenForEvents() {
           getQueue(phoneNumber); // Ensure worker exists
         }
       } else if (channel === 'ensure-typing') {
-        const receiveTimestamp = new Date().toISOString();
-        console.log(`\n📨 [${receiveTimestamp}] ======== ENSURE-TYPING EVENT RECEIVED ========`);
-        
         try {
           const data = JSON.parse(message);
           const { phoneNumber, taskId } = data;
-          console.log(`📱 Phone: ${phoneNumber}`);
-          console.log(`🆔 Task: ${taskId}`);
           
-          // RESTART typing indicator after progress message
-          // Sending iMessage stops typing automatically - must restart it manually
-          try {
-            console.log(`🔍 [${new Date().toISOString()}] Checking typing indicator status...`);
-            await getIMessageSDK();
-            const manager = getTypingManager();
-            const isCurrentlyTyping = manager.isTyping(phoneNumber);
-            const isCurrentlyRefreshing = manager.isRefreshing(phoneNumber);
-            console.log(`📊 Current status: ${isCurrentlyTyping ? 'ACTIVE ✓' : 'INACTIVE ✗'}, Refreshing: ${isCurrentlyRefreshing ? 'YES' : 'NO'}`);
-            
-            // Skip if refresh is in progress - it will handle restarting
-            if (isCurrentlyRefreshing) {
-              console.log(`⏭️  [${new Date().toISOString()}] Refresh in progress - skipping ensure-typing (refresh will handle it)`);
-              return;
-            }
-            
-            const totalStartTime = Date.now();
-            
-            // If typing is active, stop it first (iMessage auto-stopped it when we sent the message)
-            if (isCurrentlyTyping) {
-              console.log(`🛑 [${new Date().toISOString()}] Stopping typing indicator (iMessage auto-stopped it when we sent progress message)...`);
-              const stopTime = Date.now();
-              await manager.stopTyping(phoneNumber);
-              const stopDuration = Date.now() - stopTime;
-              console.log(`⏹️  [${new Date().toISOString()}] Stopped - took ${stopDuration}ms`);
-            }
-            
-            // Start typing indicator (no wait needed)
-            console.log(`🟢 [${new Date().toISOString()}] Starting typing indicator...`);
-            const startTime = Date.now();
-            await manager.startTyping(phoneNumber, taskId);
-            const startDuration = Date.now() - startTime;
-            const totalDuration = Date.now() - totalStartTime;
-            console.log(`✅ [${new Date().toISOString()}] Typing indicator restarted - start took ${startDuration}ms, total operation ${totalDuration}ms`);
-          } catch (error) {
-            console.warn(`❌ [${new Date().toISOString()}] Failed to restart typing indicator:`, error);
+          await getIMessageSDK();
+          const manager = getTypingManager();
+          
+          if (manager.isRefreshing(phoneNumber)) return;
+          
+          if (manager.isTyping(phoneNumber)) {
+            await manager.stopTyping(phoneNumber);
           }
+          await manager.startTyping(phoneNumber, taskId);
         } catch (error) {
-          console.error(`❌ [${new Date().toISOString()}] Failed to handle ensure-typing event:`, error);
+          console.error('Failed to handle ensure-typing event:', error);
         }
-        
-        console.log(`======== ENSURE-TYPING EVENT COMPLETE ========\n`);
       } else if (channel === 'task-stopped') {
         try {
           const data = JSON.parse(message);
