@@ -22,6 +22,8 @@ fi
 echo "Watchdog started — checking every ${CHECK_INTERVAL}s"
 echo "Thresholds: CPU=${CPU_THRESHOLD}% MEM=${MEM_THRESHOLD}% DISK=${DISK_THRESHOLD}%"
 
+send_slack ":white_check_mark: *Manus Watchdog* is online — checking every ${CHECK_INTERVAL}s"
+
 should_alert() {
   key="$1"
   now=$(date +%s)
