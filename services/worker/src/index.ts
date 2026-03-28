@@ -1599,5 +1599,5 @@ initializeExistingQueues();
 // Listen for instant activation and message notifications
 listenForEvents();
 
-// Check for new connections every 10 seconds (backup mechanism)
-setInterval(checkForNewConnections, 10000);
+// Safety-net poll for new connections every 60s (primary detection is via Redis pub/sub)
+setInterval(checkForNewConnections, 60000);
