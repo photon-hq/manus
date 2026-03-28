@@ -96,7 +96,7 @@ User ──iMessage──► Backend (event listener) ──► Redis Queue ─�
 **Key subsystems:**
 
 - **Intent classification** -- SLM classifier uses Claude to determine if a message is a new task, follow-up, revoke, or service question. Conversation context (both user and bot messages) is included for accurate detection.
-- **Typing indicators** -- Managed by `TypingIndicatorManager` in worker. Auto-refreshes every 50s, coordinated via Redis pub/sub (`ensure-typing`, `task-stopped`).
+- **Typing indicators** -- Managed by `TypingIndicatorManager` in worker. Auto-refreshes every 25s, coordinated via Redis pub/sub (`ensure-typing`, `task-stopped`).
 - **Free tier** -- First 3 tasks use a shared system API key. After that, users are prompted to add their own Manus API key.
 - **File attachments** -- Downloads from iMessage, uploads to Manus Files API. Falls back to download links if sending fails.
 - **Tapback reactions** -- "Love" reaction on receipt, removed on task completion.

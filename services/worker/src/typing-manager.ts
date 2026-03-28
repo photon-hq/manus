@@ -2,13 +2,13 @@
  * TypingIndicatorManager
  * 
  * Manages persistent typing indicators for active tasks.
- * Automatically refreshes typing indicators every 50 seconds to prevent timeout.
+ * Automatically refreshes typing indicators every 25 seconds to prevent timeout.
  * Ensures users see continuous typing feedback during long-running tasks.
  */
 
 import { SDK } from '@photon-ai/advanced-imessage-kit';
 
-const TYPING_REFRESH_INTERVAL = 50000;
+const TYPING_REFRESH_INTERVAL = 25000;
 
 interface TypingState {
   phoneNumber: string;
