@@ -26,6 +26,10 @@ WORKDIR /app
 # Copy everything from build
 COPY --from=build /app ./
 
+# Remove dev dependencies and build artifacts from production image
+RUN pnpm prune --prod --no-optional && \
+    rm -rf /app/.pnpm-store /app/**/src /app/**/*.ts /app/**/tsconfig.json 2>/dev/null || true
+
 # Copy entrypoint script and deploy ops
 COPY services/backend/docker-entrypoint.sh /app/services/backend/
 COPY services/backend/deploy-ops.json /app/services/backend/
