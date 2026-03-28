@@ -497,34 +497,22 @@ async function processAttachments(
       throw new Error('No API key available for attachment upload');
     }
 
-    const { SDK } = await import('@photon-ai/advanced-imessage-kit');
-    const sdk = SDK({
-      serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
-      apiKey: process.env.IMESSAGE_API_KEY,
-      logLevel: 'error',
-    });
-
-    await sdk.connect();
+    const sdk = await getIMessageSDK();
 
     for (const attachment of attachments) {
       try {
         console.log(`Processing attachment: ${attachment.filename}`);
 
-        // Download attachment from iMessage
         const result = await sdk.attachments.downloadAttachment(attachment.guid);
 
-        // Upload to Manus using resolved API key (user's or free tier system key)
         const fileId = await uploadFileToManus(Buffer.from(result), attachment.filename, apiKey);
         fileIds.push(fileId);
 
         console.log(`✅ Uploaded ${attachment.filename} to Manus (ID: ${fileId})`);
       } catch (error) {
         console.error(`Failed to process attachment ${attachment.filename}:`, error);
-        // Continue with other attachments
       }
     }
-
-    await sdk.close();
   } catch (error) {
     console.error('Failed to process attachments:', error);
   }
@@ -663,14 +651,7 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
       return [];
     }
 
-    const { SDK } = await import('@photon-ai/advanced-imessage-kit');
-    const sdk = SDK({
-      serverUrl: process.env.IMESSAGE_SERVER_URL || 'http://localhost:1234',
-      apiKey: process.env.IMESSAGE_API_KEY,
-      logLevel: 'error',
-    });
-
-    await sdk.connect();
+    const sdk = await getIMessageSDK();
 
     const chatGuid = `any;-;${phoneNumber}`;
     
@@ -682,8 +663,6 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
       limit,
       sort: 'DESC',
     });
-
-    await sdk.close();
 
     // Log ALL messages to debug why user messages are missing
     console.log(`📋 All ${messages.length} messages from iMessage:`, messages.slice(0, 5).map(m => ({
