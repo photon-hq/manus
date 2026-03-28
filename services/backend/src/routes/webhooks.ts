@@ -47,11 +47,11 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/webhooks/manus - Receive webhooks from Manus
   fastify.post('/webhook', async (request, reply) => {
     try {
-      // Log incoming webhook for debugging
+      const body = request.body as any;
       fastify.log.info({ 
-        headers: request.headers, 
-        body: request.body 
-      }, 'Incoming webhook - full details');
+        event_type: body?.event_type,
+        task_id: body?.task_detail?.task_id || body?.progress_detail?.task_id,
+      }, 'Incoming webhook');
       
       // Validate webhook event
       const event = WebhookEventSchema.parse(request.body);
@@ -158,21 +158,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
 async function handleTaskCreated(phoneNumber: string, event: any) {
   const taskId = event.task_detail?.task_id;
   
-  // Log full event
-  console.log('\n' + '='.repeat(70));
-  console.log('📋 TASK CREATED WEBHOOK RECEIVED');
-  console.log('='.repeat(70));
-  console.log('Full event object:');
-  console.log(JSON.stringify(event, null, 2));
-  console.log('\nExtracted fields:');
-  console.log(`  • task_id: ${taskId}`);
-  console.log(`  • task_title: ${event.task_detail?.task_title}`);
-  console.log(`  • task_url: ${event.task_detail?.task_url}`);
-  console.log('='.repeat(70) + '\n');
-  
-  // Don't send notification for task creation - it's usually followed immediately by task completion
-  // Users will just get the final result, which is cleaner
-  console.log(`📋 Task created for ${phoneNumber} (task: ${taskId}) - not sending notification`);
+  console.log(`📋 Task created: ${taskId} for ${phoneNumber} (title: "${event.task_detail?.task_title}")`);
 
   // Track task start time
   if (taskId) {
@@ -186,18 +172,7 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   const progressDescription = event.progress_detail?.description;
   const progressType = event.progress_detail?.progress_type;
 
-  // Log full progress_detail to see all available fields
-  console.log('\n' + '='.repeat(70));
-  console.log('📊 TASK PROGRESS WEBHOOK RECEIVED');
-  console.log('='.repeat(70));
-  console.log('Full event object:');
-  console.log(JSON.stringify(event, null, 2));
-  console.log('\nExtracted fields:');
-  console.log(`  • task_id: ${taskId}`);
-  console.log(`  • progress_type: ${progressType}`);
-  console.log(`  • message: "${progressMessage}"`);
-  console.log(`  • description: ${progressDescription ? `"${progressDescription}"` : 'N/A'}`);
-  console.log('='.repeat(70) + '\n');
+  console.log(`📊 Task progress: ${taskId} (type: ${progressType}, msg: "${progressMessage?.substring(0, 80)}")`);
 
   if (!taskId || !progressMessage) {
     console.log('⚠️  Missing required fields (task_id or message), skipping');
@@ -258,10 +233,7 @@ async function handleTaskProgress(phoneNumber: string, event: any) {
   // Ensure typing indicator continues after sending progress message
   // The worker's persistent typing indicator should remain active
   try {
-    const ensureTypingTimestamp = new Date().toISOString();
-    console.log(`\n🔄 [${ensureTypingTimestamp}] Publishing ensure-typing event for ${phoneNumber} (task: ${taskId})`);
     await redis.publish('ensure-typing', JSON.stringify({ phoneNumber, taskId }));
-    console.log(`✅ [${new Date().toISOString()}] ensure-typing event published successfully\n`);
   } catch (error) {
     console.warn(`❌ [${new Date().toISOString()}] Failed to request typing indicator refresh:`, error);
   }
@@ -275,20 +247,7 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   const resultMessage = event.task_detail?.message;
   const attachments = event.task_detail?.attachments;
 
-  // Log full event
-  console.log('\n' + '='.repeat(70));
-  console.log('🛑 TASK STOPPED WEBHOOK RECEIVED');
-  console.log('='.repeat(70));
-  console.log('Full event object:');
-  console.log(JSON.stringify(event, null, 2));
-  console.log('\nExtracted fields:');
-  console.log(`  • task_id: ${taskId}`);
-  console.log(`  • task_title: ${taskTitle}`);
-  console.log(`  • task_url: ${taskUrl}`);
-  console.log(`  • stop_reason: ${stopReason}`);
-  console.log(`  • message: "${resultMessage?.substring(0, 100)}..."`);
-  console.log(`  • attachments: ${attachments?.length || 0} file(s)`);
-  console.log('='.repeat(70) + '\n');
+  console.log(`🛑 Task stopped: ${taskId} (reason: ${stopReason}, attachments: ${attachments?.length || 0})`);
 
   // Stop typing indicator via Redis pub/sub to worker
   try {
