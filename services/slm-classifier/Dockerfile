@@ -23,6 +23,10 @@ WORKDIR /app
 # Copy everything from build
 COPY --from=build /app ./
 
+# Remove dev dependencies and build artifacts from production image
+RUN pnpm prune --prod --no-optional && \
+    rm -rf /app/.pnpm-store /app/**/src /app/**/*.ts /app/**/tsconfig.json 2>/dev/null || true
+
 # Set working directory to service
 WORKDIR /app/services/slm-classifier
 
