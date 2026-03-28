@@ -1,317 +1,180 @@
-# Manus AI (Photon Integration)
+# Manus on iMessage
 
-Bring Manus AI into the messaging channel.
+Bring Manus AI to iMessage. Built by [Photon](https://photon.codes).
 
 ## Overview
 
-TypeScript monorepo with 2 microservices that bridge messaging apps and Manus AI.
+TypeScript monorepo that bridges iMessage and [Manus AI](https://manus.im). Users text a phone number, Manus handles their request, and the response comes back as an iMessage.
+
+**How it works:**
+1. User texts the Photon number via iMessage
+2. Message is queued, debounced, and classified (new task vs follow-up)
+3. Manus AI processes the task
+4. Results are delivered back via iMessage
 
 ## Services
 
-- **Backend** (Port 3000) - API server, HTTP MCP endpoint, connection flow, webhooks
-- **Worker** - BullMQ queue, message processing, debouncing, thread detection
-- **Shared Packages** - Types, utilities, Prisma ORM
+| Service | Port | Description |
+|---------|------|-------------|
+| **Backend** | 3000 | Fastify API server -- connection flow, webhooks, iMessage event listener |
+| **Worker** | -- | BullMQ processor -- message debouncing, intent classification, Manus API |
+| **SLM Classifier** | 3001 | Intent router -- classifies messages as NEW_TASK / FOLLOW_UP via Claude |
 
-## User Setup
-
-1. Visit `manus.photon.codes` → Click "Connect to Manus"
-2. Send iMessage (via phone number or iCloud email) → Submit Manus API key ([Get key](https://manus.im/app#settings/integrations/api))
-   - API key format: `sk-` followed by 70-100 alphanumeric characters
-3. Receive MCP config via iMessage → Copy and paste into [Manus Settings](https://manus.im/app#settings/connectors/mcp-server)
-
-**Supported Handles:**
-- Phone numbers: `+1234567890` (SMS or iMessage)
-- iCloud emails: `user@icloud.com` (iMessage only)
-
-**What you'll receive:**
-After completing setup, you'll receive the MCP configuration JSON directly via iMessage. Simply copy and paste it into Manus.
-
-**Example config format:**
-```json
-{
-  "mcpServers": {
-    "photon-imessage": {
-      "type": "streamableHttp",
-      "url": "https://manus.photon.codes/mcp/http",
-      "headers": {
-        "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
-        "Authorization": "Bearer ph_live_AbC123XyZ789PqR45678"
-      }
-    }
-  }
-}
-```
+**Shared packages:**
+- `packages/shared` -- Types, Zod schemas, utilities
+- `packages/database` -- Prisma ORM, migrations
 
 ## Quick Start
 
-**Prerequisites:** Node.js 20+, pnpm, Docker
+**Prerequisites:** Node.js 20+, pnpm 8+, Docker
 
 ```bash
-# Setup
-cp .env.example .env  # Edit with your credentials
+cp .env.example .env    # Edit with your credentials
 pnpm install
+make dev                # Starts postgres, redis, runs migrations, starts all services
+```
+
+Or manually:
+
+```bash
 docker compose up -d postgres redis
 pnpm db:generate && pnpm db:migrate
 pnpm dev
 ```
 
-## Configuration
+## Production Deployment
 
-**Required environment variables:**
-```env
-# Database
-DATABASE_URL=postgresql://postgres:password@localhost:5432/manus_imessage
-DB_PASSWORD=password
-
-# Redis
-REDIS_URL=redis://localhost:6379
-
-# iMessage Integration (Photon)
-IMESSAGE_SERVER_URL=https://your-imessage-server.photon.codes
-IMESSAGE_API_KEY=your_photon_api_key
-PHOTON_HANDLE=+1234567890
-
-# Manus API
-MANUS_API_URL=https://api.manus.im
-
-# App Config
-PORT=3000
-NODE_ENV=production
-PUBLIC_URL=https://manus.photon.codes
+```bash
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-**Ports:** Backend (3000), PostgreSQL (5432), Redis (6379)
+All services run in Docker. The backend entrypoint handles migrations automatically on startup.
 
-**Timing Configuration:**
-- Message debounce window: 3 seconds
-- Typing indicator refresh: 25 seconds
-- Progress update throttle: 10 seconds
-- Redis key TTL: 24 hours
+## Configuration
 
-## Advanced Features
+Copy `.env.example` and fill in the required values:
 
-**Thread Detection System:**
-- Redis-based message threading using `threadOriginatorGuid`
-- Automatically detects follow-up messages vs new tasks
-- 24-hour context window with Redis keys: `msg:task:{messageGuid}`, `task:trigger:{taskId}`, `task:mapping:{taskId}`
-- No external classifier needed - uses iMessage reply metadata
+```env
+# Required
+IMESSAGE_SERVER_URL=https://your-imessage-server.photon.codes
+IMESSAGE_API_KEY=your_photon_imessage_api_key
+PHOTON_HANDLE=+14158156704
+PUBLIC_URL=https://manus.photon.codes
 
-**Typing Indicators:**
-- Managed by `TypingManager` in worker service
-- Auto-refreshes every 25 seconds to keep indicator active during long tasks
-- Automatically stops when task completes
-- Coordinated via Redis pub/sub (`ensure-typing`, `task-stopped`)
+# Required for SLM classification (DETECTION_MODE=slm)
+OPENROUTER_API_KEY=your_openrouter_api_key
 
-**Tapback Reactions:**
-- Backend sends "love" reaction (❤️) when message is received
-- Worker removes reaction when task completes
-- Provides visual feedback to user during processing
-- Reaction metadata stored in Redis: `reaction:{taskId}`
+# Optional (have defaults)
+DATABASE_URL=postgresql://postgres:password@localhost:5432/manus_imessage
+REDIS_URL=redis://localhost:6379
+MANUS_API_URL=https://api.manus.im
+MANUS_FREE_TIER_API_KEY=sk-...   # Shared key for first 3 free tasks per user
+DETECTION_MODE=slm               # slm (LLM-based) or thread (iMessage reply metadata)
+```
 
-**Contact Card Sharing:**
-- Shares contact card on first interaction (configurable)
-- Tracks sharing status per user in database (`contactCardShared` field)
-- Configurable contact name and email via environment variables
-- Debug mode available for testing (`ALWAYS_SHARE_CONTACT_CARD`)
-
-**File Attachment Handling:**
-- Downloads files from URLs and sends as native iMessage attachments
-- Uploads to Manus Files API before task creation
-- Automatic fallback to download links if attachment sending fails
-- Supports multiple attachments per message
-- File-only messages create tasks with `[User sent N file(s)]` prompt
-
-**Redis Pub/Sub Channels:**
-- `connection-activated` - New connection established
-- `message-queued` - Message queued for processing
-- `task-stopped` - Task completed (stop typing, remove tapback)
-- `ensure-typing` - Keep typing indicator active (e.g., after progress updates)
-
-**Environment Variable Details:**
-
-*Required:*
-- `IMESSAGE_SERVER_URL` - Your Photon iMessage server endpoint
-- `IMESSAGE_API_KEY` - Your Photon API key for iMessage integration
-- `PHOTON_HANDLE` - Phone number or iCloud email for landing page SMS link
-- `PUBLIC_URL` - Your deployed backend URL (e.g., `https://manus.photon.codes`)
-
-*Optional (have defaults):*
-- `DATABASE_URL` - PostgreSQL connection string (default: `postgresql://postgres:password@localhost:5432/manus_imessage`)
-- `DB_PASSWORD` - PostgreSQL password (default: `password`)
-- `REDIS_URL` - Redis connection string (default: `redis://localhost:6379`)
-- `MANUS_API_URL` - Manus API base URL (default: `https://api.manus.im`)
-- `PORT` - Backend server port (default: `3000`)
-- `NODE_ENV` - Environment mode (default: `development`, set to `production` for deployment)
-- `CONNECTION_TIMEOUT_HOURS` - SSE connection timeout in hours (default: `4`)
-- `KEEPALIVE_TIMEOUT_SECONDS` - Server keep-alive timeout in seconds (default: `120`)
-
-*Not Required:*
-- `PHOTON_API_KEY` - Not needed! Each user provides their own Manus API key during setup
-
-*UI Design Configuration:*
-- `UI_DESIGN_VERSION` - Choose between `v1` (glassmorphism) or `v2` (Manus brand design)
-  - `v1` (default): Current design with liquid glass buttons, background image, and Manus custom font
-  - `v2`: Clean Manus brand design with Libre Baskerville serif, DM Sans sans-serif, and minimal styling
-
-*Analytics & Tracking (Optional):*
-- `OPENPANEL_CLIENT_ID` - OpenPanel analytics client ID (leave empty to disable)
-- `OPENPANEL_CLIENT_SECRET` - OpenPanel analytics secret
-- `OPENPANEL_API_URL` - Custom OpenPanel API URL (default: `https://op.photon.codes/api`)
-- `META_PIXEL_ID` - Facebook Pixel ID for analytics (leave empty to disable)
-
-*Contact Card Configuration (Optional):*
-- `CONTACT_NAME` - Name for contact card (default: `Manus`)
-- `CONTACT_EMAIL` - Email for contact card (default: `manus.photon.codes`)
-- `ALWAYS_SHARE_CONTACT_CARD` - Debug: Always share contact card on every message (default: `false`)
-- `ALLOW_SELF_MESSAGES` - Debug: Allow processing messages from self for testing (default: `false`)
+See `.env.example` for the full list including analytics, contact card, and UI options.
 
 ## Architecture
 
 ```
-User → iMessage SDK → Backend (HTTP MCP + Webhooks) → Worker (Thread Detection via Redis)
-                           ↓                                ↓
-                        Manus AI ←──────────────────────────┘
+User ──iMessage──► Backend (event listener) ──► Redis Queue ──► Worker
+                       │                                          │
+                       │                                    SLM Classifier
+                       │                                    (intent routing)
+                       │                                          │
+                       ◄────── Manus Webhooks ◄──────── Manus AI ◄┘
 ```
 
-**HTTP MCP Features:**
-- Self-hosted streamableHttp transport
-- Bearer token auth, CORS whitelist
-- Tools: `fetch_messages` (get messages), `send_message` (send message)
+**Message flow:**
+1. iMessage SDK event arrives at Backend
+2. Backend queues message in BullMQ (per-user queues)
+3. Worker debounces (3s window), then classifies intent via SLM
+4. NEW_TASK: creates Manus task | FOLLOW_UP: appends to existing task
+5. Manus processes and sends webhooks (task_created, task_progress, task_stopped)
+6. Backend delivers results back via iMessage
 
-**Flow:** 
-1. User texts → Queue → Debounce (3s) → Thread Detection (Redis) → Create/Append Task
-2. Manus AI processes → Webhooks (task_created, task_progress, task_stopped) → Reply to user
+**Key subsystems:**
 
-**Key Features:**
-- Smart thread detection using Redis (NEW_TASK vs FOLLOW_UP) with 24-hour context window
-- Real-time progress updates via webhooks (throttled to 1 per 10 seconds)
-- File attachments sent as actual iMessage files (with fallback to download links)
-- Typing indicators during task processing (auto-refresh every 25s)
-- Message debouncing and deduplication
-- Tapback reactions ("love") on message receipt, removed on task completion
-- Contact card sharing with tracking per user
-- Redis pub/sub for real-time coordination between services
+- **Intent classification** -- SLM classifier uses Claude to determine if a message is a new task, follow-up, revoke, or service question. Conversation context (both user and bot messages) is included for accurate detection.
+- **Typing indicators** -- Managed by `TypingIndicatorManager` in worker. Auto-refreshes every 50s, coordinated via Redis pub/sub (`ensure-typing`, `task-stopped`).
+- **Free tier** -- First 3 tasks use a shared system API key. After that, users are prompted to add their own Manus API key.
+- **File attachments** -- Downloads from iMessage, uploads to Manus Files API. Falls back to download links if sending fails.
+- **Tapback reactions** -- "Love" reaction on receipt, removed on task completion.
 
 ## API Endpoints
 
-**Connection:** 
-- `GET /` - Redirects to `/connect`
-- `GET /connect` - Landing page with "Connect to Manus" button
-- `POST /connect` - Start connection flow (send iMessage with link)
-- `GET /connect/:connectionId` - Token input page
-- `PUT /connect/:connectionId` - Activate connection with Manus API key
-- `DELETE /connect/:connectionId` - Revoke connection
-- `GET /connect/revoke` - Revoke connection page
-- `POST /connect/revoke` - Revoke connection by Photon API key
+**Connection flow:**
+- `GET /connect` -- Landing page
+- `POST /connect` -- Start connection (sends iMessage to user)
+- `GET /connect/:id` -- API key input page
+- `PUT /connect/:id` -- Activate with Manus API key
+- `DELETE /connect/:id` -- Revoke connection
 
-**MCP:** 
-- `POST /mcp/http` - HTTP MCP endpoint (streamableHttp transport)
-- `GET /mcp` - Legacy SSE endpoint (deprecated, use HTTP)
-- `POST /mcp` - SSE POST handler
+**Webhooks:**
+- `POST /webhook` -- Receives task events from Manus AI
 
-**Webhooks:** 
-- `POST /webhook` - Receive webhooks from Manus AI
+**Health:**
+- `GET /health` -- Health check (includes DB ping)
 
-**Health & Debug:** 
-- `GET /health` - Health check endpoint
-- `GET /debug/proxy` - Proxy header inspection (debug only)
-- `GET /debug/sse` - SSE test endpoint (debug only)
-- `GET /debug/sse-long` - Long SSE test (debug only)
+## Project Structure
 
-## Security
-
-- Bearer token auth, CORS whitelist, origin validation
-- 1-hour connection timeout, graceful shutdown
-- Secure API key generation, phone privacy
-- No public webhooks (SDK events only)
-
-## Deployment
-
-```bash
-docker compose up -d
-docker compose logs -f backend
-docker compose exec backend pnpm db:migrate
 ```
-
-**Nginx config for MCP HTTP endpoint:**
-```nginx
-location /mcp/http {
-    proxy_pass http://backend:3000;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
+manus/
+├── packages/
+│   ├── shared/              # Types, Zod schemas, utilities
+│   └── database/            # Prisma schema, migrations, client
+├── services/
+│   ├── backend/             # Fastify API + iMessage event listener
+│   │   └── src/routes/
+│   │       ├── webhooks.ts          # Manus webhook handler
+│   │       └── imessage-webhook.ts  # iMessage event listener + onboarding
+│   ├── worker/              # BullMQ message processor
+│   │   └── src/
+│   │       ├── index.ts             # Queue workers, intent detection, Manus API
+│   │       └── typing-manager.ts    # Typing indicator lifecycle
+│   └── slm-classifier/     # LLM-based intent classification
+│       └── src/index.ts             # Claude-powered message router
+├── docker-compose.yml       # Dev environment
+├── docker-compose.prod.yml  # Production environment
+├── Makefile                 # Common commands
+└── .env.example             # Environment template
 ```
-
-**Production env:** Set `PUBLIC_URL=https://manus.photon.codes`, `NODE_ENV=production`, and all credentials.
 
 ## Development
 
 ```bash
-# Run services
-pnpm dev  # All services
-pnpm --filter backend dev  # Individual service
+make dev          # Start everything
+make reset-db     # Reset database (deletes all data)
+make db-studio    # Open Prisma Studio
+make logs         # Tail all Docker logs
+
+# Individual services
+pnpm --filter @imessage-mcp/backend dev
+pnpm --filter @imessage-mcp/worker dev
 
 # Database
-pnpm db:generate  # Generate Prisma client
+pnpm db:generate  # Regenerate Prisma client
 pnpm db:migrate   # Run migrations
-pnpm db:studio    # Open Prisma Studio
-make reset-db     # Reset database
 
-# Testing
-curl http://localhost:3000/health  # Health check
-
-# Test MCP HTTP endpoint
-curl -X POST http://localhost:3000/mcp/http \
-  -H "Authorization: Bearer ph_live_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"method":"tools/list"}'
-```
-
-## Structure
-
-```
-manus/
-├── packages/shared/         # Types, utilities
-├── packages/database/       # Prisma ORM
-├── services/backend/        # API + HTTP MCP
-├── services/worker/         # Queue processor
-└── assets/                  # Static assets (images, fonts)
+# Health check
+curl http://localhost:3000/health
 ```
 
 ## Troubleshooting
 
+**Messages not processing:** Check worker logs (`docker compose logs -f worker`). Verify `IMESSAGE_SERVER_URL` and `IMESSAGE_API_KEY` are correct.
+
+**Follow-ups creating new tasks:** Check SLM classifier logs. Ensure `DETECTION_MODE=slm` and `OPENROUTER_API_KEY` is set. The classifier needs conversation context (both user messages and bot responses) to detect follow-ups.
+
+**Typing indicator stuck:** Check worker logs for `TypingIndicatorManager` errors. Indicators auto-stop on task completion via Redis `task-stopped` event.
+
+**Webhooks not received:** Verify `PUBLIC_URL` is accessible from the internet. Webhook endpoint is `POST /webhook`.
+
+**Reset everything:**
 ```bash
-# Check logs
-docker compose logs -f backend
-docker compose logs -f worker
-
-# Test MCP HTTP endpoint
-curl -X POST http://localhost:3000/mcp/http \
-  -H "Authorization: Bearer ph_live_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"method":"tools/list"}'
-
-# Reset everything
 docker compose down -v && docker compose up -d
-make reset-db
 ```
-
-**Common Issues:**
-
-- **CORS issues:** Check `services/backend/src/index.ts` for allowed origins
-- **Webhook not received:** Verify `PUBLIC_URL` is set correctly and accessible from Manus. Webhook endpoint is `POST /webhook` (not `/api/webhooks/webhook`)
-- **Thread detection issues:** Check Redis connection and verify keys exist: `msg:task:{messageGuid}`, `task:trigger:{taskId}`, `task:mapping:{taskId}`. Keys have 24-hour TTL.
-- **Messages not sending:** Verify iMessage SDK connection and Photon credentials
-- **Typing indicator stuck:** Check worker logs for `TypingManager` errors. Indicator auto-refreshes every 25s and stops on task completion via Redis `task-stopped` event
-- **Task context issues:** Check Redis connection and worker logs for task mapping. Verify `threadOriginatorGuid` is set correctly on messages
-- **File attachments failing:** Check Manus Files API upload logs. System falls back to download links if attachment sending fails
-- **Contact card not shared:** Verify `CONTACT_NAME` and `CONTACT_EMAIL` are set. Check `contactCardShared` field in database
-- **Tapback reactions not working:** Check Redis `reaction:{taskId}` key exists. Backend sends "love" on receipt, worker removes on completion
 
 ---
 
-**Built for seamless iMessage + Manus AI integration**
+Built by [Photon](https://photon.codes)
