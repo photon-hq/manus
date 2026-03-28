@@ -122,6 +122,25 @@ services:
       - manus-network
     restart: unless-stopped
 
+  watchdog:
+    image: docker:cli
+    container_name: manus-watchdog
+    environment:
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      CHECK_INTERVAL: ${CHECK_INTERVAL:-60}
+      CPU_THRESHOLD: ${CPU_THRESHOLD:-80}
+      MEM_THRESHOLD: ${MEM_THRESHOLD:-80}
+      DISK_THRESHOLD: ${DISK_THRESHOLD:-85}
+      COOLDOWN_SECONDS: ${COOLDOWN_SECONDS:-300}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host-root:ro
+      - ./scripts/watchdog.sh:/watchdog.sh:ro
+    entrypoint: ["/bin/sh", "/watchdog.sh"]
+    restart: unless-stopped
+    networks:
+      - manus-network
+
 volumes:
   postgres_data:
   redis_data:
