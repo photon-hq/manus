@@ -66,13 +66,10 @@ const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
 });
 
-// Map to track queues and workers per phone number
+// Per-handle queues/workers -- bounded by number of active connections (cleaned up on revoke)
 const queues = new Map<string, Queue>();
 const workers = new Map<string, Worker>();
 const debounceTimers = new Map<string, NodeJS.Timeout>();
-
-// Map to track active typing indicators per phone number
-const typingIndicators = new Map<string, NodeJS.Timeout>();
 
 console.log('Worker service starting...');
 
