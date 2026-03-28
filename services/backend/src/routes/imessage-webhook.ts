@@ -28,7 +28,7 @@ const ONBOARDING_MESSAGES = [
   "Just text me what you need!",
 ];
 
-// Map to cache queues per phone number
+// Per-handle queues -- bounded by number of active connections
 const queues = new Map<string, Queue>();
 
 // Get or create queue for a handle (phone number or email)

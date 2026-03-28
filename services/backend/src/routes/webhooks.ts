@@ -33,7 +33,7 @@ const taskStartTimes = new Map<string, number>();
 const processedWebhooks = new Map<string, number>();
 const WEBHOOK_EXPIRY_MS = 600000; // 10 minutes
 
-// Clean up expired webhook IDs every 5 minutes
+// Clean up stale in-memory entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [eventId, timestamp] of processedWebhooks.entries()) {
@@ -41,7 +41,19 @@ setInterval(() => {
       processedWebhooks.delete(eventId);
     }
   }
-}, 300000); // 5 minutes
+  // progressTimestamps entries older than 1 hour are stale (tasks finished long ago)
+  for (const [key, timestamp] of progressTimestamps.entries()) {
+    if (now - timestamp > 3600000) {
+      progressTimestamps.delete(key);
+    }
+  }
+  // taskStartTimes entries older than 1 hour are stale
+  for (const [taskId, timestamp] of taskStartTimes.entries()) {
+    if (now - timestamp > 3600000) {
+      taskStartTimes.delete(taskId);
+    }
+  }
+}, 300000);
 
 export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/webhooks/manus - Receive webhooks from Manus
