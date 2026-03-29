@@ -22,8 +22,6 @@ fi
 echo "Watchdog started — checking every ${CHECK_INTERVAL}s"
 echo "Thresholds: CPU=${CPU_THRESHOLD}% MEM=${MEM_THRESHOLD}% DISK=${DISK_THRESHOLD}%"
 
-send_slack ":white_check_mark: *Manus Watchdog* is online — checking every ${CHECK_INTERVAL}s"
-
 should_alert() {
   key="$1"
   now=$(date +%s)
@@ -50,6 +48,8 @@ send_slack() {
 strip_ansi() {
   sed 's/\x1b\[[0-9;]*m//g'
 }
+
+send_slack ":white_check_mark: *Manus Watchdog* is online — checking every ${CHECK_INTERVAL}s"
 
 while true; do
   alerts=""
