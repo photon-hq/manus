@@ -786,8 +786,8 @@ async function handleAdminCommand(
     await sdk.messages.sendMessage({ chatGuid, message: msg });
   };
   
-  // Command: "reset" - reset tasks for the admin who sent it
-  if (text === 'reset') {
+  // Command: "reset" or "refresh" - reset tasks for the admin who sent it
+  if (text === 'reset' || text === 'refresh') {
     try {
       const result = await prisma.connection.updateMany({
         where: { phoneNumber },
@@ -806,8 +806,8 @@ async function handleAdminCommand(
     }
   }
   
-  // Command: "reset +1234567890" - reset tasks for specific number
-  const resetMatch = text.match(/^reset\s+(\+\d+)$/);
+  // Command: "reset +1234567890" or "refresh +1234567890" - reset tasks for specific number
+  const resetMatch = text.match(/^(?:reset|refresh)\s+(\+\d+)$/);
   if (resetMatch) {
     const targetPhone = resetMatch[1];
     try {
@@ -828,8 +828,8 @@ async function handleAdminCommand(
     }
   }
   
-  // Command: "reset all" - reset tasks for all users
-  if (text === 'reset all') {
+  // Command: "reset all" or "refresh all" - reset tasks for all users
+  if (text === 'reset all' || text === 'refresh all') {
     try {
       const result = await prisma.connection.updateMany({
         where: {},
