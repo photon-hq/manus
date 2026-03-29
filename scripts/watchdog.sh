@@ -50,26 +50,28 @@ strip_ansi() {
   sed 's/\x1b\[[0-9;]*m//g'
 }
 
+# Debug: show what containers we can see
+all_containers=$(docker ps --format '{{.Names}}' 2>/dev/null || true)
+echo "Visible containers: $all_containers"
+
 send_slack ":white_check_mark: *Manus Watchdog* is online — checking every ${CHECK_INTERVAL}s"
 
 while true; do
   alerts=""
 
-  # --- Container health via Docker socket (matches partial names) -------------
-  containers_json=$(curl -sf --unix-socket /var/run/docker.sock \
-    "http://localhost/containers/json?all=true" 2>/dev/null || echo "[]")
+  # --- Container health using docker ps directly -----------------------------
+  running=$(docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | strip_ansi || true)
 
   for svc in backend worker postgres redis; do
-    found=$(echo "$containers_json" | grep -i "manus.*${svc}\|${svc}.*manus" | grep -v "watchdog" || true)
-    if [ -z "$found" ]; then
+    svc_line=$(echo "$running" | grep -i "$svc" | grep -v "watchdog" | head -1 || true)
+    if [ -z "$svc_line" ]; then
       if should_alert "down-${svc}"; then
         alerts="${alerts}:skull: *${svc}* container is not running\n"
       fi
       continue
     fi
 
-    unhealthy=$(echo "$found" | grep -i "unhealthy" || true)
-    if [ -n "$unhealthy" ]; then
+    if echo "$svc_line" | grep -qi "unhealthy"; then
       if should_alert "health-${svc}"; then
         alerts="${alerts}:red_circle: *${svc}* is unhealthy\n"
       fi
@@ -77,9 +79,9 @@ while true; do
   done
 
   # --- Resource usage (only manus project containers) -------------------------
-  stats=$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemPerc}}' 2>/dev/null | strip_ansi | grep -i "manus" | grep -v "watchdog" || true)
+  stats=$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemPerc}}' 2>/dev/null | strip_ansi | grep -v "watchdog" || true)
   if [ -n "$stats" ]; then
-    echo "$stats" | while IFS= read -r line; do
+    echo "$stats" | grep -i "manus" | while IFS= read -r line; do
       [ -z "$line" ] && continue
       name=$(echo "$line" | awk '{print $1}')
       cpu_raw=$(echo "$line" | awk '{print $2}' | tr -d '%')
@@ -110,7 +112,7 @@ while true; do
     fi
   fi
 
-  # --- Send consolidated alert for health/disk --------------------------------
+  # --- Send consolidated alert ------------------------------------------------
   if [ -n "$alerts" ]; then
     message=":rotating_light: *Manus Watchdog Alert*\n\n${alerts}"
     send_slack "$message"
