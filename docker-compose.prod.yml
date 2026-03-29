@@ -123,7 +123,9 @@ services:
     restart: unless-stopped
 
   watchdog:
-    image: docker:cli
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile.watchdog
     container_name: manus-watchdog
     environment:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
@@ -135,8 +137,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/host-root:ro
-      - ./scripts/watchdog.sh:/watchdog.sh:ro
-    entrypoint: ["/bin/sh", "/watchdog.sh"]
     restart: unless-stopped
     networks:
       - manus-network

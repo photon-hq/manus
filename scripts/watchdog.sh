@@ -14,8 +14,6 @@ if [ -z "$SLACK_WEBHOOK_URL" ]; then
   exit 1
 fi
 
-apk add --no-cache ca-certificates > /dev/null 2>&1 || true
-
 echo "Watchdog started — checking every ${CHECK_INTERVAL}s"
 echo "Thresholds: CPU=${CPU_THRESHOLD}% MEM=${MEM_THRESHOLD}% DISK=${DISK_THRESHOLD}%"
 
