@@ -1,11 +1,6 @@
 #!/usr/bin/env sh
 set -eu
 
-# ---------------------------------------------------------------------------
-# Manus container watchdog — runs inside a container with Docker socket access
-# Alerts to Slack only when resource usage exceeds thresholds
-# ---------------------------------------------------------------------------
-
 SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
 CHECK_INTERVAL="${CHECK_INTERVAL:-60}"
 CPU_THRESHOLD="${CPU_THRESHOLD:-80}"
@@ -18,6 +13,8 @@ if [ -z "$SLACK_WEBHOOK_URL" ]; then
   echo "SLACK_WEBHOOK_URL not set — exiting"
   exit 1
 fi
+
+apk add --no-cache ca-certificates > /dev/null 2>&1 || true
 
 echo "Watchdog started — checking every ${CHECK_INTERVAL}s"
 echo "Thresholds: CPU=${CPU_THRESHOLD}% MEM=${MEM_THRESHOLD}% DISK=${DISK_THRESHOLD}%"
@@ -39,12 +36,14 @@ should_alert() {
 
 send_slack() {
   text="$1"
-  curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+  response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SLACK_WEBHOOK_URL" \
     -H 'Content-Type: application/json' \
-    -d "{\"text\": \"$text\"}" > /dev/null 2>&1 || echo "  [warn] Slack post failed"
+    -d "{\"text\": \"$text\"}" 2>&1) || true
+  if [ "$response" != "200" ]; then
+    echo "  [warn] Slack post failed (HTTP $response)"
+  fi
 }
 
-# Strip ANSI color codes from docker output
 strip_ansi() {
   sed 's/\x1b\[[0-9;]*m//g'
 }
@@ -54,25 +53,21 @@ send_slack ":white_check_mark: *Manus Watchdog* is online — checking every ${C
 while true; do
   alerts=""
 
-  # --- Container health & running status via Docker socket API ----------------
+  # --- Container health via Docker socket (matches partial names) -------------
   containers_json=$(curl -sf --unix-socket /var/run/docker.sock \
     "http://localhost/containers/json?all=true" 2>/dev/null || echo "[]")
 
-  expected="backend worker postgres redis"
-  for svc in $expected; do
-    matched=$(echo "$containers_json" | \
-      grep -o "\"Names\":\[\"[^\"]*${svc}[^\"]*\"\]" | head -1 || true)
-    if [ -z "$matched" ]; then
+  for svc in backend worker postgres redis; do
+    found=$(echo "$containers_json" | grep -i "$svc" | grep -v "watchdog" || true)
+    if [ -z "$found" ]; then
       if should_alert "down-${svc}"; then
         alerts="${alerts}:skull: *${svc}* container is not running\n"
       fi
       continue
     fi
 
-    health=$(echo "$containers_json" | \
-      grep -o "\"Names\":\[\"[^\"]*${svc}[^\"]*\"\][^}]*" | head -1 | \
-      grep -o '"Status":"[^"]*unhealthy' || true)
-    if [ -n "$health" ]; then
+    unhealthy=$(echo "$found" | grep -i "unhealthy" || true)
+    if [ -n "$unhealthy" ]; then
       if should_alert "health-${svc}"; then
         alerts="${alerts}:red_circle: *${svc}* is unhealthy\n"
       fi
@@ -80,9 +75,10 @@ while true; do
   done
 
   # --- Resource usage via docker stats ----------------------------------------
-  stats=$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemPerc}}' 2>/dev/null | strip_ansi || true)
+  stats=$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemPerc}}' 2>/dev/null | strip_ansi | grep -v "watchdog" || true)
   if [ -n "$stats" ]; then
     echo "$stats" | while IFS= read -r line; do
+      [ -z "$line" ] && continue
       name=$(echo "$line" | awk '{print $1}')
       cpu_raw=$(echo "$line" | awk '{print $2}' | tr -d '%')
       mem_raw=$(echo "$line" | awk '{print $3}' | tr -d '%')
@@ -92,13 +88,13 @@ while true; do
 
       if [ "$cpu" -gt "$CPU_THRESHOLD" ] 2>/dev/null; then
         if should_alert "cpu-${name}"; then
-          alerts="${alerts}:fire: *${name}* CPU at ${cpu_raw}% (threshold: ${CPU_THRESHOLD}%)\n"
+          send_slack ":fire: *${name}* CPU at ${cpu_raw}% (threshold: ${CPU_THRESHOLD}%)"
         fi
       fi
 
       if [ "$mem" -gt "$MEM_THRESHOLD" ] 2>/dev/null; then
         if should_alert "mem-${name}"; then
-          alerts="${alerts}:warning: *${name}* memory at ${mem_raw}% (threshold: ${MEM_THRESHOLD}%)\n"
+          send_slack ":warning: *${name}* memory at ${mem_raw}% (threshold: ${MEM_THRESHOLD}%)"
         fi
       fi
     done
@@ -112,7 +108,7 @@ while true; do
     fi
   fi
 
-  # --- Send consolidated alert ------------------------------------------------
+  # --- Send consolidated alert for health/disk --------------------------------
   if [ -n "$alerts" ]; then
     message=":rotating_light: *Manus Watchdog Alert*\n\n${alerts}"
     send_slack "$message"
