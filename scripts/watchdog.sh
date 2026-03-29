@@ -14,6 +14,10 @@ if [ -z "$SLACK_WEBHOOK_URL" ]; then
   exit 1
 fi
 
+STARTUP_DELAY="${STARTUP_DELAY:-120}"
+echo "Watchdog waiting ${STARTUP_DELAY}s for containers to start..."
+sleep "$STARTUP_DELAY"
+
 echo "Watchdog started — checking every ${CHECK_INTERVAL}s"
 echo "Thresholds: CPU=${CPU_THRESHOLD}% MEM=${MEM_THRESHOLD}% DISK=${DISK_THRESHOLD}%"
 
@@ -56,7 +60,7 @@ while true; do
     "http://localhost/containers/json?all=true" 2>/dev/null || echo "[]")
 
   for svc in backend worker postgres redis; do
-    found=$(echo "$containers_json" | grep -i "$svc" | grep -v "watchdog" || true)
+    found=$(echo "$containers_json" | grep -i "manus.*${svc}\|${svc}.*manus" | grep -v "watchdog" || true)
     if [ -z "$found" ]; then
       if should_alert "down-${svc}"; then
         alerts="${alerts}:skull: *${svc}* container is not running\n"
@@ -72,8 +76,8 @@ while true; do
     fi
   done
 
-  # --- Resource usage via docker stats ----------------------------------------
-  stats=$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemPerc}}' 2>/dev/null | strip_ansi | grep -v "watchdog" || true)
+  # --- Resource usage (only manus project containers) -------------------------
+  stats=$(docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemPerc}}' 2>/dev/null | strip_ansi | grep -i "manus" | grep -v "watchdog" || true)
   if [ -n "$stats" ]; then
     echo "$stats" | while IFS= read -r line; do
       [ -z "$line" ] && continue
