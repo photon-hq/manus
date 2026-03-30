@@ -384,64 +384,87 @@ async function processMessage(phoneNumber: string, data: any) {
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
-      // Regular message with text - use SLM agentic routing
-      // Use original messageText for detection (not combined) to avoid confusion with pending message
-      const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
-        phoneNumber,
-        messageText || '', // Use original for detection
-        messageGuid
-      );
-
-      // Re-fetch connection for task handling
-      const connForTask = await prisma.connection.findFirst({
-        where: { phoneNumber, status: 'ACTIVE' },
-      });
-
-      // Check if this is a pre-defined intent that should be handled without Manus
-      if (intent) {
-        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid, messageText);
-        if (handled) {
-          console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
-          // Mark as completed and return early
-          await prisma.messageQueue.update({
-            where: { id: messageId },
-            data: {
-              status: QueueStatus.COMPLETED,
-              processedAt: new Date(),
-            },
-          });
-          return;
+      // Check if this is an iMessage thread reply to a message linked to a known task.
+      // If so, skip SLM classification and treat it as a follow-up directly.
+      let threadTaskId: string | null = null;
+      if (threadOriginatorGuid) {
+        const msgTaskKey = `msg:task:${threadOriginatorGuid}`;
+        threadTaskId = await redis.get(msgTaskKey);
+        if (threadTaskId) {
+          console.log(`🧵 Thread reply detected: ${threadOriginatorGuid} → task ${threadTaskId}`);
         }
       }
 
-      if (isFollowUp && taskIdForThread) {
-        // Follow-up detected → append to existing task
-        console.log(`✅ Follow-up detected - appending to task ${taskIdForThread}${reasoning ? ` (${reasoning})` : ''}`);
+      if (threadTaskId) {
+        // Thread reply to a known task → append directly, skip SLM
+        console.log(`✅ Thread reply follow-up - appending to task ${threadTaskId} (skipped SLM)`);
         
-        // Update connection to point to the current task
         await prisma.connection.update({
           where: { phoneNumber },
           data: { 
-            currentTaskId: taskIdForThread,
+            currentTaskId: threadTaskId,
             triggeringMessageGuid: messageGuid,
           },
         });
         
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid, true);
       } else {
-        // New task → clear previous task and create new one
-        console.log(`🆕 New task detected for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
-        
-        if (connForTask?.currentTaskId) {
+        // Regular message — use SLM agentic routing
+        const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
+          phoneNumber,
+          messageText || '',
+          messageGuid
+        );
+
+        // Re-fetch connection for task handling
+        const connForTask = await prisma.connection.findFirst({
+          where: { phoneNumber, status: 'ACTIVE' },
+        });
+
+        // Check if this is a pre-defined intent that should be handled without Manus
+        if (intent) {
+          const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid, messageText);
+          if (handled) {
+            console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
+            await prisma.messageQueue.update({
+              where: { id: messageId },
+              data: {
+                status: QueueStatus.COMPLETED,
+                processedAt: new Date(),
+              },
+            });
+            return;
+          }
+        }
+
+        if (isFollowUp && taskIdForThread) {
+          // Follow-up detected → append to existing task
+          console.log(`✅ Follow-up detected - appending to task ${taskIdForThread}${reasoning ? ` (${reasoning})` : ''}`);
+          
           await prisma.connection.update({
             where: { phoneNumber },
-            data: { currentTaskId: null },
+            data: { 
+              currentTaskId: taskIdForThread,
+              triggeringMessageGuid: messageGuid,
+            },
           });
-          console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK)`);
+          
+          await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid, true);
+        } else {
+          // New task → clear previous task and create new one
+          console.log(`🆕 New task detected for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
+          
+          if (connForTask?.currentTaskId) {
+            await prisma.connection.update({
+              where: { phoneNumber },
+              data: { currentTaskId: null },
+            });
+            console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK)`);
+          }
+          
+          // Preserve conversation history across task boundaries
+          await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true, messageGuid);
         }
-        
-        // Preserve conversation history across task boundaries
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true, messageGuid);
       }
     }
 
