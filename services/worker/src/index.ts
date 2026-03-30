@@ -630,18 +630,17 @@ async function getRecentMessages(phoneNumber: string, limit: number = 20, exclud
       taskStartTime = connection.currentTaskStartedAt.getTime();
       console.log(`Using active task context for ${phoneNumber} (started at ${connection.currentTaskStartedAt.toISOString()})`);
     } else if (connection) {
-      // No active task - use the later of: last task start time or 10-minute window.
+      // No active task - use last task start time if available, otherwise fetch all recent messages.
       // currentTaskStartedAt persists after task completion, so we can use it to
-      // capture the full conversation from the last task (even if it took >5min).
-      const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+      // capture the full conversation from the last task regardless of how long ago it was.
       const lastTaskStart = (connection as any).currentTaskStartedAt?.getTime();
       
-      if (lastTaskStart && lastTaskStart > tenMinutesAgo) {
+      if (lastTaskStart) {
         taskStartTime = lastTaskStart;
-        console.log(`No active task for ${phoneNumber}, using last task start time ${new Date(lastTaskStart).toISOString()} for follow-up detection`);
+        console.log(`No active task for ${phoneNumber}, using last task start time ${new Date(lastTaskStart).toISOString()} for context`);
       } else {
-        taskStartTime = tenMinutesAgo;
-        console.log(`No active task for ${phoneNumber}, using 10-minute context window for follow-up detection`);
+        taskStartTime = 0;
+        console.log(`No active task for ${phoneNumber}, no previous task — fetching all available context`);
       }
     } else {
       console.log(`No active connection for ${phoneNumber}, returning empty context`);
