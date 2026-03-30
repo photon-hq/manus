@@ -421,14 +421,20 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   console.log(`✅ All ${chunks.length} message chunk(s) sent successfully (tracked as 1 DB record)`);
   
   // Change reaction from thumbs up to completion tapback
-  // New tasks → love (heart), follow-ups → laugh (ha ha)
-  if (stopReason === 'finish') {
+  // finish: new tasks → love, follow-ups → laugh
+  // ask: emphasize (!! to signal "needs your attention")
+  if (stopReason === 'finish' || stopReason === 'ask') {
     try {
-      const reactionKey = `reaction:${taskId}`;
-      const reactionPayload = await redis.get(reactionKey);
-      const completionReaction = reactionPayload 
-        ? JSON.parse(reactionPayload).reaction || 'love'
-        : 'love';
+      let completionReaction: string;
+      if (stopReason === 'ask') {
+        completionReaction = 'emphasize';
+      } else {
+        const reactionKey = `reaction:${taskId}`;
+        const reactionPayload = await redis.get(reactionKey);
+        completionReaction = reactionPayload 
+          ? JSON.parse(reactionPayload).reaction || 'love'
+          : 'love';
+      }
 
       const connection = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
@@ -441,7 +447,7 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
         const chatGuid = `any;-;${phoneNumber}`;
         console.log(`Applying ${completionReaction} reaction to message: ${originalMessageGuid}`);
         await sendReaction(chatGuid, originalMessageGuid, completionReaction);
-        console.log(`Changed reaction to ${completionReaction} on message ${originalMessageGuid} (task completed)`);
+        console.log(`Changed reaction to ${completionReaction} on message ${originalMessageGuid} (task stopped: ${stopReason})`);
       }
     } catch (error) {
       console.warn('Failed to change completion reaction:', error);
