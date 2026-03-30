@@ -364,31 +364,55 @@ async function processMessage(phoneNumber: string, data: any) {
       return;
     }
 
-    // Special handling for file-only messages (no text and no combined pending message)
-    // If user sends only files:
-    // - No active task → Create new task
-    // - Active task exists → Append to current task
-    if (!combinedMessage && fileIds.length > 0) {
-      // Re-fetch connection since we might have modified it above
+    // Resolve thread reply before any branching so file-only replies also route correctly
+    let threadTaskId: string | null = null;
+    if (threadOriginatorGuid) {
+      const msgTaskKey = `msg:task:${threadOriginatorGuid}`;
+      threadTaskId = await redis.get(msgTaskKey);
+      if (threadTaskId) {
+        console.log(`🧵 Thread reply detected: ${threadOriginatorGuid} → task ${threadTaskId}`);
+      }
+    }
+
+    if (threadTaskId) {
+      // Thread reply to a known task → append directly, skip SLM
+      const connForThread = await prisma.connection.findFirst({
+        where: { phoneNumber, status: 'ACTIVE' },
+      });
+
+      if (!connForThread) {
+        throw new Error(`No active connection for ${phoneNumber} during thread reply handling`);
+      }
+
+      console.log(`✅ Thread reply follow-up - appending to task ${threadTaskId} (skipped SLM)`);
+      
+      await prisma.connection.update({
+        where: { phoneNumber },
+        data: { 
+          currentTaskId: threadTaskId,
+          triggeringMessageGuid: messageGuid,
+        },
+      });
+      
+      await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid, true);
+    } else if (!combinedMessage && fileIds.length > 0) {
+      // File-only message (no text, no pending message, no thread context)
       const connForFiles = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
       if (connForFiles?.currentTaskId) {
-        // Active task exists - append files to it
         console.log(`📎 File-only message with active task - appending to ${connForFiles.currentTaskId}`);
         await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
       } else {
-        // No active task - create new task
         console.log(`📎 File-only message with no active task - creating new task`);
         await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
       }
     } else {
-      // Regular message with text - use SLM agentic routing
-      // Use original messageText for detection (not combined) to avoid confusion with pending message
+      // Regular message — use SLM agentic routing
       const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
         phoneNumber,
-        messageText || '', // Use original for detection
+        messageText || '',
         messageGuid
       );
 
@@ -402,7 +426,6 @@ async function processMessage(phoneNumber: string, data: any) {
         const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid, messageText);
         if (handled) {
           console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
-          // Mark as completed and return early
           await prisma.messageQueue.update({
             where: { id: messageId },
             data: {
@@ -418,7 +441,6 @@ async function processMessage(phoneNumber: string, data: any) {
         // Follow-up detected → append to existing task
         console.log(`✅ Follow-up detected - appending to task ${taskIdForThread}${reasoning ? ` (${reasoning})` : ''}`);
         
-        // Update connection to point to the current task
         await prisma.connection.update({
           where: { phoneNumber },
           data: { 
@@ -1341,6 +1363,12 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     //     data: { tasksUsed: { increment: 1 } } as any,
     //   });
     // }
+
+    // Map this follow-up message GUID to the task so thread replies to it also resolve instantly
+    if (triggeringMessageGuid) {
+      const msgTaskKey = `msg:task:${triggeringMessageGuid}`;
+      await redis.set(msgTaskKey, data.task_id, 'EX', TASK_MAPPING_TTL);
+    }
 
     // Store reaction info — follow-ups get 'laugh', new tasks get 'love'
     if (triggeringMessageGuid) {
