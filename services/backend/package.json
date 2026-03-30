@@ -14,7 +14,7 @@
   "dependencies": {
     "@fastify/cors": "^8.5.0",
     "@fastify/env": "^4.3.0",
-    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/rate-limit": "9",
     "@imessage-mcp/database": "workspace:*",
     "@imessage-mcp/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.26.0",
