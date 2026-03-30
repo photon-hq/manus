@@ -722,9 +722,14 @@ export async function startIMessageListener() {
         return;
       }
 
-      // Extract attachments (filter out stickers)
+      // Extract attachments (filter out stickers and rich link preview blobs)
       const processedAttachments = message.attachments
-        ?.filter((att: any) => !att.isSticker)
+        ?.filter((att: any) => {
+          if (att.isSticker) return false;
+          const name = att.transferName || att.filename || '';
+          if (name.endsWith('.pluginPayloadAttachment')) return false;
+          return true;
+        })
         ?.map((att: any) => ({
           guid: att.guid,
           filename: att.transferName || 'file',
