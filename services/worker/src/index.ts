@@ -397,6 +397,15 @@ async function processMessage(phoneNumber: string, data: any) {
 
       if (threadTaskId) {
         // Thread reply to a known task → append directly, skip SLM
+        const connForThread = await prisma.connection.findFirst({
+          where: { phoneNumber, status: 'ACTIVE' },
+        });
+
+        if (!connForThread) {
+          console.warn(`No active connection for ${phoneNumber} during thread reply handling`);
+          return;
+        }
+
         console.log(`✅ Thread reply follow-up - appending to task ${threadTaskId} (skipped SLM)`);
         
         await prisma.connection.update({
@@ -1364,6 +1373,12 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     //     data: { tasksUsed: { increment: 1 } } as any,
     //   });
     // }
+
+    // Map this follow-up message GUID to the task so thread replies to it also resolve instantly
+    if (triggeringMessageGuid) {
+      const msgTaskKey = `msg:task:${triggeringMessageGuid}`;
+      await redis.set(msgTaskKey, data.task_id, 'EX', TASK_MAPPING_TTL);
+    }
 
     // Store reaction info — follow-ups get 'laugh', new tasks get 'love'
     if (triggeringMessageGuid) {
