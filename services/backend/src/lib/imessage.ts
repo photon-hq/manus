@@ -13,6 +13,8 @@ const BLOCKED_IP_RANGES = [
   /^::1$/,             // IPv6 loopback
   /^f[cd]/i,           // IPv6 private
   /^fe80:/i,           // IPv6 link-local
+  /^::ffff:/i,         // IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1)
+  /^::(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\./, // IPv4-compatible IPv6 (deprecated but possible)
 ];
 
 function checkBlockedIp(addr: string): void {

@@ -390,8 +390,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     `);
   });
 
-  const DEFAULT_PHOTON_HANDLE = process.env.PHOTON_HANDLE || '';
-
   // COMMENTED OUT: Landing page now on Framer
   // GET / - Landing page with "Connect to Manus" button
   // See git history for full implementation

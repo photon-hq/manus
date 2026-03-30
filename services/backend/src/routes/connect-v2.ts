@@ -331,13 +331,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     `);
   });
 
-  const DEFAULT_PHOTON_HANDLE = process.env.PHOTON_HANDLE || '';
-
   // COMMENTED OUT: Landing page now on Framer
   // GET /go - Redirect route for Instagram iOS in-app browser workaround
   // fastify.get('/go', async (request, reply) => {
-  //   const raw = process.env.PHOTON_HANDLE ?? '';
-  //   const photonHandle = (typeof raw === 'string' && raw.trim()) ? raw.trim() : DEFAULT_PHOTON_HANDLE;
+  //   const photonHandle = process.env.PHOTON_HANDLE?.trim() ?? '';
   //   // Shorter message for Instagram to avoid encoding issues
   //   const smsLink = `sms:${photonHandle}?body=Hello`;
   //   return reply.type('text/html').send(`
