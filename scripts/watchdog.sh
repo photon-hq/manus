@@ -105,7 +105,7 @@ while true; do
   fi
 
   # --- Disk usage (via Docker system info) ------------------------------------
-  disk_usage=$(docker system df 2>/dev/null | grep "Images" | awk '{print $NF}' | tr -d '%' || echo "0")
+  disk_usage=$(docker system df 2>/dev/null | grep "Images" | grep -oE '[0-9]+%' | tail -1 | tr -d '%' || echo "0")
   # Fallback: check the container's own root partition
   if [ "$disk_usage" = "0" ] || [ -z "$disk_usage" ]; then
     disk_usage=$(df / 2>/dev/null | tail -1 | awk '{print $5}' | tr -d '%' || echo "0")

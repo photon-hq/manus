@@ -15,6 +15,12 @@ const BLOCKED_IP_RANGES = [
   /^fe80:/i,           // IPv6 link-local
 ];
 
+function checkBlockedIp(addr: string): void {
+  if (net.isIP(addr) && BLOCKED_IP_RANGES.some(r => r.test(addr))) {
+    throw new Error(`Blocked URL: resolves to private IP ${addr}`);
+  }
+}
+
 async function validateUrl(urlString: string): Promise<void> {
   const parsed = new URL(urlString);
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
@@ -23,12 +29,17 @@ async function validateUrl(urlString: string): Promise<void> {
   if (parsed.hostname === 'localhost' || parsed.hostname === '') {
     throw new Error('Blocked URL: localhost');
   }
-  const addrs = await dns.resolve4(parsed.hostname).catch(() => [] as string[]);
-  const addrs6 = await dns.resolve6(parsed.hostname).catch(() => [] as string[]);
-  for (const addr of [...addrs, ...addrs6]) {
-    if (net.isIP(addr) && BLOCKED_IP_RANGES.some(r => r.test(addr))) {
-      throw new Error(`Blocked URL: resolves to private IP ${addr}`);
-    }
+
+  const addrs: string[] = await dns.resolve4(parsed.hostname).catch(() => []);
+  const addrs6: string[] = await dns.resolve6(parsed.hostname).catch(() => []);
+  const allAddrs = [...addrs, ...addrs6];
+
+  if (allAddrs.length === 0) {
+    throw new Error(`Blocked URL: hostname ${parsed.hostname} did not resolve to any address`);
+  }
+
+  for (const addr of allAddrs) {
+    checkBlockedIp(addr);
   }
 }
 
@@ -288,7 +299,7 @@ export async function sendIMessageWithAttachments(
           console.log(`📥 Downloading attachment: ${attachment.filename} from ${attachment.url}`);
           
           await validateUrl(attachment.url);
-          const response = await fetch(attachment.url);
+          const response = await fetch(attachment.url, { redirect: 'error' });
           if (!response.ok) {
             throw new Error(`Failed to download: ${response.statusText}`);
           }
