@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { prisma } from '@imessage-mcp/database';
 // MCP routes commented out - not needed for current setup
 // import { mcpRoutes } from './routes/mcp';
@@ -43,6 +44,12 @@ fastify.addHook('onRequest', async (request, reply) => {
 });
 
 // Register plugins
+fastify.register(rateLimit, {
+  max: 100,
+  timeWindow: '1 minute',
+  allowList: ['127.0.0.1', '::1'],
+});
+
 fastify.register(cors, {
   origin: [
     'https://manus.photon.codes',

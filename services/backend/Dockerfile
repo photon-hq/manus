@@ -35,9 +35,12 @@ COPY services/backend/docker-entrypoint.sh /app/services/backend/
 COPY services/backend/deploy-ops.json /app/services/backend/
 RUN chmod +x /app/services/backend/docker-entrypoint.sh
 
+RUN chown -R node:node /app
+
 # Set working directory to service
 WORKDIR /app/services/backend
 
+USER node
 ENV NODE_ENV=production
 EXPOSE 3000
 ENTRYPOINT ["/app/services/backend/docker-entrypoint.sh"]

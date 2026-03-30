@@ -159,40 +159,40 @@ export async function handleIncomingMessage(
     clearTimeout(existingTimer);
   }
 
-  // Get last pending message
-  const lastMessage = await prisma.messageQueue.findFirst({
-    where: {
-      phoneNumber,
-      status: QueueStatus.PENDING,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  if (lastMessage && Date.now() - lastMessage.createdAt.getTime() < DEBOUNCE_WINDOW && !attachments) {
-    // Combine messages (only if no attachments)
-    await prisma.messageQueue.update({
-      where: { id: lastMessage.id },
-      data: {
-        messageText: lastMessage.messageText + '\n' + message,
+  // Atomic find-or-combine to prevent concurrent messages from both passing the debounce check
+  await prisma.$transaction(async (tx) => {
+    const lastMessage = await tx.messageQueue.findFirst({
+      where: {
+        phoneNumber,
+        status: QueueStatus.PENDING,
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
-    console.log(`Combined message for ${phoneNumber}`);
-  } else {
-    // Create new message in queue
-    await prisma.messageQueue.create({
-      data: {
-        phoneNumber,
-        messageGuid,
-        threadOriginatorGuid,
-        messageText: message,
-        attachments: attachments ? JSON.parse(JSON.stringify(attachments)) : null,
-        status: QueueStatus.PENDING,
-      } as any,
-    });
-    console.log(`Created new message queue entry for ${phoneNumber}`);
-  }
+
+    if (lastMessage && Date.now() - lastMessage.createdAt.getTime() < DEBOUNCE_WINDOW && !attachments) {
+      await tx.messageQueue.update({
+        where: { id: lastMessage.id },
+        data: {
+          messageText: lastMessage.messageText + '\n' + message,
+        },
+      });
+      console.log(`Combined message for ${phoneNumber}`);
+    } else {
+      await tx.messageQueue.create({
+        data: {
+          phoneNumber,
+          messageGuid,
+          threadOriginatorGuid,
+          messageText: message,
+          attachments: attachments ? JSON.parse(JSON.stringify(attachments)) : null,
+          status: QueueStatus.PENDING,
+        } as any,
+      });
+      console.log(`Created new message queue entry for ${phoneNumber}`);
+    }
+  });
 
   // Set new debounce timer
   const timer = setTimeout(async () => {
