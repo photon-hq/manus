@@ -390,9 +390,6 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     `);
   });
 
-  // Default SMS number when PHOTON_HANDLE is missing/empty in env (e.g. in Docker)
-  const DEFAULT_PHOTON_HANDLE = '+14158156704';
-
   // COMMENTED OUT: Landing page now on Framer
   // GET / - Landing page with "Connect to Manus" button
   // See git history for full implementation

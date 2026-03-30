@@ -23,7 +23,7 @@ const fastify = Fastify({
   // Increase timeouts for SSE connections
   connectionTimeout: 0, // Disable connection timeout for SSE
   keepAliveTimeout: parseInt(process.env.KEEPALIVE_TIMEOUT_SECONDS || '120') * 1000, // Default 120 seconds
-  // Trust proxy headers (required when behind reverse proxy like Traefik)
+  // Trust proxy headers (required when behind reverse proxy)
   trustProxy: true,
 });
 
@@ -82,85 +82,70 @@ fastify.get('/health', async (request, reply) => {
   }
 });
 
-// Debug endpoint to check proxy headers and SSE readiness
-fastify.get('/debug/proxy', async (request, reply) => {
-  return {
-    headers: request.headers,
-    ip: request.ip,
-    hostname: request.hostname,
-    protocol: request.protocol,
-    url: request.url,
-    method: request.method,
-    nodeEnv: process.env.NODE_ENV,
-    port: PORT,
-  };
-});
-
-// Test SSE endpoint (no auth required) - for debugging proxy issues
-fastify.get('/debug/sse', async (request, reply) => {
-  reply.raw.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no', // Disable nginx buffering
+if (process.env.NODE_ENV === 'development') {
+  fastify.get('/debug/proxy', async (request, reply) => {
+    return {
+      headers: request.headers,
+      ip: request.ip,
+      hostname: request.hostname,
+      protocol: request.protocol,
+      url: request.url,
+      method: request.method,
+      nodeEnv: process.env.NODE_ENV,
+      port: PORT,
+    };
   });
 
-  // Send initial message
-  reply.raw.write('data: {"message": "SSE connection established"}\n\n');
-
-  // Send a message every second for 5 seconds
-  let count = 0;
-  const interval = setInterval(() => {
-    count++;
-    reply.raw.write(`data: {"count": ${count}, "timestamp": "${new Date().toISOString()}"}\n\n`);
-    
-    if (count >= 5) {
+  fastify.get('/debug/sse', async (request, reply) => {
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    reply.raw.write('data: {"message": "SSE connection established"}\n\n');
+    let count = 0;
+    const interval = setInterval(() => {
+      count++;
+      reply.raw.write(`data: {"count": ${count}, "timestamp": "${new Date().toISOString()}"}\n\n`);
+      if (count >= 5) {
+        clearInterval(interval);
+        reply.raw.write('data: {"message": "SSE test complete"}\n\n');
+        reply.raw.end();
+      }
+    }, 1000);
+    request.raw.on('close', () => {
       clearInterval(interval);
-      reply.raw.write('data: {"message": "SSE test complete"}\n\n');
       reply.raw.end();
-    }
-  }, 1000);
-
-  // Handle client disconnect
-  request.raw.on('close', () => {
-    clearInterval(interval);
-    reply.raw.end();
-  });
-});
-
-// Test long-lived SSE connection (mimics MCP behavior)
-fastify.get('/debug/sse-long', async (request, reply) => {
-  reply.raw.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-store',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no',
+    });
   });
 
-  // Send initial endpoint event (like MCP does)
-  const sessionId = Math.random().toString(36).substring(7);
-  reply.raw.write('event: endpoint\n');
-  reply.raw.write(`data: /debug/sse-long?sessionId=${sessionId}\n\n`);
-
-  // Keep connection alive for 2 minutes, sending heartbeat every 10 seconds
-  let count = 0;
-  const interval = setInterval(() => {
-    count++;
-    reply.raw.write(`data: {"heartbeat": ${count}, "timestamp": "${new Date().toISOString()}"}\n\n`);
-    
-    if (count >= 12) { // 2 minutes (12 * 10 seconds)
+  fastify.get('/debug/sse-long', async (request, reply) => {
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-store',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    const sessionId = Math.random().toString(36).substring(7);
+    reply.raw.write('event: endpoint\n');
+    reply.raw.write(`data: /debug/sse-long?sessionId=${sessionId}\n\n`);
+    let count = 0;
+    const interval = setInterval(() => {
+      count++;
+      reply.raw.write(`data: {"heartbeat": ${count}, "timestamp": "${new Date().toISOString()}"}\n\n`);
+      if (count >= 12) {
+        clearInterval(interval);
+        reply.raw.write('data: {"message": "Long SSE test complete"}\n\n');
+        reply.raw.end();
+      }
+    }, 10000);
+    request.raw.on('close', () => {
       clearInterval(interval);
-      reply.raw.write('data: {"message": "Long SSE test complete"}\n\n');
       reply.raw.end();
-    }
-  }, 10000); // Every 10 seconds
-
-  // Handle client disconnect
-  request.raw.on('close', () => {
-    clearInterval(interval);
-    reply.raw.end();
+    });
   });
-});
+}
 
 // Serve favicon at root
 fastify.get('/favicon.png', async (request, reply) => {
@@ -233,9 +218,15 @@ fastify.get('/assets/:filename', async (request, reply) => {
   const path = await import('path');
   const { filename } = request.params as { filename: string };
   
-  const imagePath = process.env.NODE_ENV === 'production'
-    ? `/app/assets/${filename}`
-    : path.join(process.cwd(), '../../assets', filename);
+  const safeName = path.basename(filename);
+  const assetsDir = process.env.NODE_ENV === 'production'
+    ? '/app/assets'
+    : path.resolve(process.cwd(), '../../assets');
+  const imagePath = path.join(assetsDir, safeName);
+
+  if (!imagePath.startsWith(assetsDir)) {
+    return reply.code(403).send({ error: 'Forbidden' });
+  }
   
   try {
     const image = await fs.readFile(imagePath);

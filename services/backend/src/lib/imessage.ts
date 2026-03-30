@@ -1,4 +1,49 @@
 import { SDK } from '@photon-ai/advanced-imessage-kit';
+import dns from 'dns/promises';
+import net from 'net';
+
+const BLOCKED_IP_RANGES = [
+  /^127\./,            // loopback
+  /^10\./,             // private class A
+  /^172\.(1[6-9]|2\d|3[01])\./,  // private class B
+  /^192\.168\./,       // private class C
+  /^169\.254\./,       // link-local
+  /^0\./,              // current network
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // CGN
+  /^::1$/,             // IPv6 loopback
+  /^f[cd]/i,           // IPv6 private
+  /^fe80:/i,           // IPv6 link-local
+  /^::ffff:/i,         // IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1)
+  /^::(?:\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\./, // IPv4-compatible IPv6 (deprecated but possible)
+];
+
+function checkBlockedIp(addr: string): void {
+  if (net.isIP(addr) && BLOCKED_IP_RANGES.some(r => r.test(addr))) {
+    throw new Error(`Blocked URL: resolves to private IP ${addr}`);
+  }
+}
+
+async function validateUrl(urlString: string): Promise<void> {
+  const parsed = new URL(urlString);
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(`Blocked URL scheme: ${parsed.protocol}`);
+  }
+  if (parsed.hostname === 'localhost' || parsed.hostname === '') {
+    throw new Error('Blocked URL: localhost');
+  }
+
+  const addrs: string[] = await dns.resolve4(parsed.hostname).catch(() => []);
+  const addrs6: string[] = await dns.resolve6(parsed.hostname).catch(() => []);
+  const allAddrs = [...addrs, ...addrs6];
+
+  if (allAddrs.length === 0) {
+    throw new Error(`Blocked URL: hostname ${parsed.hostname} did not resolve to any address`);
+  }
+
+  for (const addr of allAddrs) {
+    checkBlockedIp(addr);
+  }
+}
 
 const IMESSAGE_SERVER_URL = process.env.IMESSAGE_SERVER_URL;
 const IMESSAGE_API_KEY = process.env.IMESSAGE_API_KEY;
@@ -255,8 +300,8 @@ export async function sendIMessageWithAttachments(
           
           console.log(`📥 Downloading attachment: ${attachment.filename} from ${attachment.url}`);
           
-          // Download file from URL
-          const response = await fetch(attachment.url);
+          await validateUrl(attachment.url);
+          const response = await fetch(attachment.url, { redirect: 'error' });
           if (!response.ok) {
             throw new Error(`Failed to download: ${response.statusText}`);
           }

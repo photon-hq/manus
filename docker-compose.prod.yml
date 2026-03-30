@@ -83,6 +83,7 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       DETECTION_MODE: ${DETECTION_MODE:-thread}
       SLM_SERVICE_URL: ${SLM_SERVICE_URL:-http://slm-classifier:3001}
+      ADMIN_PHONES: ${ADMIN_PHONES:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,7 +137,6 @@ services:
       COOLDOWN_SECONDS: ${COOLDOWN_SECONDS:-300}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /:/host-root:ro
     restart: unless-stopped
     networks:
       - manus-network

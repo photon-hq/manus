@@ -104,8 +104,12 @@ while true; do
     done
   fi
 
-  # --- Disk usage -------------------------------------------------------------
-  disk_usage=$(df /host-root 2>/dev/null | tail -1 | awk '{print $5}' | tr -d '%' || echo "0")
+  # --- Disk usage (via Docker system info) ------------------------------------
+  disk_usage=$(docker system df 2>/dev/null | grep "Images" | grep -oE '[0-9]+%' | tail -1 | tr -d '%' || echo "0")
+  # Fallback: check the container's own root partition
+  if [ "$disk_usage" = "0" ] || [ -z "$disk_usage" ]; then
+    disk_usage=$(df / 2>/dev/null | tail -1 | awk '{print $5}' | tr -d '%' || echo "0")
+  fi
   if [ "$disk_usage" -gt "$DISK_THRESHOLD" ] 2>/dev/null; then
     if should_alert "disk"; then
       alerts="${alerts}:floppy_disk: Disk at ${disk_usage}% (threshold: ${DISK_THRESHOLD}%)\n"
