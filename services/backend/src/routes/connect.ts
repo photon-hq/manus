@@ -1340,7 +1340,11 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /connect/:connectionId - Token input page
   fastify.get('/:connectionId', async (request, reply) => {
-    const { connectionId } = request.params as { connectionId: string };
+    const { connectionId: rawConnectionId } = request.params as { connectionId: string };
+    if (!/^[a-zA-Z0-9_-]+$/.test(rawConnectionId)) {
+      return reply.code(400).send({ error: 'Invalid connection ID' });
+    }
+    const connectionId = rawConnectionId;
 
     const connection = await prisma.connection.findUnique({
       where: { connectionId },
