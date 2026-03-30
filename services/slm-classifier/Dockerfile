@@ -33,6 +33,9 @@ WORKDIR /app/services/slm-classifier
 # Set up entrypoint script (already copied from build stage)
 RUN chmod +x docker-entrypoint.sh
 
+RUN chown -R node:node /app
+
+USER node
 ENV NODE_ENV=production
 EXPOSE 3001
 

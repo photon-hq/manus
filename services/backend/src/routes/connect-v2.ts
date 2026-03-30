@@ -366,7 +366,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   // Legacy endpoint removed - use POST /connect instead
 
   // PUT /connect/:id - Submit Manus API key and activate connection
-  fastify.put('/:connectionId', async (request, reply) => {
+  fastify.put('/:connectionId', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     try {
       const { connectionId } = request.params as { connectionId: string };
       const body = z.object({ 
@@ -383,6 +383,10 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       if (!connection || connection.status !== 'PENDING' || (connection.expiresAt && new Date() > connection.expiresAt)) {
         return reply.code(400).send({ error: 'Invalid or expired connection' });
       }
+
+      // PUT on PENDING connections is the activation step — no photonApiKey exists yet, so
+      // auth relies on the connectionId being a secret shared only with the user who initiated it.
+      // Once activated, all further mutations require the photonApiKey.
 
       // Register webhook with Manus (optional - will fail for localhost)
       let webhookId: string | null = null;
@@ -596,7 +600,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // DELETE /connect/:id - Revoke connection and clean up all user data
-  fastify.delete('/:connectionId', async (request, reply) => {
+  fastify.delete('/:connectionId', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     try {
       const { connectionId } = request.params as { connectionId: string };
 
@@ -607,6 +611,14 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
       // Return generic error to prevent enumeration
       if (!connection) {
         return reply.code(400).send({ error: 'Invalid connection' });
+      }
+
+      // Require photonApiKey auth for active/revoked connections
+      if (connection.photonApiKey) {
+        const authHeader = request.headers['x-photon-api-key'] || request.headers.authorization?.replace('Bearer ', '');
+        if (authHeader !== connection.photonApiKey) {
+          return reply.code(401).send({ error: 'Invalid or missing authentication' });
+        }
       }
 
       fastify.log.info({ connectionId, phoneNumber: connection.phoneNumber }, 'Starting connection revocation');

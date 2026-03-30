@@ -33,8 +33,11 @@ RUN pnpm prune --prod --no-optional && \
 COPY services/worker/docker-entrypoint.sh /app/services/worker/
 RUN chmod +x /app/services/worker/docker-entrypoint.sh
 
+RUN chown -R node:node /app
+
 # Set working directory to service
 WORKDIR /app/services/worker
 
+USER node
 ENV NODE_ENV=production
 ENTRYPOINT ["/app/services/worker/docker-entrypoint.sh"]
