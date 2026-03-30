@@ -427,7 +427,7 @@ async function processMessage(phoneNumber: string, data: any) {
           },
         });
         
-        await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
+        await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid, true);
       } else {
         // New task → clear previous task and create new one
         console.log(`🆕 New task detected for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
@@ -1046,8 +1046,9 @@ async function createManusTask(
   message: string, 
   fileIds: string[] = [], 
   messageTimestamp?: Date | string,
-  preserveTaskStartTime: boolean = false, // If true, don't update currentTaskStartedAt
-  triggeringMessageGuid?: string // GUID of user message that triggered this task (for threaded replies)
+  preserveTaskStartTime: boolean = false,
+  triggeringMessageGuid?: string,
+  isFollowUp: boolean = false
 ) {
   console.log(`Creating new Manus task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
@@ -1169,11 +1170,13 @@ async function createManusTask(
     }
 
     // Store reaction info so we can remove tapback when task stops
+    // New tasks get 'love' on completion, follow-ups get 'laugh'
     if (triggeringMessageGuid) {
+      const completionReaction = isFollowUp ? 'laugh' : 'love';
       const chatGuid = `any;-;${phoneNumber}`;
       await redis.set(
         `reaction:${data.task_id}`,
-        JSON.stringify({ messageGuid: triggeringMessageGuid, chatGuid, reaction: 'love' }),
+        JSON.stringify({ messageGuid: triggeringMessageGuid, chatGuid, reaction: completionReaction }),
         'EX',
         TASK_MAPPING_TTL
       );
@@ -1214,7 +1217,7 @@ async function createManusTask(
 }
 
 // Append to existing task (multi-turn conversation)
-async function appendToTask(phoneNumber: string, message: string, fileIds: string[] = [], triggeringMessageGuid?: string) {
+async function appendToTask(phoneNumber: string, message: string, fileIds: string[] = [], triggeringMessageGuid?: string, isFollowUp: boolean = false) {
   console.log(`Appending to existing task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
   // Get connection to get Manus API key and current task ID
@@ -1339,12 +1342,13 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     //   });
     // }
 
-    // Store reaction info so we can remove tapback when task stops
+    // Store reaction info — follow-ups get 'laugh', new tasks get 'love'
     if (triggeringMessageGuid) {
+      const completionReaction = isFollowUp ? 'laugh' : 'love';
       const chatGuid = `any;-;${phoneNumber}`;
       await redis.set(
         `reaction:${data.task_id}`,
-        JSON.stringify({ messageGuid: triggeringMessageGuid, chatGuid, reaction: 'love' }),
+        JSON.stringify({ messageGuid: triggeringMessageGuid, chatGuid, reaction: completionReaction }),
         'EX',
         TASK_MAPPING_TTL
       );

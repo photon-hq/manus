@@ -420,10 +420,16 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
   
   console.log(`✅ All ${chunks.length} message chunk(s) sent successfully (tracked as 1 DB record)`);
   
-  // Change reaction from thumbs up to heart to indicate task completion
+  // Change reaction from thumbs up to completion tapback
+  // New tasks → love (heart), follow-ups → laugh (ha ha)
   if (stopReason === 'finish') {
     try {
-      // Get the original message GUID for the reaction
+      const reactionKey = `reaction:${taskId}`;
+      const reactionPayload = await redis.get(reactionKey);
+      const completionReaction = reactionPayload 
+        ? JSON.parse(reactionPayload).reaction || 'love'
+        : 'love';
+
       const connection = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
         select: { triggeringMessageGuid: true },
@@ -433,12 +439,12 @@ async function handleTaskStopped(phoneNumber: string, event: any) {
       if (originalMessageGuid) {
         const { sendReaction } = await import('../lib/imessage.js');
         const chatGuid = `any;-;${phoneNumber}`;
-        console.log(`❤️ Applying love reaction to message: ${originalMessageGuid}`);
-        await sendReaction(chatGuid, originalMessageGuid, 'love');
-        console.log(`❤️ Changed reaction to love on message ${originalMessageGuid} (task completed)`);
+        console.log(`Applying ${completionReaction} reaction to message: ${originalMessageGuid}`);
+        await sendReaction(chatGuid, originalMessageGuid, completionReaction);
+        console.log(`Changed reaction to ${completionReaction} on message ${originalMessageGuid} (task completed)`);
       }
     } catch (error) {
-      console.warn('Failed to change reaction to love:', error);
+      console.warn('Failed to change completion reaction:', error);
     }
   }
 }
