@@ -435,8 +435,7 @@ export const connectRoutes: FastifyPluginAsync = async (fastify) => {
     `);
   });
 
-  // Default SMS number when PHOTON_HANDLE is missing/empty in env (e.g. in Docker)
-  const DEFAULT_PHOTON_HANDLE = '+14158156704';
+  const DEFAULT_PHOTON_HANDLE = process.env.PHOTON_HANDLE || '';
 
   // GET / - Landing page with "Connect to Manus" button
   fastify.get('/', async (request, reply) => {

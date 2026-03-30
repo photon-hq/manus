@@ -23,7 +23,7 @@ const fastify = Fastify({
   // Increase timeouts for SSE connections
   connectionTimeout: 0, // Disable connection timeout for SSE
   keepAliveTimeout: parseInt(process.env.KEEPALIVE_TIMEOUT_SECONDS || '120') * 1000, // Default 120 seconds
-  // Trust proxy headers (required when behind reverse proxy like Traefik)
+  // Trust proxy headers (required when behind reverse proxy)
   trustProxy: true,
 });
 

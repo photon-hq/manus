@@ -18,8 +18,8 @@ const TASK_MAPPING_TTL = 24 * 60 * 60; // seconds
 const FREE_TIER_TASKS = 3; // Number of free tasks before requiring API key
 const FREE_TIER_API_KEY = process.env.MANUS_FREE_TIER_API_KEY || process.env.MANUS_API_KEY;
 
-// Admin phone numbers for special commands
-const ADMIN_PHONES = ['+918527438574', '+13322593374'];
+// Admin phone numbers for special commands (comma-separated in env)
+const ADMIN_PHONES = (process.env.ADMIN_PHONES || '').split(',').map(p => p.trim()).filter(Boolean);
 
 // iMessage SDK instance
 let imessageSDK: ReturnType<typeof SDK> | null = null;
