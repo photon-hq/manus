@@ -16,10 +16,12 @@ if (!OPENROUTER_API_KEY) {
   process.exit(1);
 }
 
-// Initialize OpenRouter client
+const LLM_TIMEOUT_MS = 15_000;
+
 const openrouter = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: OPENROUTER_API_KEY,
+  timeout: LLM_TIMEOUT_MS,
   defaultHeaders: {
     'HTTP-Referer': 'https://photon.codes',
     'X-Title': 'Photon iMessage MCP',
@@ -255,7 +257,7 @@ Example:
 {"messages": ["Photon built this iMessage bridge to Manus!", "Learn more at: https://photon.codes"]}`;
 
     const response = await openrouter.chat.completions.create({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-4.5-sonnet',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: question },
@@ -334,7 +336,7 @@ Example for "can you help me book a flight?":
 {"answer": "Absolutely! I can help with that. First, let me quickly introduce myself."}`;
 
     const response = await openrouter.chat.completions.create({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-4.5-sonnet',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: question },
