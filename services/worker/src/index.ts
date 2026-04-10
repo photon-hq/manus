@@ -427,7 +427,7 @@ async function processMessage(phoneNumber: string, data: any) {
         await appendToTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageGuid);
       } else {
         console.log(`📎 File-only message with no active task - creating new task`);
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageTimestamp, false, effectiveMessageGuid);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageTimestamp, false, effectiveMessageGuid, false, effectiveThreadOriginatorGuid);
       }
     } else {
       const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
@@ -478,7 +478,7 @@ async function processMessage(phoneNumber: string, data: any) {
           console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK)`);
         }
         
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageTimestamp, true, effectiveMessageGuid);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageTimestamp, true, effectiveMessageGuid, false, effectiveThreadOriginatorGuid);
       }
     }
 
@@ -827,7 +827,7 @@ async function handleAdminCommand(
     try {
       const result = await prisma.connection.updateMany({
         where: { phoneNumber },
-        data: { tasksUsed: 0, pendingData: null } as any,
+        data: { tasksUsed: 0 } as any,
       });
       if (result.count > 0) {
         await sendMessage('✅ Your tasks have been reset to 0.');
@@ -849,7 +849,7 @@ async function handleAdminCommand(
     try {
       const result = await prisma.connection.updateMany({
         where: { phoneNumber: targetPhone },
-        data: { tasksUsed: 0, pendingData: null } as any,
+        data: { tasksUsed: 0 } as any,
       });
       if (result.count > 0) {
         await sendMessage(`✅ Tasks reset for ${targetPhone}`);
@@ -869,7 +869,7 @@ async function handleAdminCommand(
     try {
       const result = await prisma.connection.updateMany({
         where: {},
-        data: { tasksUsed: 0, pendingData: null } as any,
+        data: { tasksUsed: 0 } as any,
       });
       await sendMessage(`✅ Tasks reset for ${result.count} user(s).`);
       return true;
@@ -1086,7 +1086,8 @@ async function createManusTask(
   messageTimestamp?: Date | string,
   preserveTaskStartTime: boolean = false,
   triggeringMessageGuid?: string,
-  isFollowUp: boolean = false
+  isFollowUp: boolean = false,
+  threadOriginatorGuid?: string,
 ) {
   console.log(`Creating new Manus task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
@@ -1106,7 +1107,7 @@ async function createManusTask(
     await sendFreeTierLimitPrompt(phoneNumber, {
       messageText: message,
       messageGuid: triggeringMessageGuid || null,
-      threadOriginatorGuid: null,
+      threadOriginatorGuid: threadOriginatorGuid || null,
       attachments: null,
       messageTimestamp: messageTimestamp || null,
     });
