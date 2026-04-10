@@ -549,7 +549,7 @@ export async function startIMessageListener() {
                 currentTaskId: null,
                 currentTaskStartedAt: null,
                 triggeringMessageGuid: null,
-                pendingMessage: null,
+                pendingData: null,
                 hasOnboarded: false, // Reset so they get onboarding on re-connect
               } as any,
             });
