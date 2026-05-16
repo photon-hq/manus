@@ -1,5 +1,7 @@
 # Manus on iMessage
 
+![Manus AI via iMessage](assets/manus-imessage-hero.png)
+
 Bring Manus AI to iMessage. Built by [Photon](https://photon.codes).
 
 ## Overview
