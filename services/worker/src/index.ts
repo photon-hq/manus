@@ -246,37 +246,56 @@ async function processMessage(phoneNumber: string, data: any) {
   const { messageId, messageText, attachments, messageGuid, threadOriginatorGuid, messageTimestamp } = data;
 
   try {
-    // Check for pending message (message that was blocked due to free tier limit)
-    // and combine it with the current message after user has added their API key
     let combinedMessage = messageText;
+    let pendingAttachments: Array<{ guid: string; filename: string; mimeType: string }> | null = null;
+    let pendingMessageGuid: string | null = null;
+    let pendingThreadOriginatorGuid: string | null = null;
+    let pendingMessageTimestamp: string | null = null;
+
     const connection = await prisma.connection.findFirst({
       where: { phoneNumber, status: 'ACTIVE' },
     });
     
-    const pendingMessage = (connection as any)?.pendingMessage;
-    if (pendingMessage && connection?.manusApiKey) {
-      console.log(`📋 Found pending message for ${phoneNumber}, combining with current message`);
+    const pendingData = (connection as any)?.pendingData as {
+      messageText?: string | null;
+      messageGuid?: string | null;
+      threadOriginatorGuid?: string | null;
+      attachments?: Array<{ guid: string; filename: string; mimeType: string }> | null;
+      messageTimestamp?: string | null;
+    } | null;
+
+    const tasksAvailable = connection?.manusApiKey || ((connection?.tasksUsed ?? 0) < FREE_TIER_TASKS);
+
+    if (pendingData && tasksAvailable) {
+      console.log(`📋 Found pending data for ${phoneNumber}, replaying blocked message`);
       
-      // If user sends "continue" (case insensitive), just use the pending message
-      // Otherwise, combine both messages
       const isContinue = /^continue$/i.test(messageText?.trim() || '');
       if (isContinue) {
-        combinedMessage = pendingMessage;
+        combinedMessage = pendingData.messageText || '';
         console.log(`📋 User said "continue" - using pending message only`);
       } else if (messageText) {
-        combinedMessage = `${pendingMessage}\n\n${messageText}`;
+        combinedMessage = pendingData.messageText
+          ? `${pendingData.messageText}\n\n${messageText}`
+          : messageText;
         console.log(`📋 Combining pending message with new message`);
       } else {
-        combinedMessage = pendingMessage;
+        combinedMessage = pendingData.messageText || '';
         console.log(`📋 No new message text - using pending message only`);
       }
+
+      pendingAttachments = pendingData.attachments || null;
+      pendingMessageGuid = pendingData.messageGuid || null;
+      pendingThreadOriginatorGuid = pendingData.threadOriginatorGuid || null;
+      pendingMessageTimestamp = pendingData.messageTimestamp || null;
       
-      // Clear the pending message
       await prisma.connection.update({
-        where: { id: connection.id },
-        data: { pendingMessage: null } as any,
+        where: { id: connection!.id },
+        data: { pendingData: null } as any,
       });
-      console.log(`✅ Cleared pending message for ${phoneNumber}`);
+      console.log(`✅ Cleared pending data for ${phoneNumber}`, {
+        hadText: !!pendingData.messageText,
+        hadAttachments: (pendingData.attachments || []).length,
+      });
     }
     
     // Check for admin commands FIRST (before free tier check)
@@ -305,12 +324,10 @@ async function processMessage(phoneNumber: string, data: any) {
     if (connForFreeTierCheck) {
       const { needsApiKeyPrompt } = await resolveApiKeyForConnection(connForFreeTierCheck);
       if (needsApiKeyPrompt) {
-        const existingPendingMessage = (connForFreeTierCheck as any)?.pendingMessage;
+        const existingPendingData = (connForFreeTierCheck as any)?.pendingData;
         
-        if (existingPendingMessage) {
-          // User already has a pending message and still hasn't added API key
-          // Don't overwrite the original blocked message, just remind them to add key
-          console.log('📊 Free tier exhausted - user has existing pending message, sending reminder');
+        if (existingPendingData) {
+          console.log('📊 Free tier exhausted - user has existing pending data, sending reminder');
           
           const sdk = await getIMessageSDK();
           const chatGuid = `any;-;${phoneNumber}`;
@@ -322,16 +339,15 @@ async function processMessage(phoneNumber: string, data: any) {
             message: "Please add your API key first to continue. Get it here:\nhttps://manus.im/app#settings/integrations/api",
           });
         } else {
-          // First time hitting limit - store message and send full prompt
-          console.log('📊 Free tier exhausted - sending prompt before attachment processing');
-          // Build message to store (include attachment mention if relevant)
-          let blockedMsg = combinedMessage || '';
-          if (attachments && attachments.length > 0) {
-            blockedMsg = blockedMsg 
-              ? `${blockedMsg}\n\n[User also sent ${attachments.length} file(s) that need to be re-sent after adding API key]`
-              : `[User sent ${attachments.length} file(s) - please re-send after adding API key]`;
-          }
-          await sendFreeTierLimitPrompt(phoneNumber, blockedMsg);
+          console.log('📊 Free tier exhausted - storing full pending data before attachment processing');
+          const blockedData = {
+            messageText: combinedMessage || null,
+            messageGuid,
+            threadOriginatorGuid: threadOriginatorGuid || null,
+            attachments: (attachments && attachments.length > 0) ? attachments : null,
+            messageTimestamp: messageTimestamp || null,
+          };
+          await sendFreeTierLimitPrompt(phoneNumber, blockedData);
         }
         
         // Mark message as completed (not failed - we handled it)
@@ -346,36 +362,42 @@ async function processMessage(phoneNumber: string, data: any) {
       }
     }
     
-    // Handle attachments if present
+    // Handle attachments: current message attachments + any replayed pending attachments
     let fileIds: string[] = [];
     if (attachments && attachments.length > 0) {
       fileIds = await processAttachments(phoneNumber, attachments);
     }
+    if (pendingAttachments && pendingAttachments.length > 0) {
+      console.log(`📎 Processing ${pendingAttachments.length} replayed pending attachment(s)`);
+      const pendingFileIds = await processAttachments(phoneNumber, pendingAttachments);
+      fileIds = [...fileIds, ...pendingFileIds];
+    }
 
-    // If message is empty but has attachments, use a default prompt
     let effectiveMessage = combinedMessage;
     if (!effectiveMessage && fileIds.length > 0) {
       effectiveMessage = `[User sent ${fileIds.length} file(s)]`;
     }
 
-    // Skip processing if both message and attachments are empty
     if (!effectiveMessage && fileIds.length === 0) {
       console.warn(`Skipping empty message for ${phoneNumber}`);
       return;
     }
 
-    // Resolve thread reply before any branching so file-only replies also route correctly
+    // Use pending GUIDs as fallback when replaying a blocked message
+    const effectiveThreadOriginatorGuid = threadOriginatorGuid || pendingThreadOriginatorGuid;
+    const effectiveMessageGuid = messageGuid || pendingMessageGuid;
+    const effectiveMessageTimestamp = messageTimestamp || pendingMessageTimestamp;
+
     let threadTaskId: string | null = null;
-    if (threadOriginatorGuid) {
-      const msgTaskKey = `msg:task:${threadOriginatorGuid}`;
+    if (effectiveThreadOriginatorGuid) {
+      const msgTaskKey = `msg:task:${effectiveThreadOriginatorGuid}`;
       threadTaskId = await redis.get(msgTaskKey);
       if (threadTaskId) {
-        console.log(`🧵 Thread reply detected: ${threadOriginatorGuid} → task ${threadTaskId}`);
+        console.log(`🧵 Thread reply detected: ${effectiveThreadOriginatorGuid} → task ${threadTaskId}`);
       }
     }
 
     if (threadTaskId) {
-      // Thread reply to a known task → append directly, skip SLM
       const connForThread = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
@@ -390,40 +412,36 @@ async function processMessage(phoneNumber: string, data: any) {
         where: { phoneNumber },
         data: { 
           currentTaskId: threadTaskId,
-          triggeringMessageGuid: messageGuid,
+          triggeringMessageGuid: effectiveMessageGuid,
         },
       });
       
-      await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid, true);
+      await appendToTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageGuid, true);
     } else if (!combinedMessage && fileIds.length > 0) {
-      // File-only message (no text, no pending message, no thread context)
       const connForFiles = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
       if (connForFiles?.currentTaskId) {
         console.log(`📎 File-only message with active task - appending to ${connForFiles.currentTaskId}`);
-        await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid);
+        await appendToTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageGuid);
       } else {
         console.log(`📎 File-only message with no active task - creating new task`);
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, false, messageGuid);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageTimestamp, false, effectiveMessageGuid, false, effectiveThreadOriginatorGuid);
       }
     } else {
-      // Regular message — use SLM agentic routing
       const { isFollowUp, taskId: taskIdForThread, intent, reasoning } = await detectMessageType(
         phoneNumber,
         messageText || '',
-        messageGuid
+        effectiveMessageGuid
       );
 
-      // Re-fetch connection for task handling
       const connForTask = await prisma.connection.findFirst({
         where: { phoneNumber, status: 'ACTIVE' },
       });
 
-      // Check if this is a pre-defined intent that should be handled without Manus
       if (intent) {
-        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, messageGuid, messageText);
+        const handled = await handlePredefinedIntent(phoneNumber, intent, connForTask, effectiveMessageGuid, messageText);
         if (handled) {
           console.log(`✅ Pre-defined intent ${intent} handled for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
           await prisma.messageQueue.update({
@@ -438,20 +456,18 @@ async function processMessage(phoneNumber: string, data: any) {
       }
 
       if (isFollowUp && taskIdForThread) {
-        // Follow-up detected → append to existing task
         console.log(`✅ Follow-up detected - appending to task ${taskIdForThread}${reasoning ? ` (${reasoning})` : ''}`);
         
         await prisma.connection.update({
           where: { phoneNumber },
           data: { 
             currentTaskId: taskIdForThread,
-            triggeringMessageGuid: messageGuid,
+            triggeringMessageGuid: effectiveMessageGuid,
           },
         });
         
-        await appendToTask(phoneNumber, effectiveMessage, fileIds, messageGuid, true);
+        await appendToTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageGuid, true);
       } else {
-        // New task → clear previous task and create new one
         console.log(`🆕 New task detected for ${phoneNumber}${reasoning ? ` (${reasoning})` : ''}`);
         
         if (connForTask?.currentTaskId) {
@@ -462,8 +478,7 @@ async function processMessage(phoneNumber: string, data: any) {
           console.log(`✅ Cleared previous task ID for ${phoneNumber} (NEW_TASK)`);
         }
         
-        // Preserve conversation history across task boundaries
-        await createManusTask(phoneNumber, effectiveMessage, fileIds, messageTimestamp, true, messageGuid);
+        await createManusTask(phoneNumber, effectiveMessage, fileIds, effectiveMessageTimestamp, true, effectiveMessageGuid, false, effectiveThreadOriginatorGuid);
       }
     }
 
@@ -1000,22 +1015,21 @@ async function resolveApiKeyForConnection(connection: any): Promise<{
 
 /**
  * Send multi-message prompt when user hits free tier limit
- * Only stores and sends if no pending message exists (to avoid overwriting)
+ * Stores the full message payload (text + attachments + GUIDs) so it can be replayed later.
  */
-async function sendFreeTierLimitPrompt(phoneNumber: string, blockedMessage: string): Promise<void> {
+async function sendFreeTierLimitPrompt(phoneNumber: string, pendingData: Record<string, unknown>): Promise<void> {
   console.log(`📢 Sending free tier limit prompt to ${phoneNumber}`);
   
   try {
     const sdk = await getIMessageSDK();
     const chatGuid = `any;-;${phoneNumber}`;
     
-    // Check if there's already a pending message (don't overwrite)
     const existingConn = await prisma.connection.findFirst({
       where: { phoneNumber, status: 'ACTIVE' },
     });
     
-    if ((existingConn as any)?.pendingMessage) {
-      console.log(`⚠️ User already has pending message, not overwriting. Sending reminder instead.`);
+    if ((existingConn as any)?.pendingData) {
+      console.log(`⚠️ User already has pending data, not overwriting. Sending reminder instead.`);
       await sdk.chats.startTyping(chatGuid);
       await new Promise(resolve => setTimeout(resolve, 1000));
       await sdk.chats.stopTyping(chatGuid);
@@ -1026,12 +1040,14 @@ async function sendFreeTierLimitPrompt(phoneNumber: string, blockedMessage: stri
       return;
     }
     
-    // Store the blocked message as pendingMessage
     await prisma.connection.updateMany({
       where: { phoneNumber, status: 'ACTIVE' },
-      data: { pendingMessage: blockedMessage } as any,
+      data: { pendingData } as any,
     });
-    console.log(`✅ Stored pending message for ${phoneNumber}`);
+    console.log(`✅ Stored pending data for ${phoneNumber}:`, { 
+      hasText: !!(pendingData as any).messageText,
+      attachments: ((pendingData as any).attachments || []).length,
+    });
     
     // Send multi-message prompt with typing indicators
     const messages = [
@@ -1070,7 +1086,8 @@ async function createManusTask(
   messageTimestamp?: Date | string,
   preserveTaskStartTime: boolean = false,
   triggeringMessageGuid?: string,
-  isFollowUp: boolean = false
+  isFollowUp: boolean = false,
+  threadOriginatorGuid?: string,
 ) {
   console.log(`Creating new Manus task for ${phoneNumber}:`, message, fileIds.length > 0 ? `with ${fileIds.length} file(s)` : '');
   
@@ -1084,13 +1101,17 @@ async function createManusTask(
     throw new Error('No active connection found');
   }
 
-  // Resolve API key (user's own key vs free tier system key)
   const { apiKey, shouldIncrementTasksUsed, needsApiKeyPrompt } = await resolveApiKeyForConnection(connection);
   
   if (needsApiKeyPrompt) {
-    // User has exhausted free tier, send prompt and store message for later
-    await sendFreeTierLimitPrompt(phoneNumber, message);
-    return; // Don't create task
+    await sendFreeTierLimitPrompt(phoneNumber, {
+      messageText: message,
+      messageGuid: triggeringMessageGuid || null,
+      threadOriginatorGuid: threadOriginatorGuid || null,
+      attachments: null,
+      messageTimestamp: messageTimestamp || null,
+    });
+    return;
   }
   
   if (!apiKey) {
@@ -1251,13 +1272,17 @@ async function appendToTask(phoneNumber: string, message: string, fileIds: strin
     throw new Error('No active connection found');
   }
 
-  // Resolve API key (user's own key vs free tier system key)
   const { apiKey, shouldIncrementTasksUsed, needsApiKeyPrompt } = await resolveApiKeyForConnection(connection);
   
   if (needsApiKeyPrompt) {
-    // User has exhausted free tier, send prompt and store message for later
-    await sendFreeTierLimitPrompt(phoneNumber, message);
-    return; // Don't append to task
+    await sendFreeTierLimitPrompt(phoneNumber, {
+      messageText: message,
+      messageGuid: triggeringMessageGuid || null,
+      threadOriginatorGuid: null,
+      attachments: null,
+      messageTimestamp: null,
+    });
+    return;
   }
   
   if (!apiKey) {
