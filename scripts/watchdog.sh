@@ -5,7 +5,6 @@ SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
 CHECK_INTERVAL="${CHECK_INTERVAL:-60}"
 CPU_THRESHOLD="${CPU_THRESHOLD:-80}"
 MEM_THRESHOLD="${MEM_THRESHOLD:-80}"
-DISK_THRESHOLD="${DISK_THRESHOLD:-90}"
 COOLDOWN_SECONDS="${COOLDOWN_SECONDS:-300}"
 COOLDOWN_FILE="/tmp/watchdog-cooldown"
 
@@ -19,7 +18,7 @@ echo "Watchdog waiting ${STARTUP_DELAY}s for containers to start..."
 sleep "$STARTUP_DELAY"
 
 echo "Watchdog started — checking every ${CHECK_INTERVAL}s"
-echo "Thresholds: CPU=${CPU_THRESHOLD}% MEM=${MEM_THRESHOLD}% DISK=${DISK_THRESHOLD}%"
+echo "Thresholds: CPU=${CPU_THRESHOLD}% MEM=${MEM_THRESHOLD}%"
 
 should_alert() {
   key="$1"
@@ -102,18 +101,6 @@ while true; do
         fi
       fi
     done
-  fi
-
-  # --- Disk usage (via Docker system info) ------------------------------------
-  disk_usage=$(docker system df 2>/dev/null | grep "Images" | grep -oE '[0-9]+%' | tail -1 | tr -d '%' || echo "0")
-  # Fallback: check the container's own root partition
-  if [ "$disk_usage" = "0" ] || [ -z "$disk_usage" ]; then
-    disk_usage=$(df / 2>/dev/null | tail -1 | awk '{print $5}' | tr -d '%' || echo "0")
-  fi
-  if [ "$disk_usage" -gt "$DISK_THRESHOLD" ] 2>/dev/null; then
-    if should_alert "disk"; then
-      alerts="${alerts}:floppy_disk: Disk at ${disk_usage}% (threshold: ${DISK_THRESHOLD}%)\n"
-    fi
   fi
 
   # --- Send consolidated alert ------------------------------------------------

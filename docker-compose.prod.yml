@@ -134,7 +134,6 @@ services:
       CHECK_INTERVAL: ${CHECK_INTERVAL:-60}
       CPU_THRESHOLD: ${CPU_THRESHOLD:-80}
       MEM_THRESHOLD: ${MEM_THRESHOLD:-80}
-      DISK_THRESHOLD: ${DISK_THRESHOLD:-90}
       COOLDOWN_SECONDS: ${COOLDOWN_SECONDS:-300}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
